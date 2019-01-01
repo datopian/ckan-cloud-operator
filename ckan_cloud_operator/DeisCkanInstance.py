@@ -4,6 +4,7 @@ import binascii
 import os
 import yaml
 import datetime
+import json
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.datastore_permissions import DATASTORE_PERMISSIONS_SQL_TEMPLATE
 
@@ -49,7 +50,7 @@ class DeisCkanInstance(object):
 
     def _init_spec(self):
         if not self.values:
-            self.values = kubectl.get(f'DeisCkanInstance {id}')
+            self.values = kubectl.get(f'DeisCkanInstance {self.id}')
         if self.override_spec:
             for k, v in self.override_spec.items():
                 if k == 'envvars':
@@ -394,6 +395,35 @@ class DeisCkanInstance(object):
             args = ['5000']
         subprocess.check_call(['kubectl', '-n', self.id, 'port-forward', f'deployment/{self.id}', *args])
 
+    def get(self):
+        self._init_infra_secrets()
+        self._init_spec()
+        data = {'id': self.id,
+                'ckanPodSpec': self.spec['ckanPodSpec'],
+                'ckanContainerSpec': self.spec['ckanContainerSpec'],
+                'solrCloudCollection': {'name': self.solrCloudCollection['name']}}
+        gcloud_sql_instance_name = self.ckan_infra['GCLOUD_SQL_INSTANCE_NAME']
+        gcloud_sql_project = self.ckan_infra['GCLOUD_SQL_PROJECT']
+        db_name = self.db['name']
+        data['db'] = yaml.load(subprocess.check_output(
+            f'gcloud -q --project={gcloud_sql_project} '
+            f'sql databases describe {db_name} '
+            f'--instance {gcloud_sql_instance_name}',
+            shell=True
+        ).decode())
+        datastore_name = self.datastore['name']
+        data['datastore'] = yaml.load(subprocess.check_output(
+            f'gcloud -q --project={gcloud_sql_project} '
+            f'sql databases describe {datastore_name} '
+            f'--instance {gcloud_sql_instance_name}',
+            shell=True
+        ).decode())
+        solr_http_endpoint = self.ckan_infra['SOLR_HTTP_ENDPOINT']
+        collection_name = self.solrCloudCollection['name']
+        res = json.loads(subprocess.check_output(f'curl -s -f "{solr_http_endpoint}/{collection_name}/schema"', shell=True))
+        data['solrCloudCollection'].update(schemaVersion=res['schema']['version'], schemaName=res['schema']['name'])
+        print(yaml.dump(data, default_flow_style=False))
+
     @classmethod
     def install_crd(cls):
         try:
@@ -416,6 +446,13 @@ class DeisCkanInstance(object):
                    }}
             subprocess.run('kubectl create -f -', input=yaml.dump(crd).encode(), shell=True, check=True)
         assert crd['spec']['version'] == 'v1'
+
+    @classmethod
+    def list(cls, *args):
+        instances = []
+        for instance in kubectl.get('DeisCkanInstance')['items']:
+            instances.append({'name': instance['metadata']['name']})
+        print(yaml.dump(instances, default_flow_style=False))
 
     @classmethod
     def envvars_gcloud_import(cls, instance_env_yaml, image, solr_config, gcloud_db_url, gcloud_datastore_url, instance_id):

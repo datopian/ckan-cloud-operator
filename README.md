@@ -9,6 +9,7 @@ Create secret `ckan-infra` under namespace `ckan-cloud` with the following value
 * GCLOUD_SQL_INSTANCE_NAME
 * GCLOUD_SQL_PROJECT
 * POSTGRES_HOST
+* POSTGRES_USER
 * POSTGRES_PASSWORD
 * SOLR_HTTP_ENDPOINT
 * SOLR_NUM_SHARDS
@@ -25,6 +26,7 @@ You will need the following details:
 * Path to .kube-config file with permissions to the relevant Kubernetes cluster
 * Path to Google Compute Cloud service account json with required permissions
 * The Google service account email associated with the service account json
+* The Google Project ID associated with the infrastructure and GKE cluster
 
 Run ckan-cloud-operator without arguments to get a help message:
 
@@ -33,6 +35,7 @@ docker run \
        -v /path/to/.kube-config:/etc/ckan-cloud/.kube-config \
        -v /path/to/glcoud-service-account.json:/etc/ckan-cloud/gcloud-service-account.json \
        -e GCLOUD_SERVICE_ACCOUNT_EMAIL= \
+       -e GCLOUD_AUTH_PROJECT= \
        -it viderum/ckan-cloud-operator
 ```
 

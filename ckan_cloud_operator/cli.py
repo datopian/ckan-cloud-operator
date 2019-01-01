@@ -15,7 +15,13 @@ deis-instance <SUBCOMMAND>
   Manage Deis CKAN instance resources
   
   Available subcommands:
+    
+    list
+      List the Deis instances specs and status
   
+    get <INSTANCE_ID>
+      Get detailed information about an instance
+
     envvars-gcloud-import <PATH_TO_INSTANCE_ENV_YAML> <IMAGE> <SOLR_CONFIG> <GCLOUD_DB_URL> <GCLOUD_DATASTORE_URL> <NEW_INSTANCE_ID>
       Import and deploy an instance
   
@@ -49,7 +55,11 @@ def main():
         DeisCkanInstance.install_crd()
         great_success()
     elif sys.argv[1] == 'deis-instance':
-        if sys.argv[2] == 'envvars-gcloud-import':
+        if sys.argv[2] == 'list':
+            DeisCkanInstance.list(*sys.argv[3:])
+        elif sys.argv[2] == 'get':
+            DeisCkanInstance(sys.argv[3]).get()
+        elif sys.argv[2] == 'envvars-gcloud-import':
             DeisCkanInstance.envvars_gcloud_import(*sys.argv[3:]).update()
             great_success()
         elif sys.argv[2] == 'update':
