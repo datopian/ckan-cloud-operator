@@ -49,6 +49,12 @@ You can [Install miniconda3](https://conda.io/miniconda.html), then create the e
 
 Activate the conda environment using `conda activate ckan-cloud-operator`
 
+Install the Python package:
+
+```
+python3 -m pip install -e .
+```
+
 Run ckan-cloud-operator without arguments to get a help message:
 
 ```
