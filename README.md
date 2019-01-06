@@ -4,42 +4,88 @@ CKAN Cloud operator manages, provisions and configures Ckan Cloud instances and 
 
 ## Install
 
-Create secret `ckan-infra` under namespace `ckan-cloud` with the following values:
+ckan-cloud-operator-env is used to install and manage CKAN Cloud operator environments on your local PC
 
-* GCLOUD_SQL_INSTANCE_NAME
-* GCLOUD_SQL_PROJECT
-* POSTGRES_HOST
-* POSTGRES_USER
-* POSTGRES_PASSWORD
-* SOLR_HTTP_ENDPOINT
-* SOLR_NUM_SHARDS
-* SOLR_REPLICATION_FACTOR
-* DOCKER_REGISTRY_SERVER
-* DOCKER_REGISTRY_USERNAME
-* DOCKER_REGISTRY_PASSWORD
-* DOCKER_REGISTRY_EMAIL
+The only requirement is a .kube-config file with permissions to the relevant cluster
 
-## Run using Docker
-
-You will need the following details:
-
-* Path to .kube-config file with permissions to the relevant Kubernetes cluster
-* Path to Google Compute Cloud service account json with required permissions
-* The Google service account email associated with the service account json
-* The Google Project ID associated with the infrastructure and GKE cluster
-
-Run ckan-cloud-operator without arguments to get a help message:
+Install ckan-cloud-operator-env
 
 ```
-docker run \
-       -v /path/to/.kube-config:/etc/ckan-cloud/.kube-config \
-       -v /path/to/glcoud-service-account.json:/etc/ckan-cloud/gcloud-service-account.json \
-       -e GCLOUD_SERVICE_ACCOUNT_EMAIL= \
-       -e GCLOUD_AUTH_PROJECT= \
-       -it viderum/ckan-cloud-operator
+curl https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/master/ckan-cloud-operator-env.sh \
+    | sudo tee /usr/local/bin/ckan-cloud-operator-env &&\
+sudo chmod +x /usr/local/bin/ckan-cloud-operator-env
 ```
 
-## Run locally
+Pull the latest Docker image
+
+```
+ckan-cloud-operator-env pull
+```
+
+Add an environment (to run on Minikube set PATH_TO_KUBECONFIG_FILE to minikube)
+
+```
+sudo ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE>
+```
+
+Verify you are connected to the correct cluster
+
+```
+ckan-cloud-operator cluster-info
+```
+
+## Usage
+
+Use the help message of the different commands for the reference documentation and usage examples
+
+```
+ckan-cloud-operator --help
+```
+
+Start a bash shell with completion
+
+```
+ckan-cloud-operator bash
+```
+
+This start a bash shell inside the ckan-cloud-operator Docker container, you can use bash completion inside this shell
+
+```
+ckan-cloud-operator <TAB><TAB>
+```
+
+## Managing multiple environments
+
+ckan-cloud-operator-env supports managing multiple environments
+
+Add environments using `ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE>`
+
+Each environment is accessible using executable `ckan-cloud-operator-<ENVIRONMENT_NAME>`
+
+Activating an environment sets the `ckan-cloud-operator` executable to use to the relevant environment executable
+
+```
+ckan-cloud-operator-env activate <ENVIRONMENT_NAME>
+```
+
+## Initializing a cluster for ckan-cloud-operator
+
+Kubernetes custom resource definitions are used for management of the CKAN Cloud resources
+
+Run the following command to ensure the crds are installed on the cluster
+
+```
+ckan-cloud-operator install-crds
+```
+
+ckan-cloud-operator using a secret named `ckan-infra` under namespace `ckan-cloud` to get infrastrutcute secrets.
+
+See the list of values in [ckan_cloud_operator/infra.py](ckan_cloud_operator/infra.py)
+
+You can clone an infrastructure secret using `ckan-infra clone` command
+and some infrastructure secrets can be set using `ckan-infra set` command
+
+## Run ckan-cloud-operator locally
 
 Ensure you have `kubectl` and `gcloud` binaries, authenticated to the relevant gcloud account / kubernetes cluster.
 
@@ -55,19 +101,20 @@ Install the Python package:
 python3 -m pip install -e .
 ```
 
+Authenticate the gcloud CLI to the relevant account:
+
+```
+ckan-cloud-operator activate-gcloud-auth
+```
+
 Run ckan-cloud-operator without arguments to get a help message:
 
 ```
 ckan-cloud-operator
 ```
 
-## Install custom resource definitions
-
-Kubernetes custom resource definitions are used for management of the CKAN Cloud resources
-
-Run the following command to ensure the crds are installed on the cluster
+Enable Bash completion
 
 ```
-ckan-cloud-operator install-crds
+eval "$(_CKAN_CLOUD_OPERATOR_COMPLETE=source ckan-cloud-operator)"
 ```
-

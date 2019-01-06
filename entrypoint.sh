@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
-source ~/.bashrc
-
-exec ckan-cloud-operator "$@"
+if [ "${1}" == "bash" ]; then
+    exec bash --init-file <(echo 'source ~/.bashrc; eval "$(_CKAN_CLOUD_OPERATOR_COMPLETE=source ckan-cloud-operator)"')
+else
+    source ~/.bashrc
+    exec ckan-cloud-operator "$@"
+fi
