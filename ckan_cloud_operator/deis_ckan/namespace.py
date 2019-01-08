@@ -35,9 +35,12 @@ class DeisCkanInstanceNamespace(object):
         print(f'initializing instance namespace: {ns}')
         subprocess.check_call(f'kubectl create ns {ns}', shell=True)
         kubectl_namespace = f'kubectl --namespace {ns}'
-        subprocess.check_call(f'{kubectl_namespace} create serviceaccount ckan-{ns}-operator', shell=True)
+        subprocess.check_call(f'{kubectl_namespace} create serviceaccount ckan-{ns}-operator',
+                              shell=True)
         subprocess.check_call(f'{kubectl_namespace} create role ckan-{ns}-operator-role '
-                              f' --verb list,get,create --resource secrets,pods,pods/exec,pods/portforward', shell=True)
+                              f' --verb list,get,create --resource secrets,pods,pods/exec,pods/portforward',
+                              shell=True)
         subprocess.check_call(f'{kubectl_namespace} create rolebinding ckan-{ns}-operator-rolebinding'
                               f' --role ckan-{ns}-operator-role'
-                              f' --serviceaccount {ns}:ckan-{ns}-operator', shell=True)
+                              f' --serviceaccount {ns}:ckan-{ns}-operator',
+                              shell=True)

@@ -2,6 +2,7 @@ import traceback
 import subprocess
 import base64
 import yaml
+import json
 from ckan_cloud_operator import kubectl
 
 
@@ -23,6 +24,12 @@ STATUSES = {
     'solr': ['created'],
     'ckan': ['created'],
 }
+
+
+# flexible annotations encoded to json and permitted using key prefixes
+JSON_ANNOTATION_PREFIXES = [
+    'router-traefik'
+]
 
 
 SECRET_ANNOTATIONS = [
@@ -142,6 +149,13 @@ class DeisCkanInstanceAnnotations(object):
             return base64.b64decode(value).decode() if value else default
         else:
             return default
+
+    def json_annotate(self, key, value, overwrite=True):
+        ans = []
+        assert any([key.startswith(prefix) for prefix in JSON_ANNOTATION_PREFIXES]), f'invalid json annotation key: {key}'
+        value = json.dumps(value)
+        ans.append(f"{key}='{value}'")
+        self._annotate(*ans, overwrite=overwrite)
 
     def _annotate(self, *annotations, overwrite=False):
         cmd = f'kubectl -n ckan-cloud annotate DeisCkanInstance {self.instance.id}'

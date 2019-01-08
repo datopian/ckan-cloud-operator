@@ -7,3 +7,4 @@ dependencies:
     - pyyaml
     - kubernetes
     - click
+    - toml

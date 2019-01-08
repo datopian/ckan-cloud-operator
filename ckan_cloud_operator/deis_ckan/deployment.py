@@ -75,7 +75,7 @@ class DeisCkanInstanceDeployment(object):
                                       'app': 'ckan'
                                   },
                                   'annotations': {
-                                      'ckan-cloud-operator-timestamp': str(datetime.datetime.now())
+                                      'ckan-cloud/operator-timestamp': str(datetime.datetime.now())
                                   }
                               },
                               'spec': ckanPodSpec

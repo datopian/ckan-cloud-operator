@@ -116,5 +116,5 @@ ckan-cloud-operator
 Enable Bash completion
 
 ```
-eval "$(_CKAN_CLOUD_OPERATOR_COMPLETE=source ckan-cloud-operator)"
+eval "$(ckan-cloud-operator bash-completion)"
 ```

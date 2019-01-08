@@ -1,8 +1,8 @@
 import yaml
 import subprocess
 import base64
-import json
-import os
+import traceback
+import datetime
 
 
 def check_call(cmd, namespace='ckan-cloud'):
@@ -31,7 +31,7 @@ def update_secret(name, values, namespace='ckan-cloud'):
     data = secret['data'] if secret else {}
     for k, v in values.items():
         data[k] = base64.b64encode(v.encode()).decode()
-    secret = {
+    apply({
         'apiVersion': 'v1',
         'kind': 'Secret',
         'metadata': {
@@ -40,8 +40,8 @@ def update_secret(name, values, namespace='ckan-cloud'):
         },
         'type': 'Opaque',
         'data': data
-    }
-    subprocess.run('kubectl apply -f -', input=yaml.dump(secret).encode(), shell=True, check=True)
+    })
+
 
 def get_item_detailed_status(item):
     kind = item['kind']
@@ -62,3 +62,274 @@ def get_item_detailed_status(item):
                 "last_transition": condition["lastTransitionTime"]
             })
     return item_status
+
+
+def get_deployment_detailed_status(deployment, pod_label_selector, main_container_name, namespace='ckan-cloud'):
+    status = get_item_detailed_status(deployment)
+    ready = len(status.get('error', [])) == 0
+    status['pods'] = []
+    pods = get(f'pods -l {pod_label_selector}', namespace=namespace, required=False)
+    if pods:
+        for pod in pods['items']:
+            pod_status = get_item_detailed_status(pod)
+            pod_status['other-containers'] = []
+            for container in pod['spec']['containers']:
+                container_name = container['name']
+                container_status = {'name': container_name}
+                status_code, output = subprocess.getstatusoutput(
+                    f'kubectl -n {namespace} logs {pod["metadata"]["name"]} -c {main_container_name} --tail 5',
+                )
+                if status_code == 0:
+                    container_status['logs'] = output
+                else:
+                    if container_name == main_container_name: ready = False
+                    container_status['logs'] = ''
+                container_status['image'] = container['image']
+                if container_name == main_container_name:
+                    pod_status['main-container'] = container_status
+                else:
+                    pod_status['other-containers'].append(container_status)
+            status['pods'].append(pod_status)
+    return dict(status, ready=ready, namespace=deployment['metadata']['namespace'])
+
+
+def create(resource, is_yaml=False):
+    if is_yaml: resource = yaml.load(resource)
+    subprocess.run('kubectl create -f -', input=yaml.dump(resource).encode(), shell=True, check=True)
+
+
+def apply(resource, is_yaml=False):
+    if is_yaml: resource = yaml.load(resource)
+    subprocess.run('kubectl apply -f -', input=yaml.dump(resource).encode(), shell=True, check=True)
+
+
+def install_crd(plural, singular, kind):
+    crd = get(f'crd {plural}.stable.viderum.com', required=False)
+    version = 'v1'
+    if crd:
+        assert crd['spec']['version'] == version
+        print(f'{kind} custom resource definitions are up-to-date')
+    else:
+        print(f'Creating {kind} {version} custom resource definition')
+        crd = {'apiVersion': 'apiextensions.k8s.io/v1beta1',
+               'kind': 'CustomResourceDefinition',
+               'metadata': {
+                   'name': f'{plural}.stable.viderum.com'
+               },
+               'spec': {
+                   'version': 'v1',
+                   'group': 'stable.viderum.com',
+                   'scope': 'Namespaced',
+                   'names': {
+                       'plural': plural,
+                       'singular': singular,
+                       'kind': kind
+                   }
+               }}
+        subprocess.run('kubectl create -f -', input=yaml.dump(crd).encode(), shell=True, check=True)
+
+
+def get_resource(api_version, kind, name, labels, namespace='ckan-cloud'):
+    resource = {
+        'apiVersion': api_version,
+        'kind': kind,
+        'metadata': {
+            'name': name,
+            'namespace': namespace,
+            'labels': labels,
+            'annotations': {}
+        },
+    }
+    add_operator_timestamp_annotation(resource['metadata'])
+    return resource
+
+
+
+def get_configmap(name, labels, data, namespace='ckan-cloud'):
+    configmap = get_resource('v1', 'ConfigMap', name, labels, namespace)
+    return dict(configmap, data=data)
+
+
+def get_persistent_volume_claim(name, labels, spec, namespace='ckan-cloud'):
+    pvc = get_resource('v1', 'PersistentVolumeClaim', name, labels, namespace)
+    return dict(pvc, spec=spec)
+
+
+def get_deployment(name, labels, spec, namespace='ckan-cloud'):
+    deployment = get_resource('apps/v1beta1', 'Deployment', name, labels, namespace)
+    deployment = dict(deployment, spec=spec)
+    add_operator_timestamp_annotation(deployment['spec']['template']['metadata'])
+    return deployment
+
+
+def add_operator_timestamp_annotation(metadata):
+    metadata.setdefault('annotations', {})['ckan-cloud/operator-timestamp'] = str(datetime.datetime.now())
+
+
+__NONE__ = object
+
+
+class BaseAnnotations(object):
+    """Base class for managing annotations related to a custom resource"""
+
+    @property
+    def FLAGS(self):
+        """Boolean flags which are saved as annotations on the resource"""
+        return ['forceCreateAnnotations']
+
+    @property
+    def STATUSES(self):
+        """Predefined statuses which are saved as annotations on the resource"""
+        return {}
+
+    @property
+    def SECRET_ANNOTATIONS(self):
+        """Sensitive details which are saved in a secret related to the resource"""
+        return []
+
+    @property
+    def RESOURCE_KIND(self):
+        raise NotImplementedError()
+
+    def __init__(self, resource_id, resource_values=None, override_flags=None, persist_overrides=False):
+        """Initializes an annotations object, optionally specifying previously fetched resource values"""
+        self.resource_id = resource_id
+        self.resource_values = resource_values
+        self.resource_kind = self.RESOURCE_KIND.lower()
+        self._override_flags = override_flags
+        if self._override_flags:
+            for flag in self._override_flags:
+                assert flag in self.FLAGS, f'unknown flag: {flag}'
+            if persist_overrides and len(self._override_flags) > 0:
+                self._annotate(*['{}={}'.format(k, 'true' if v else 'false')
+                                 for k, v in self._override_flags.items()], overwrite=True)
+
+    def set_status(self, key, status):
+        assert status in self.STATUSES[key], f'unknown status/key: {status}/{key}'
+        self._annotate(f'{key}-{status}=true')
+
+    def get_status(self, key, status):
+        assert key in self.STATUSES.keys(), f'unknown status key: {key}'
+        return bool(self._get_annotation(f'{key}-{status}'))
+
+    def update_status(self, key, status, update_func, force_update=False):
+        if self.get_status(key, status):
+            if force_update:
+                update_func()
+                return True
+            else:
+                return False
+        else:
+            try:
+                update_func()
+            except:
+                if self.get_flag('forceCreateAnnotations'):
+                    traceback.print_exc()
+                else:
+                    raise
+            self.set_status(key, status)
+            return True
+
+    def set_flag(self, flag):
+        self._annotate(f'{flag}=true')
+
+    def set_flags(self, *flags):
+        self._annotate(*[f'{flag}=true' for flag in flags])
+
+    def update_flag(self, flag, update_func, force_update=False):
+        if self.get_flag(flag):
+            if force_update:
+                update_func()
+                return True
+            else:
+                return False
+        else:
+            update_func()
+            self.set_flag(flag)
+            return True
+
+    def get_flag(self, flag):
+        """flags  are boolean fields which can be added manually to modify operator functionality
+
+        Flags can be set using kubectl annotate on the resource, for example:
+
+        kubectl -n ckan-cloud annotate DeisCkanInstance/atea32 ckan-cloud/forceCreateAnnotations=true
+        """
+        assert flag in self.FLAGS, f'unknown flag: {flag}'
+        if self._override_flags and flag in self._override_flags:
+            return self._override_flags[flag]
+        else:
+            value = self._get_annotation(flag)
+            if type(value) == str:
+                return False if value.lower().strip() in ['false', '0', 'no', ''] else bool(value)
+            else:
+                return bool(value)
+
+    def get(self):
+        data = {k.replace('ckan-cloud/', ''): v for k, v in self.resource_values['metadata']['annotations'].items()
+                if k.startswith('ckan-cloud/')}
+        data['ready'] = True
+        return data
+
+    def set_secrets(self, key_values):
+        for key in key_values:
+            assert key in self.SECRET_ANNOTATIONS, 'unknown secret annotation: {key}'
+        secret = getattr(self, '_secret', None)
+        cur_data = secret.get('data', {}) if secret and secret != __NONE__ else {}
+        secret = get(f'secret {self.resource_kind}-{self.resource_id}-annotations', required=False)
+        if not secret:
+            secret = {'data': {}}
+        secret['data'].update(**cur_data)
+        for key, value in key_values.items():
+            secret['data'][key] = base64.b64encode(value.encode()).decode()
+        secret = {
+            'apiVersion': 'v1',
+            'kind': 'Secret',
+            'metadata': {
+                'name': f'{self.resource_kind}-{self.resource_id}-annotations',
+                'namespace': 'ckan-cloud'
+            },
+            'type': 'Opaque',
+            'data': secret['data']
+        }
+        subprocess.run(f'kubectl apply -f -', input=yaml.dump(secret).encode(), shell=True, check=True)
+        self._secret = secret
+
+    def set_secret(self, key, value):
+        self.set_secrets({key: value})
+
+    def get_secret(self, key, default=None):
+        assert key in self.SECRET_ANNOTATIONS, f'unknown secret annotation: {key}'
+        secret = getattr(self, '_secret', None)
+        if not secret:
+            secret = get(f'secret {self.resource_kind}-{self.resource_id}-annotations', required=False)
+            if not secret:
+                secret = __NONE__
+            self._secret = secret
+        if secret and secret != __NONE__:
+            value = secret.get('data', {}).get(key, None)
+            return base64.b64decode(value).decode() if value else default
+        else:
+            return default
+
+    def get_pod_env_spec_from_secret(self, env_name, value_key):
+        return {
+            'name': env_name,
+            'valueFrom': {
+                'secretKeyRef': {
+                    'name': 'ckancloudrouter-ori-test-1-annotations',
+                    'key': value_key
+                }
+            }
+        }
+
+    def _annotate(self, *annotations, overwrite=False):
+        cmd = f'kubectl -n ckan-cloud annotate {self.resource_kind} {self.resource_id}'
+        for annotation in annotations:
+            cmd += f' ckan-cloud/{annotation}'
+        if overwrite:
+            cmd += ' --overwrite'
+        subprocess.check_call(cmd, shell=True)
+
+    def _get_annotation(self, annotation, default=None):
+        return self.resource_values['metadata'].get('annotations', {}).get(f'ckan-cloud/{annotation}', default)

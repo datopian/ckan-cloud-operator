@@ -94,7 +94,16 @@ class DeisCkanInstance(object):
 
     def update(self, wait_ready=False):
         """Ensure the instance is updated to latest spec"""
-        old_deployment_generation = self.get('deployment').get('generation') if wait_ready else None
+        old_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
+        if old_deployment:
+            old_deployment_generation = old_deployment.get('metadata', {}).get('generation')
+        else:
+            old_deployment_generation = None
+        if old_deployment_generation:
+            expected_new_deployment_generation = old_deployment_generation + 1
+        else:
+            expected_new_deployment_generation = 1
+        print(f'old deployment generation = {old_deployment_generation}')
         DeisCkanInstanceNamespace(self).update()
         DeisCkanInstanceDb(self, 'db').update()
         DeisCkanInstanceDb(self, 'datastore').update()
@@ -102,17 +111,21 @@ class DeisCkanInstance(object):
         DeisCkanInstanceRegistry(self).update()
         DeisCkanInstanceEnvvars(self).update()
         DeisCkanInstanceDeployment(self).update()
+        while True:
+            time.sleep(.2)
+            new_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
+            if not new_deployment: continue
+            new_deployment_generation = new_deployment.get('metadata', {}).get('generation')
+            if not new_deployment_generation: continue
+            if new_deployment_generation == old_deployment_generation: continue
+            if new_deployment_generation != expected_new_deployment_generation:
+                raise Exception(f'Invalid generation: {new_deployment_generation} '
+                                f'(expected: {expected_new_deployment_generation}')
+            print(f'new deployment generation: {new_deployment_generation}')
+            break
         if wait_ready:
             print('Waiting for ready status')
             time.sleep(3)
-            while True:
-                data = self.get('deployment')
-                new_deployment_generation = data.get('generation')
-                if data.get('ready') and new_deployment_generation and new_deployment_generation != old_deployment_generation:
-                    break
-                else:
-                    print('.')
-                    time.sleep(2)
             while True:
                 data = self.get()
                 if data.get('ready'):
@@ -291,3 +304,7 @@ class DeisCkanInstance(object):
         }
         subprocess.run('kubectl create -f -', input=yaml.dump(instance).encode(), shell=True, check=True)
         return cls(instance_id, values=instance)
+
+    def set_subdomain_route(self, router_type, router_name, route_type, router_annotations):
+        assert router_type in ['traefik-subdomain']
+        self.annotations.json_annotate(f'router-{route_type}-{router_name}', router_annotations)
