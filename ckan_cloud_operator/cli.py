@@ -319,9 +319,23 @@ def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_ins
 @click.argument('GCLOUD_DB_URL')
 @click.argument('GCLOUD_DATASTORE_URL')
 @click.argument('NEW_INSTANCE_ID')
-def deis_instance_create_from_gcloud_envvars(*args):
+def deis_instance_create_from_gcloud_envvars(
+                                        path_to_instance_env_yaml,
+                                        image,
+                                        solr_config,
+                                        gcloud_db_url,
+                                        gcloud_datastore_url,
+                                        new_instance_id):
     """Create and update an instance from existing DB dump stored in gcloud sql format on google cloud storage."""
-    DeisCkanInstance.create('from-gcloud-envvars', *args).update()
+    DeisCkanInstance.create(
+        'from-gcloud-envvars',
+        path_to_instance_env_yaml,
+        image,
+        solr_config,
+        gcloud_db_url,
+        gcloud_datastore_url,
+        new_instance_id
+    ).update()
     great_success()
 
 
