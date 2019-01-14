@@ -147,14 +147,18 @@ class DeisCkanInstanceDb(object):
         )
 
     def _create_base_db(self):
-        print('Creating base db')
-        db_name = self.db_spec['name']
-        db_password = binascii.hexlify(os.urandom(12)).decode()
-        self.instance.annotations.set_secret('datastorePassword' if self.db_type == 'datastore' else 'databasePassword',
-                                             db_password)
-        self._psql(
-            f'CREATE ROLE "{db_name}" WITH LOGIN PASSWORD \'{db_password}\' NOSUPERUSER NOCREATEDB NOCREATEROLE;')
-        self._psql(f'CREATE DATABASE "{db_name}";')
+        password_secret_name = 'datastorePassword' if self.db_type == 'datastore' else 'databasePassword'
+        if self.instance.annotations.get_secret(password_secret_name):
+            print('Password already exists, skipping DB creation')
+            return False
+        else:
+            print('Creating base db')
+            db_name = self.db_spec['name']
+            db_password = binascii.hexlify(os.urandom(12)).decode()
+            self.instance.annotations.set_secret(password_secret_name, db_password)
+            self._psql(
+                f'CREATE ROLE "{db_name}" WITH LOGIN PASSWORD \'{db_password}\' NOSUPERUSER NOCREATEDB NOCREATEROLE;')
+            self._psql(f'CREATE DATABASE "{db_name}";')
 
     def _initialize_db_postgis(self, db_name):
         print('initializing postgis extensions')
@@ -164,14 +168,21 @@ class DeisCkanInstanceDb(object):
         self._psql('CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;', '-d', db_name)
 
     def _import_gcloud_sql_db(self):
-        db_name = self.db_spec['name']
-        importUrl = self.db_spec["importGcloudSqlDumpUrl"]
-        self._set_gcloud_storage_sql_permissions(importUrl)
-        print(f'Importing Gcloud SQL from: {importUrl}')
         gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
         gcloud_sql_project = self.instance.ckan_infra.GCLOUD_SQL_PROJECT
-        postgres_user = self.instance.ckan_infra.POSTGRES_USER
-        gcloud.check_call(
-            f'--quiet sql import sql {gcloud_sql_instance_name} {importUrl} --database={db_name} --user={postgres_user}',
+        db_name = self.db_spec['name']
+        returncode, output = gcloud.getstatusoutput(
+            f'sql databases describe --instance={gcloud_sql_instance_name} {db_name}',
             project=gcloud_sql_project
         )
+        if returncode == 0:
+            print('DB already exists, skipping import')
+        else:
+            importUrl = self.db_spec["importGcloudSqlDumpUrl"]
+            print(f'Importing Gcloud SQL from: {importUrl}')
+            self._set_gcloud_storage_sql_permissions(importUrl)
+            postgres_user = self.instance.ckan_infra.POSTGRES_USER
+            gcloud.check_call(
+                f'--quiet sql import sql {gcloud_sql_instance_name} {importUrl} --database={db_name} --user={postgres_user}',
+                project=gcloud_sql_project
+            )

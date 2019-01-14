@@ -111,6 +111,20 @@ cd /export &&\
 gsutil -m rsync -R ./ckan/<INSTANCE_ID>/ gs://ckan-cloud-staging-storage/ckan/<INSTANCE_ID>/
 ```
 
+## Initialize the gitlab repo
+
+Enable container registry for the repo, using the gitlab UI:
+
+project settings > permissions > enable registry
+
+Initialize the CI
+
+```
+ckan-cloud-operator initialize-gitlab <REPO_NAME>
+```
+
+Follow the gitlab build to get the Docker image
+
 ## create an instance using ckan-cloud-operator
 
 Use [ckan-cloud-operator](https://github.com/ViderumGlobal/ckan-cloud-operator) to create an instance using deis-instance create from-gcloud-envvars command

@@ -12,7 +12,8 @@ class DeisCkanInstanceCKAN(object):
         self.instance.annotations.update_status('ckan', 'created', lambda: self._create())
 
     def run(self, command, *args):
-        assert command in ['paster', 'exec', 'logs', 'port_forward']
+        assert command in ['paster', 'exec', 'logs', 'port-forward']
+        command = command.replace('-', '_')
         getattr(self, command)(*args)
 
     def paster(self, paster_command=None, *paster_args):
@@ -42,10 +43,12 @@ class DeisCkanInstanceCKAN(object):
         subprocess.check_call(['kubectl', '-n', self.instance.id, 'port-forward', f'deployment/{self.instance.id}', *args])
 
     def _create(self):
-        for cmd in self.instance.spec.spec.get('ckan', {}).get('init'):
-            print('Running ckan init script')
-            if cmd[0] == 'paster':
-                print(' '.join(cmd))
-                self.paster(*cmd[1:])
-            else:
-                raise ValueError(f'Invalid ckan init cmd: {cmd}')
+        ckan_init = self.instance.spec.spec.get('ckan', {}).get('init')
+        if ckan_init:
+            for cmd in ckan_init:
+                print('Running ckan init script')
+                if cmd[0] == 'paster':
+                    print(' '.join(cmd))
+                    self.paster(*cmd[1:])
+                else:
+                    raise ValueError(f'Invalid ckan init cmd: {cmd}')
