@@ -36,10 +36,13 @@ ckan-cloud-operator cluster-info
 
 ## Usage
 
-Use the help message of the different commands for the reference documentation and usage examples
+Use the CLI help messages or the [CLI source code](ckan_cloud_operator/cli.py) for the reference documentation and usage examples.
 
 ```
 ckan-cloud-operator --help
+ckan-cloud-operator deis-instance --help
+.
+.
 ```
 
 Start a bash shell with completion
