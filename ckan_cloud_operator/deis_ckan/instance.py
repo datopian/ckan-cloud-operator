@@ -268,7 +268,7 @@ class DeisCkanInstance(object):
             }
         elif create_type == 'from-gcloud-envvars':
             print(f'Creating Deis CKAN instance {instance_id} from gcloud envvars import')
-            instance_env_yaml, image, solr_config, gcloud_db_url, gcloud_datastore_url, instance_id = args[1:-2]
+            instance_env_yaml, image, solr_config, gcloud_db_url, gcloud_datastore_url, instance_id = args[1:]
             subprocess.check_call(
                 f'kubectl -n ckan-cloud create secret generic {instance_id}-envvars --from-file=envvars.yaml={instance_env_yaml}',
                 shell=True
