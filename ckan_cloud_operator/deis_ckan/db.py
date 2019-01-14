@@ -143,7 +143,7 @@ class DeisCkanInstanceDb(object):
         gcloud_sql_service_account_email = gcloud_sql_instance['serviceAccountEmailAddress']
         gcloud.check_call(
             f'acl ch -u {gcloud_sql_service_account_email}:R {importUrl}',
-            gsutil=True
+            with_activate=True
         )
 
     def _create_base_db(self):
