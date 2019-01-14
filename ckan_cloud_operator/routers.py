@@ -1,6 +1,4 @@
-import subprocess
 import yaml
-import datetime
 import toml
 import time
 from ckan_cloud_operator import kubectl

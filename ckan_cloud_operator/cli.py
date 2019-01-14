@@ -12,6 +12,7 @@ from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator import gcloud
 from ckan_cloud_operator.gitlab import CkanGitlab
 import ckan_cloud_operator.routers
+import ckan_cloud_operator.users
 
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
@@ -72,6 +73,7 @@ def install_crds():
     """Install ckan-cloud-operator custom resource definitions"""
     DeisCkanInstance.install_crd()
     ckan_cloud_operator.routers.install_crds()
+    ckan_cloud_operator.users.install_crds()
     great_success()
 
 
@@ -114,6 +116,46 @@ def bash_completion():
     print('# ')
     print('# To enable Bash completion, use the following command:')
     print('# eval "$(ckan-cloud-operator bash-completion)"')
+
+
+#################################
+####                         ####
+####         users           ####
+####                         ####
+#################################
+
+
+@main.group()
+def users():
+    """Manage ckan-cloud-operator users"""
+    pass
+
+
+@users.command('create')
+@click.argument('NAME')
+@click.argument('ROLE')
+def users_create(name, role):
+    ckan_cloud_operator.users.create(name, role)
+    ckan_cloud_operator.users.update(name)
+    great_success()
+
+
+@users.command('update')
+@click.argument('NAME')
+def users_update(name):
+    ckan_cloud_operator.users.update(name)
+    great_success()
+
+
+@users.command('delete')
+def users_delete(name):
+    ckan_cloud_operator.users.delete(name)
+    great_success()
+
+
+@users.command('get')
+def users_get(name):
+    print(yaml.dump(ckan_cloud_operator.users.get(name), default_flow_style=False))
 
 
 #################################
