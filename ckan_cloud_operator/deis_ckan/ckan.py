@@ -42,7 +42,7 @@ class DeisCkanInstanceCKAN(object):
         subprocess.check_call(['kubectl', '-n', self.instance.id, 'port-forward', f'deployment/{self.instance.id}', *args])
 
     def _create(self):
-        for cmd in self.instance.spec.spec.get('ckan', {}).get('init'):
+        for cmd in self.instance.spec.spec.get('ckan', {}).get('init', []):
             print('Running ckan init script')
             if cmd[0] == 'paster':
                 print(' '.join(cmd))
