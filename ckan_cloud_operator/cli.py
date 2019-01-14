@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
 from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator import gcloud
+from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.gitlab import CkanGitlab
 import ckan_cloud_operator.routers
 import ckan_cloud_operator.users
@@ -147,15 +148,22 @@ def users_update(name):
     great_success()
 
 
-@users.command('delete')
-def users_delete(name):
-    ckan_cloud_operator.users.delete(name)
-    great_success()
-
-
 @users.command('get')
+@click.argument('NAME')
 def users_get(name):
     print(yaml.dump(ckan_cloud_operator.users.get(name), default_flow_style=False))
+
+
+@users.command('delete')
+@click.argument('NAME')
+def users_delete(name):
+    ckan_cloud_operator.users.delete(name)
+
+
+@users.command('list')
+@click.argument('ARGS', nargs=-1)
+def users_list(args):
+    kubectl.call('get CkanCloudUser ' + ' '.join(args))
 
 
 #################################

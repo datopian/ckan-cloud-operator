@@ -27,6 +27,7 @@ class CkanInfra(object):
         self.GCLOUD_SERVICE_ACCOUNT_EMAIL = values.get('GCLOUD_SERVICE_ACCOUNT_EMAIL')
         self.GCLOUD_AUTH_PROJECT = values.get('GCLOUD_AUTH_PROJECT')
         self.MULTI_USER_STORAGE_CLASS_NAME = values.get('MULTI_USER_STORAGE_CLASS_NAME', 'cca-ckan')
+        self.GCLOUD_CLUSTER_NAME = values.get('GCLOUD_CLUSTER_NAME')
 
     @classmethod
     def set(cls, set_type, *args):
