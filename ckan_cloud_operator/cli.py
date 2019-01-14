@@ -116,36 +116,6 @@ def bash_completion():
     print('# eval "$(ckan-cloud-operator bash-completion)"')
 
 
-@main.command()
-def get_kubeconfig():
-    """Get a kubeconfig file for access to the cluster"""
-    kubeconfig = {
-        'apiVersion': 'v1',
-        'kind': 'Config',
-        'current-context': 'ckan-cloud-staging',
-        'preferences': {},
-        'clusters': [{
-            'name': 'ckan-cloud-staging',
-            'cluster': {
-                'server': 'https://cloud-management-rancher.ckan.io/k8s/clusters/c-v5w2s'
-            },
-        }],
-        'contexts': [{
-            'name': 'ckan-cloud-staging',
-            'context': {
-                'cluster': 'ckan-cloud-staging',
-                'user': 'u-qrlj2'
-            },
-        }],
-        'users': [{
-            'name': 'u-qrlj2',
-            'user': {
-                'token': 'kubeconfig-u-qrlj2:59w8sm5bgwbbljsg2nwhfkx48t9qb7jvnqkz56j9wngx5msnnfqb4j'
-            }
-        }]
-    }
-
-
 #################################
 ####                         ####
 ####       ckan-infra        ####
