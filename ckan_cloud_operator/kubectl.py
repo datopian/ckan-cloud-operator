@@ -9,6 +9,10 @@ def check_call(cmd, namespace='ckan-cloud'):
     subprocess.check_call(f'kubectl -n {namespace} {cmd}', shell=True)
 
 
+def call(cmd, namespace='ckan-cloud'):
+    return subprocess.call(f'kubectl -n {namespace} {cmd}', shell=True)
+
+
 def get(what, required=True, namespace='ckan-cloud'):
     try:
         return yaml.load(subprocess.check_output(f'kubectl -n {namespace} get {what} -o yaml', shell=True))
@@ -98,9 +102,10 @@ def create(resource, is_yaml=False):
     subprocess.run('kubectl create -f -', input=yaml.dump(resource).encode(), shell=True, check=True)
 
 
-def apply(resource, is_yaml=False):
+def apply(resource, is_yaml=False, reconcile=False):
     if is_yaml: resource = yaml.load(resource)
-    subprocess.run('kubectl apply -f -', input=yaml.dump(resource).encode(), shell=True, check=True)
+    cmd = 'auth reconcile' if reconcile else 'apply'
+    subprocess.run(f'kubectl {cmd} -f -', input=yaml.dump(resource).encode(), shell=True, check=True)
 
 
 def install_crd(plural, singular, kind):
