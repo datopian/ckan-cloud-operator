@@ -17,12 +17,15 @@ def check_output(cmd, project=None, with_activate=True):
     return subprocess.check_output(f'gcloud --project={project} {cmd}', shell=True)
 
 
-def check_call(cmd, project=None, with_activate=True):
+def check_call(cmd, project=None, with_activate=True, gsutil=False):
     if with_activate: activate()
     if not project:
         infra = CkanInfra()
         project = infra.GCLOUD_AUTH_PROJECT
+    if gsutil:
+        return subprocess.check_call(f'gsutil {cmd}', shell=True)
     return subprocess.check_call(f'gcloud --project={project} {cmd}', shell=True)
+
 
 
 def getstatusoutput(cmd, project=None, with_activate=True):
