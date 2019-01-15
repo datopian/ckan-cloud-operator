@@ -54,6 +54,7 @@ class DeisCkanInstanceEnvvars(object):
             CKANEXT__S3FILESTORE__REGION_NAME=ckan_infra.GCLOUD_STORAGE_REGION_NAME,
             CKANEXT__S3FILESTORE__SIGNATURE_VERSION=ckan_infra.GCLOUD_STORAGE_SIGNATURE_VERSION,
         )
+        print(envvars)
         instance_envvars_secret = {'apiVersion': 'v1',
                                    'kind': 'Secret',
                                    'metadata': {
