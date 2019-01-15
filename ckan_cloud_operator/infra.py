@@ -28,6 +28,12 @@ class CkanInfra(object):
         self.GCLOUD_AUTH_PROJECT = values.get('GCLOUD_AUTH_PROJECT')
         self.MULTI_USER_STORAGE_CLASS_NAME = values.get('MULTI_USER_STORAGE_CLASS_NAME', 'cca-ckan')
         self.GCLOUD_CLUSTER_NAME = values.get('GCLOUD_CLUSTER_NAME')
+        self.GCLOUD_STORAGE_BUCKET = values.get('GCLOUD_STORAGE_BUCKET')
+        self.GCLOUD_STORAGE_ACCESS_KEY_ID = values.get('GCLOUD_STORAGE_ACCESS_KEY_ID')
+        self.GCLOUD_STORAGE_SECRET_ACCESS_KEY = values.get('GCLOUD_STORAGE_SECRET_ACCESS_KEY')
+        self.GCLOUD_STORAGE_HOST_NAME = values.get('GCLOUD_STORAGE_HOST_NAME')
+        self.GCLOUD_STORAGE_REGION_NAME = values.get('GCLOUD_STORAGE_REGION_NAME')
+        self.GCLOUD_STORAGE_SIGNATURE_VERSION = values.get('GCLOUD_STORAGE_SIGNATURE_VERSION')
 
     @classmethod
     def set(cls, set_type, *args):

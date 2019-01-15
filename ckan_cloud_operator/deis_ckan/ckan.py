@@ -23,15 +23,23 @@ class DeisCkanInstanceCKAN(object):
             cmd += f' {paster_command} -c /srv/app/production.ini ' + " ".join(paster_args)
         self.exec(cmd)
 
+    def _get_ckan_pod_name(self):
+        ckan_pod_name = None
+        for pod in self.instance.get('deployment').get('pods', []):
+            if pod.get('name') and len(pod.get('error', [])) == 0:
+                ckan_pod_name = pod['name']
+                break
+        return ckan_pod_name
+
     def exec(self, *args):
         """Execute shell scripts on the first CKAN pod"""
-        pod_name = self.instance.get('deployment').get('pods', [{}])[0].get('name')
+        pod_name = self._get_ckan_pod_name()
         assert pod_name
         self.instance.kubectl(f'exec {pod_name} ' + " ".join(args))
 
     def logs(self, *args):
         """Run kubectl logs on the first CKAN pod"""
-        pod_name = self.instance.get('deployment').get('pods', [{}])[0].get('name')
+        pod_name = self._get_ckan_pod_name()
         assert pod_name
         self.instance.kubectl(f'logs {pod_name} ' + " ".join(args))
 

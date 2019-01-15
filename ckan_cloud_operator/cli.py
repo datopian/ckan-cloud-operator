@@ -338,6 +338,7 @@ def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_ins
 @click.argument('SOLR_CONFIG')
 @click.argument('GCLOUD_DB_URL')
 @click.argument('GCLOUD_DATASTORE_URL')
+@click.argument('STORAGE_PATH')
 @click.argument('NEW_INSTANCE_ID')
 def deis_instance_create_from_gcloud_envvars(
                                         path_to_instance_env_yaml,
@@ -345,8 +346,14 @@ def deis_instance_create_from_gcloud_envvars(
                                         solr_config,
                                         gcloud_db_url,
                                         gcloud_datastore_url,
+                                        storage_path,
                                         new_instance_id):
-    """Create and update an instance from existing DB dump stored in gcloud sql format on google cloud storage."""
+    """Create and update an instance from existing DB dump stored in gcloud sql format on google cloud storage.
+
+    Example:
+
+        ckan-cloud-operator deis-instance create from-gcloud-envvars "/path/to/configs/my-instance.yaml" "registry.gitlab.com/viderum/cloud-my-instance" "ckan_default" "gs://.." "gs://.." "/path/in/central/google/storage/bucket" "my-new-instance-id"
+    """
     DeisCkanInstance.create(
         'from-gcloud-envvars',
         path_to_instance_env_yaml,
@@ -354,6 +361,7 @@ def deis_instance_create_from_gcloud_envvars(
         solr_config,
         gcloud_db_url,
         gcloud_datastore_url,
+        storage_path,
         new_instance_id
     ).update()
     great_success()

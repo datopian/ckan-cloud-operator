@@ -33,6 +33,7 @@ class DeisCkanInstanceSpec(object):
         self.db = spec['db']
         self.datastore = spec['datastore']
         self.solrCloudCollection = spec['solrCloudCollection']
+        self.storage = spec['storage']
 
     def _validate(self):
         spec = self.spec
@@ -90,6 +91,13 @@ class DeisCkanInstanceSpec(object):
                         assert type(vv) == list
                     else:
                         raise ValueError(f'Invalid ckan spec attribute: {kk}={vv}')
+            elif k == 'storage':
+                assert type(v) == dict
+                for kk, vv in v.items():
+                    if kk == 'path':
+                        assert type(vv) == str and len(vv) > 6, f'Invalid storage path: {vv}'
+                    else:
+                        raise ValueError(f'Invalid storage spec attribute: {kk}={vv}')
             else:
                 raise ValueError(f'Invalid spec attribute: {k}={v}')
         assert spec['db']['name'] != spec['datastore']['name']
