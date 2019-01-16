@@ -4,7 +4,7 @@ import time
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator import cloudflare
-
+import ckan_cloud_operator.datapushers
 
 def create(name, router_type):
     assert router_type in ['traefik']
@@ -59,6 +59,32 @@ def _get_traefik_toml(annotations, routes, router_name):
                 'servers': {
                     'server1': {
                         'url': f'http://{route_name}.{deis_instance_id}:5000'
+                    }
+                }
+            }
+            data['frontends'][route_name] = {
+                'backend': route_name,
+                'passHostHeader': True,
+                'headers': {
+                    'SSLRedirect': bool(annotations.get_flag('letsencryptCloudflareEnabled'))
+                },
+                'routes': {
+                    'route1': {
+                        'rule': f'Host:{sub_domain}.{root_domain}'
+                    }
+                }
+            }
+        elif route_type == 'datapusher-subdomain':
+            route_name = route['metadata']['name']
+            root_domain = route_spec['root-domain']
+            sub_domain = route_spec['sub-domain']
+            domains.setdefault(root_domain, []).append(sub_domain)
+            datapusher_name = route_spec['datapusher-name']
+            url = ckan_cloud_operator.datapushers.get_service_url(datapusher_name)
+            data['backends'][route_name] = {
+                'servers': {
+                    'server1': {
+                        'url': url
                     }
                 }
             }
@@ -164,6 +190,14 @@ def _update_traefik_deployment(name, ckan_infra, spec, annotations, routes):
                 }
             }
             kubectl.apply(route_service)
+        elif route_type == 'datapusher-subdomain':
+            route_name = route['metadata']['name']
+            root_domain = route_spec['root-domain']
+            sub_domain = route_spec['sub-domain']
+            domains.setdefault(root_domain, []).append(sub_domain)
+            datapusher_name = route_spec['datapusher-name']
+            print(f'updating route name {route_name} for datapusher name {datapusher_name}')
+            ckan_cloud_operator.datapushers.update_service(datapusher_name)
         else:
             raise NotImplementedError(f'route type {route_type} is not supported yet')
     load_balancer = kubectl.get_resource('v1', 'Service', f'loadbalancer-{resource_name}', labels)
@@ -263,7 +297,7 @@ def get(name_or_values):
         values = name_or_values
     spec = values['spec']
     router_type = spec['type']
-    if spec['type'] == 'traefik':
+    if router_type == 'traefik':
         deployment_data = traefik_deployment_get(name)
         routes = kubectl.get(f'CkanCloudRoute -l ckan-cloud/router-name={name}', required=False)
         return {'name': name,
@@ -273,7 +307,7 @@ def get(name_or_values):
                 'deployment': deployment_data,
                 'ready': deployment_data.get('ready', False)}
     else:
-        raise NotImplementedError(f'Invalid router type: {router_type}')
+        raise NotImplementedError(f'Invalid router: {name} {router_type} {values}')
 
 
 def traefik_deployment_get(name):
@@ -298,7 +332,7 @@ def _init_traefik_router(name):
     return router, annotations, ckan_infra
 
 
-def traefik(command, router_name, args):
+def traefik(command, router_name, args=None):
     if command == 'enable-letsencrypt-cloudflare':
         print('Enabling SSL using lets encrypt and cloudflare')
         router, annotations, ckan_infra = _init_traefik_router(router_name)
@@ -319,6 +353,42 @@ def traefik(command, router_name, args):
                          'sub-domain': sub_domain,
                          'deis-instance-id': deis_instance.id}
         kubectl.apply(route)
+    elif command == 'set-datapusher-subdomain-route':
+        datapusher_name, root_domain, sub_domain, route_name = args
+        print(f'Setting datapusher route from {sub_domain}.{root_domain} to datapusher name {datapusher_name}')
+        labels = {'ckan-cloud/router-type': 'traefik',
+                  'ckan-cloud/router-name': router_name,
+                  'ckan-cloud/route-type': 'datapusher-subdomain'}
+        route = kubectl.get_resource('stable.viderum.com/v1', 'CkanCloudRoute', route_name, labels)
+        route['spec'] = {'type': 'datapusher-subdomain',
+                         'root-domain': root_domain,
+                         'sub-domain': sub_domain,
+                         'datapusher-name': datapusher_name}
+        kubectl.apply(route)
+    elif command == 'delete':
+        assert not args
+        print(f'Deleting traefik router {router_name}')
+        if all([
+            kubectl.call(f'delete --ignore-not-found -l ckan-cloud/router-name={router_name} deployment') == 0,
+            kubectl.call(f'delete --ignore-not-found -l ckan-cloud/router-name={router_name} service') == 0,
+            kubectl.call(f'delete --ignore-not-found -l ckan-cloud/router-name={router_name} CkanCloudRoute') == 0,
+            kubectl.call(f'delete --ignore-not-found CkanCloudRouter {router_name}') == 0,
+        ]):
+            print('Removing finalizers')
+            success = True
+            for route in kubectl.get(f'CkanCloudRoute -l ckan-cloud/router-name={router_name}')['items']:
+                route_name = route['metadata']['name']
+                if kubectl.call(
+                    f'patch CkanCloudRoute {route_name} -p \'{{"metadata":{{"finalizers":[]}}}}\' --type=merge',
+                ) != 0:
+                    success = False
+            if kubectl.call(
+                f'patch CkanCloudRouter {router_name} -p \'{{"metadata":{{"finalizers":[]}}}}\' --type=merge',
+            ) != 0:
+                success = False
+            assert success
+        else:
+            raise Exception('Deletion failed')
     else:
         raise NotImplementedError(f'Invalid traefik command: {command} {args}')
 

@@ -15,6 +15,7 @@ from ckan_cloud_operator.gitlab import CkanGitlab
 import ckan_cloud_operator.routers
 import ckan_cloud_operator.users
 import ckan_cloud_operator.storage
+import ckan_cloud_operator.datapushers
 
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
@@ -76,6 +77,7 @@ def install_crds():
     DeisCkanInstance.install_crd()
     ckan_cloud_operator.routers.install_crds()
     ckan_cloud_operator.users.install_crds()
+    ckan_cloud_operator.datapushers.install_crds()
     great_success()
 
 
@@ -530,8 +532,78 @@ def routers_traefik_set_deis_instance_route(traefik_router_name, deis_instance_i
     ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
     great_success()
 
+@routers_traefik.command('delete')
+@click.argument('TRAEFIK_ROUTER_NAME')
+def routers_traefik_delete(traefik_router_name):
+    ckan_cloud_operator.routers.traefik('delete', traefik_router_name)
+
+
+@routers_traefik.command('set-datapusher-subdomain-route')
+@click.argument('TRAEFIK_ROUTER_NAME')
+@click.argument('DATAPUSHER_NAME')
+@click.argument('ROOT_DOMAIN')
+@click.argument('SUB_DOMAIN')
+@click.argument('ROUTE_NAME')
+@click.option('--wait-ready', is_flag=True)
+def routers_traefik_set_datapushers_subdomain_route(traefik_router_name, datapusher_name, root_domain,
+                                                    sub_domain, route_name, wait_ready):
+    ckan_cloud_operator.routers.traefik(
+        'set-datapusher-subdomain-route',
+        traefik_router_name,
+        (datapusher_name, root_domain, sub_domain, route_name)
+    )
+    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
+    great_success()
+
 
 @routers.command('get')
 @click.argument('ROUTER_NAME')
 def get(router_name):
     print(yaml.dump(ckan_cloud_operator.routers.get(router_name), default_flow_style=False))
+
+
+#################################
+####                         ####
+####      datapushers        ####
+####                         ####
+#################################
+
+
+@main.group()
+def datapushers():
+    """Manage centralized CKAN DataPushers"""
+    pass
+
+
+@datapushers.command('create')
+@click.argument('DATAPUSHER_NAME')
+@click.argument('DOCKER_IMAGE')
+@click.argument('PATH_TO_CONFIG_YAML')
+def datapushers_create(datapusher_name, docker_image, path_to_config_yaml):
+    """Create and update a DataPusher deployment
+
+    Example:
+
+        ckan-cloud-operator datapushers create datapusher-1 registry.gitlab.com/viderum/docker-datapusher:cloud-datapusher-1-v9 /path/to/datapusher-1.yaml
+    """
+    ckan_cloud_operator.datapushers.create(datapusher_name, docker_image, path_to_config_yaml)
+    ckan_cloud_operator.datapushers.update(datapusher_name)
+    great_success()
+
+
+@datapushers.command('update')
+@click.argument('DATAPUSHER_NAME')
+def datapushers_update(datapusher_name):
+    ckan_cloud_operator.datapushers.update(datapusher_name)
+    great_success()
+
+
+@datapushers.command('list')
+def datapushers_list():
+    print(yaml.dump(ckan_cloud_operator.datapushers.list(), default_flow_style=False))
+
+
+@datapushers.command('get')
+@click.argument('DATAPUSHER_NAME')
+def datapushers_get(datapusher_name):
+    print(yaml.dump(ckan_cloud_operator.datapushers.get(datapusher_name), default_flow_style=False))
