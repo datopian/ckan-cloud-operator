@@ -22,6 +22,7 @@ STATUSES = {
     'namespace': ['created'],
     'registry': ['created'],
     'solr': ['created'],
+    'storage': ['created'],
     'ckan': ['created'],
 }
 
@@ -51,22 +52,26 @@ class DeisCkanInstanceAnnotations(object):
         self._override_flags = override_flags
         if self._override_flags:
             for flag in self._override_flags:
-                assert flag in FLAGS
+                assert flag in FLAGS, f'invalid flag: {flag}'
             if persist_overrides and len(self._override_flags) > 0:
                 self._annotate(*['{}={}'.format(k, 'true' if v else 'false')
                                  for k, v in self._override_flags.items()], overwrite=True)
 
     def set_status(self, key, status):
-        assert status in STATUSES[key]
+        assert status in STATUSES[key], f'invalid status: {key}={status}'
         self._annotate(f'{key}-{status}=true')
 
     def get_status(self, key, status):
-        assert key in STATUSES.keys()
+        assert key in STATUSES.keys(), f'invalid status key: {key}'
         return bool(self._get_annotation(f'{key}-{status}'))
 
-    def update_status(self, key, status, update_func):
+    def update_status(self, key, status, update_func, force_update=False):
         if self.get_status(key, status):
-            return False
+            if force_update:
+                update_func()
+                return True
+            else:
+                return False
         else:
             try:
                 update_func()
@@ -91,7 +96,7 @@ class DeisCkanInstanceAnnotations(object):
 
         kubectl -n ckan-cloud annotate DeisCkanInstance/atea32 ckan-cloud/forceCreateAnnotations=true
         """
-        assert flag in FLAGS
+        assert flag in FLAGS, f'invalid flag: {flag}'
         if self._override_flags and flag in self._override_flags:
             return self._override_flags[flag]
         else:
@@ -109,7 +114,7 @@ class DeisCkanInstanceAnnotations(object):
 
     def set_secrets(self, key_values):
         for key in key_values:
-            assert key in SECRET_ANNOTATIONS
+            assert key in SECRET_ANNOTATIONS, f'invalid secret key: {key}'
         secret = getattr(self, '_secret', None)
         cur_data = secret.get('data', {}) if secret and secret != __NONE__ else {}
         secret = kubectl.get(f'secret {self.instance.id}-annotations', namespace=self.instance.id, required=False)
@@ -136,7 +141,7 @@ class DeisCkanInstanceAnnotations(object):
         self.set_secrets({key: value})
 
     def get_secret(self, key, default=None):
-        assert key in SECRET_ANNOTATIONS
+        assert key in SECRET_ANNOTATIONS, f'invalid secret key: {key}'
         secret = getattr(self, '_secret', None)
         if not secret:
             secret = kubectl.get(f'secret {self.instance.id}-annotations',

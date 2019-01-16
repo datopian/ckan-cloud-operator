@@ -14,6 +14,7 @@ from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.gitlab import CkanGitlab
 import ckan_cloud_operator.routers
 import ckan_cloud_operator.users
+import ckan_cloud_operator.storage
 
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
@@ -117,6 +118,34 @@ def bash_completion():
     print('# ')
     print('# To enable Bash completion, use the following command:')
     print('# eval "$(ckan-cloud-operator bash-completion)"')
+
+
+@main.command()
+def initialize_storage():
+    """Initialize the centralized storage bucket"""
+    ckan_infra = CkanInfra()
+    bucket_name = ckan_infra.GCLOUD_STORAGE_BUCKET
+    project_id = ckan_infra.GCLOUD_AUTH_PROJECT
+    function_name = bucket_name.replace('-', '') + 'permissions'
+    function_js = ckan_cloud_operator.storage.PERMISSIONS_FUNCTION_JS(function_name, project_id, bucket_name)
+    package_json = ckan_cloud_operator.storage.PERMISSIONS_FUNCTION_PACKAGE_JSON
+    print(f'bucket_name = {bucket_name}\nproject_id={project_id}\nfunction_name={function_name}')
+    print(package_json)
+    print(function_js)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(f'{tmpdir}/package.json', 'w') as f:
+            f.write(package_json)
+        with open(f'{tmpdir}/index.js', 'w') as f:
+            f.write(function_js)
+        gcloud.check_call(
+            f'functions deploy {function_name} '
+                               f'--runtime nodejs6 '
+                               f'--trigger-resource {bucket_name} '
+                               f'--trigger-event google.storage.object.finalize '
+                               f'--source {tmpdir} '
+                               f'--retry '
+                               f'--timeout 30s '
+        )
 
 
 #################################
@@ -338,6 +367,7 @@ def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_ins
 @click.argument('SOLR_CONFIG')
 @click.argument('GCLOUD_DB_URL')
 @click.argument('GCLOUD_DATASTORE_URL')
+@click.argument('STORAGE_PATH')
 @click.argument('NEW_INSTANCE_ID')
 def deis_instance_create_from_gcloud_envvars(
                                         path_to_instance_env_yaml,
@@ -345,8 +375,14 @@ def deis_instance_create_from_gcloud_envvars(
                                         solr_config,
                                         gcloud_db_url,
                                         gcloud_datastore_url,
+                                        storage_path,
                                         new_instance_id):
-    """Create and update an instance from existing DB dump stored in gcloud sql format on google cloud storage."""
+    """Create and update an instance from existing DB dump stored in gcloud sql format on google cloud storage.
+
+    Example:
+
+        ckan-cloud-operator deis-instance create from-gcloud-envvars "/path/to/configs/my-instance.yaml" "registry.gitlab.com/viderum/cloud-my-instance" "ckan_default" "gs://.." "gs://.." "/path/in/central/google/storage/bucket" "my-new-instance-id"
+    """
     DeisCkanInstance.create(
         'from-gcloud-envvars',
         path_to_instance_env_yaml,
@@ -354,6 +390,7 @@ def deis_instance_create_from_gcloud_envvars(
         solr_config,
         gcloud_db_url,
         gcloud_datastore_url,
+        storage_path,
         new_instance_id
     ).update()
     great_success()

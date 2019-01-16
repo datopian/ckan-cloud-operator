@@ -111,6 +111,13 @@ cd /export &&\
 gsutil -m rsync -R ./ckan/<INSTANCE_ID>/ gs://ckan-cloud-staging-storage/ckan/<INSTANCE_ID>/
 ```
 
+**Use With Caution!** Sync all data, including file deletions
+
+```
+cd /export &&\
+gsutil -m rsync -d -R ./ gs://ckan-cloud-staging-storage/
+```
+
 ## Initialize the gitlab repo
 
 Enable container registry for the repo, using the gitlab UI:

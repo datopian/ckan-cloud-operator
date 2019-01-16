@@ -38,12 +38,21 @@ class DeisCkanInstanceEnvvars(object):
         else:
             raise Exception(f'invalid envvars spec: {spec.envvars}')
         assert envvars['CKAN_SITE_ID'] and envvars['CKAN_SITE_URL'] and envvars['CKAN_SQLALCHEMY_URL']
+        storage_bucket_name, *storage_path = spec.storage['path'].strip('/').split('/')
+        storage_path = '/'.join(storage_path)
         envvars.update(
             CKAN_SQLALCHEMY_URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:5432/{db_name}",
             CKAN___BEAKER__SESSION__URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:5432/{db_name}",
             CKAN__DATASTORE__READ_URL=f"postgresql://{datastore_ro_user}:{datastore_ro_password}@{postgres_host}:5432/{datastore_name}",
             CKAN__DATASTORE__WRITE_URL=f"postgresql://{datastore_name}:{datastore_password}@{postgres_host}:5432/{datastore_name}",
-            CKAN_SOLR_URL=f"{solr_http_endpoint}/{solr_collection_name}"
+            CKAN_SOLR_URL=f"{solr_http_endpoint}/{solr_collection_name}",
+            CKANEXT__S3FILESTORE__AWS_STORAGE_PATH=storage_path,
+            CKANEXT__S3FILESTORE__AWS_ACCESS_KEY_ID=ckan_infra.GCLOUD_STORAGE_ACCESS_KEY_ID,
+            CKANEXT__S3FILESTORE__AWS_SECRET_ACCESS_KEY=ckan_infra.GCLOUD_STORAGE_SECRET_ACCESS_KEY,
+            CKANEXT__S3FILESTORE__AWS_BUCKET_NAME=storage_bucket_name,
+            CKANEXT__S3FILESTORE__HOST_NAME=f'https://{ckan_infra.GCLOUD_STORAGE_BUCKET}.{ckan_infra.GCLOUD_STORAGE_HOST_NAME}/',
+            CKANEXT__S3FILESTORE__REGION_NAME=ckan_infra.GCLOUD_STORAGE_REGION_NAME,
+            CKANEXT__S3FILESTORE__SIGNATURE_VERSION=ckan_infra.GCLOUD_STORAGE_SIGNATURE_VERSION,
         )
         instance_envvars_secret = {'apiVersion': 'v1',
                                    'kind': 'Secret',

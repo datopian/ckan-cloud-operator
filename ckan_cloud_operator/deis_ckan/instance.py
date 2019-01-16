@@ -14,6 +14,7 @@ from ckan_cloud_operator.deis_ckan.namespace import DeisCkanInstanceNamespace
 from ckan_cloud_operator.deis_ckan.registry import DeisCkanInstanceRegistry
 from ckan_cloud_operator.deis_ckan.solr import DeisCkanInstanceSolr
 from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
+from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
 
 
 class DeisCkanInstance(object):
@@ -108,6 +109,7 @@ class DeisCkanInstance(object):
         DeisCkanInstanceDb(self, 'db').update()
         DeisCkanInstanceDb(self, 'datastore').update()
         DeisCkanInstanceSolr(self).update()
+        DeisCkanInstanceStorage(self).update()
         DeisCkanInstanceRegistry(self).update()
         DeisCkanInstanceEnvvars(self).update()
         DeisCkanInstanceDeployment(self).update()
@@ -155,6 +157,7 @@ class DeisCkanInstance(object):
                                 lambda: DeisCkanInstanceEnvvars(self).delete(),
                                 lambda: DeisCkanInstanceRegistry(self).delete(),
                                 lambda: DeisCkanInstanceSolr(self).delete(),
+                                lambda: DeisCkanInstanceStorage(self).delete(),
                                 lambda: DeisCkanInstanceDb(self, 'datastore').delete(),
                                 lambda: DeisCkanInstanceDb(self, 'db').delete(),
                                 lambda: DeisCkanInstanceNamespace(self).delete()]:
@@ -188,6 +191,7 @@ class DeisCkanInstance(object):
             'namespace': lambda: DeisCkanInstanceNamespace(self).get(),
             'registry': lambda: DeisCkanInstanceRegistry(self).get(),
             'solr': lambda: DeisCkanInstanceSolr(self).get(),
+            'storage': lambda: DeisCkanInstanceStorage(self).get(),
         }
         if attr:
             return gets[attr]()
@@ -268,7 +272,7 @@ class DeisCkanInstance(object):
             }
         elif create_type == 'from-gcloud-envvars':
             print(f'Creating Deis CKAN instance {instance_id} from gcloud envvars import')
-            instance_env_yaml, image, solr_config, gcloud_db_url, gcloud_datastore_url, instance_id = args[1:]
+            instance_env_yaml, image, solr_config, gcloud_db_url, gcloud_datastore_url, storage_path, instance_id = args[1:]
             subprocess.check_call(
                 f'kubectl -n ckan-cloud create secret generic {instance_id}-envvars --from-file=envvars.yaml={instance_env_yaml}',
                 shell=True
@@ -288,6 +292,9 @@ class DeisCkanInstance(object):
                 'datastore': {
                     'name': f'{instance_id}-datastore',
                     'importGcloudSqlDumpUrl': gcloud_datastore_url
+                },
+                'storage': {
+                    'path': storage_path
                 }
             }
         else:
