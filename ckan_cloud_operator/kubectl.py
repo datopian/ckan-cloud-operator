@@ -171,6 +171,22 @@ def add_operator_timestamp_annotation(metadata):
     metadata.setdefault('annotations', {})['ckan-cloud/operator-timestamp'] = str(datetime.datetime.now())
 
 
+def remove_finalizers(resource_kind, resource_name, ignore_not_found=False):
+    if ignore_not_found and not get(f'{resource_kind} {resource_name}', required=False):
+        return True
+    else:
+        return call(f'patch {resource_kind} {resource_name} -p \'{{"metadata":{{"finalizers":[]}}}}\' --type=merge') == 0
+
+
+def remove_resource_and_dependencies(resource_kind, resource_name, related_kinds, label_selector):
+    kinds = ','.join(related_kinds)
+    return all([
+        call(f'delete --ignore-not-found -l {label_selector} {kinds}') == 0,
+        call(f'delete --ignore-not-found {resource_kind}/{resource_name}') == 0,
+        remove_finalizers(resource_kind, resource_name, ignore_not_found=True)
+    ])
+
+
 __NONE__ = object
 
 

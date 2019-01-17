@@ -134,6 +134,8 @@ Follow the gitlab build to get the Docker image
 
 ## Initialize the DataPusher
 
+all datapushers were migrated, this step is probably not needed anymore, unless we find a new datapusher being used somewhere
+
 Get the relevant DataPusher image from Rancher
 
 ssh to one of the old cluster servers, tag and push the image to `registry.gitlab.com/viderum/docker-datapusher:cloud-<DATAPUSHER_IMAGE_TAG>`

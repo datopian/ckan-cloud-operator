@@ -29,6 +29,16 @@ def update(name):
     kubectl.apply(deployment)
 
 
+def delete(name):
+    print(f'Deleting datapusher {name}')
+    assert kubectl.remove_resource_and_dependencies(
+        'CkanCloudDatapusher',
+        name,
+        ['deployment', 'service'],
+        f'ckan-cloud/datapusher-name={name}'
+    )
+
+
 def update_service(name):
     labels = _get_labels(name)
     service = kubectl.get_resource('v1', 'Service', get_service_name(name), labels)
@@ -48,7 +58,7 @@ def get_service_url(name):
     return f'http://{service_name}.{namespace}:{port}'
 
 
-def get(name, deployment=None):
+def get(name, deployment=None, full=False):
     deployment_name = get_deployment_name(name)
     if not deployment:
         deployment = kubectl.get(f'deployment {deployment_name}', required=False)
@@ -62,15 +72,21 @@ def get(name, deployment=None):
     else:
         deployment_status = {}
         ready = False
-    return {
-        'ready': ready,
-        'name': name,
-        **deployment_status
-    }
+    if full:
+        return {
+            'ready': ready,
+            'name': name,
+            **deployment_status
+        }
+    else:
+        return {
+            'ready': ready,
+            'name': name
+        }
 
 
-def list():
-    return [get(datapusher['metadata']['name']) for datapusher in kubectl.get('CkanCloudDatapusher')['items']]
+def list(full=False):
+    return [get(datapusher['metadata']['name'], full=full) for datapusher in kubectl.get('CkanCloudDatapusher')['items']]
 
 
 def _get_labels(name):

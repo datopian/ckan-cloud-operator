@@ -599,11 +599,18 @@ def datapushers_update(datapusher_name):
 
 
 @datapushers.command('list')
-def datapushers_list():
-    print(yaml.dump(ckan_cloud_operator.datapushers.list(), default_flow_style=False))
+@click.option('--full', is_flag=True)
+def datapushers_list(full):
+    print(yaml.dump(ckan_cloud_operator.datapushers.list(full=full), default_flow_style=False))
 
 
 @datapushers.command('get')
 @click.argument('DATAPUSHER_NAME')
 def datapushers_get(datapusher_name):
     print(yaml.dump(ckan_cloud_operator.datapushers.get(datapusher_name), default_flow_style=False))
+
+@datapushers.command('delete')
+@click.argument('DATAPUSHER_NAME')
+def datapushers_delete(datapusher_name):
+    ckan_cloud_operator.datapushers.delete(datapusher_name)
+    great_success()

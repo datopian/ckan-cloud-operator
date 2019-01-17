@@ -341,9 +341,30 @@ def traefik(command, router_name, args=None):
             'LETSENCRYPT_CLOUDFLARE_EMAIL': cloudflare_email,
             'LETSENCRYPT_CLOUDFLARE_API_KEY': cloudflare_api_key
         }), force_update=True)
+    elif command == 'set-default-root-domain':
+        root_domain = args[0]
+        print(f'Setting default root domain for router {router_name} to {root_domain}')
+        router, annotations, ckan_infra = _init_traefik_router(router_name)
+
     elif command == 'set-deis-instance-subdomain-route':
         deis_instance, root_domain, sub_domain, route_name = args
         print(f'Setting deis instance route from {sub_domain}.{root_domain} to deis ckan instance id {deis_instance.id}')
+        labels = {'ckan-cloud/router-type': 'traefik',
+                  'ckan-cloud/router-name': router_name,
+                  'ckan-cloud/route-type': 'deis-instance-subdomain'}
+        route = kubectl.get_resource('stable.viderum.com/v1', 'CkanCloudRoute', route_name, labels)
+        route['spec'] = {'type': 'deis-instance-subdomain',
+                         'root-domain': root_domain,
+                         'sub-domain': sub_domain,
+                         'deis-instance-id': deis_instance.id}
+        kubectl.apply(route)
+    elif command == 'set-deis-instance-default-subdomain-route':
+        deis_instance = args[0]
+        sub_domain = f'cc-{cc_env_id}-{deis_instance}'
+        root_domain = True
+        router = get(router_name)
+
+        print(f'Setting deis instance default route from {sub_domain}.{root_domain} to deis ckan instance id {deis_instance.id}')
         labels = {'ckan-cloud/router-type': 'traefik',
                   'ckan-cloud/router-name': router_name,
                   'ckan-cloud/route-type': 'deis-instance-subdomain'}
