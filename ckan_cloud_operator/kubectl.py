@@ -3,6 +3,7 @@ import subprocess
 import base64
 import traceback
 import datetime
+import json
 
 
 def check_call(cmd, namespace='ckan-cloud'):
@@ -209,6 +210,11 @@ class BaseAnnotations(object):
         return []
 
     @property
+    def JSON_ANNOTATION_PREFIXES(self):
+        """flexible annotations encoded to json and permitted using key prefixes"""
+        return []
+
+    @property
     def RESOURCE_KIND(self):
         raise NotImplementedError()
 
@@ -343,6 +349,16 @@ class BaseAnnotations(object):
                 }
             }
         }
+
+    def json_annotate(self, key, value, overwrite=True):
+        ans = []
+        assert any([key.startswith(prefix) for prefix in self.JSON_ANNOTATION_PREFIXES]), f'invalid json annotation key: {key}'
+        value = json.dumps(value)
+        ans.append(f"{key}='{value}'")
+        self._annotate(*ans, overwrite=overwrite)
+
+    def get_json_annotation(self, key):
+        return json.loads(self._get_annotation(key))
 
     def _annotate(self, *annotations, overwrite=False):
         cmd = f'kubectl -n ckan-cloud annotate {self.resource_kind} {self.resource_id}'

@@ -505,14 +505,22 @@ def routers_traefik():
 @click.argument('API_KEY')
 @click.option('--wait-ready', is_flag=True)
 def routers_traefik_enable_letsencrypt_cloudflare(traefik_router_name, email, api_key, wait_ready):
-    ckan_cloud_operator.routers.traefik(
-        'enable-letsencrypt-cloudflare',
+    ckan_cloud_operator.routers.traefik_enable_letsencrypt_cloudflare(
         traefik_router_name,
-        (email, api_key)
+        email,
+        api_key
     )
     ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
     great_success()
 
+@routers_traefik.command('set-default-root-domain')
+@click.argument('TRAEFIK_ROUTER_NAME')
+@click.argument('DEFAULT_ROOT_DOMAIN')
+@click.option('--wait-ready', is_flag=True)
+def routers_traefik_set_default_root_domain(traefik_router_name, default_root_domain, wait_ready):
+    ckan_cloud_operator.routers.traefik_set_default_root_domain(traefik_router_name, default_root_domain)
+    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
+    great_success()
 
 @routers_traefik.command('set-deis-instance-subdomain-route')
 @click.argument('TRAEFIK_ROUTER_NAME')
@@ -524,10 +532,25 @@ def routers_traefik_enable_letsencrypt_cloudflare(traefik_router_name, email, ap
 def routers_traefik_set_deis_instance_route(traefik_router_name, deis_instance_id, root_domain,
                                             sub_domain, route_name, wait_ready):
     deis_instance = DeisCkanInstance(deis_instance_id)
-    ckan_cloud_operator.routers.traefik(
-        'set-deis-instance-subdomain-route',
+    ckan_cloud_operator.routers.traefik_set_deis_instance_subdomain_route(
         traefik_router_name,
-        (deis_instance, root_domain, sub_domain, route_name)
+        deis_instance,
+        root_domain,
+        sub_domain,
+        route_name
+    )
+    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
+    great_success()
+
+@routers_traefik.command('set-deis-instance-default-subdomain-route')
+@click.argument('TRAEFIK_ROUTER_NAME')
+@click.argument('DEIS_INSTANCE_ID')
+@click.option('--wait-ready', is_flag=True)
+def routers_traefik_set_deis_instance_default_subdomain_route(traefik_router_name, deis_instance_id, wait_ready):
+    deis_instance = DeisCkanInstance(deis_instance_id)
+    ckan_cloud_operator.routers.traefik_set_instance_default_subdomain_route(
+        traefik_router_name,
+        deis_instance
     )
     ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
     great_success()
@@ -535,7 +558,7 @@ def routers_traefik_set_deis_instance_route(traefik_router_name, deis_instance_i
 @routers_traefik.command('delete')
 @click.argument('TRAEFIK_ROUTER_NAME')
 def routers_traefik_delete(traefik_router_name):
-    ckan_cloud_operator.routers.traefik('delete', traefik_router_name)
+    ckan_cloud_operator.routers.traefik_delete(traefik_router_name)
 
 
 @routers_traefik.command('set-datapusher-subdomain-route')
@@ -547,10 +570,12 @@ def routers_traefik_delete(traefik_router_name):
 @click.option('--wait-ready', is_flag=True)
 def routers_traefik_set_datapushers_subdomain_route(traefik_router_name, datapusher_name, root_domain,
                                                     sub_domain, route_name, wait_ready):
-    ckan_cloud_operator.routers.traefik(
-        'set-datapusher-subdomain-route',
+    ckan_cloud_operator.routers.traefik_set_datapusher_subdomain_route(
         traefik_router_name,
-        (datapusher_name, root_domain, sub_domain, route_name)
+        datapusher_name,
+        root_domain,
+        sub_domain,
+        route_name
     )
     ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
     great_success()

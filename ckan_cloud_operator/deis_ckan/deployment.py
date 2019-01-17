@@ -51,9 +51,21 @@ class DeisCkanInstanceDeployment(object):
 
     def _deploy(self):
         print(f'Deploying instance {self.instance.id}')
-        ckanContainerSpec = dict(self.instance.spec.spec['ckanContainerSpec'],
-                                 name='ckan',
-                                 envFrom=[{'secretRef': {'name': 'ckan-envvars'}}])
+        ckanContainerSpec = dict(
+            self.instance.spec.spec['ckanContainerSpec'],
+            name='ckan',
+            envFrom=[{'secretRef': {'name': 'ckan-envvars'}}],
+            readinessProbe={
+                'failureThreshold': 1,
+                'initialDelaySeconds': 5,
+                'periodSeconds': 5,
+                'successThreshold': 1,
+                'tcpSocket': {
+                    'port': 5000
+                },
+                'timeoutSeconds': 5
+            }
+        )
         if 'imageFromGitlab' in ckanContainerSpec:
             ckanContainerSpec['image'] = 'registry.gitlab.com/{}:latest'.format(ckanContainerSpec.pop('imageFromGitlab'))
         ckanPodSpec = dict(self.instance.spec.spec['ckanPodSpec'],
@@ -68,7 +80,15 @@ class DeisCkanInstanceDeployment(object):
                       },
                       'spec': {
                           'replicas': 1,
-                          'revisionHistoryLimit': 5,
+                          'revisionHistoryLimit': 10,
+                          'progressDeadlineSeconds': 600,
+                          'strategy': {
+                              'type': 'RollingUpdate',
+                              'rollingUpdate': {
+                                  'maxSurge': 1,
+                                  'maxUnavailable': 0
+                              }
+                          },
                           'template': {
                               'metadata': {
                                   'labels': {

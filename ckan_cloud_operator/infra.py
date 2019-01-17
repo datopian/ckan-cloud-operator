@@ -34,6 +34,7 @@ class CkanInfra(object):
         self.GCLOUD_STORAGE_HOST_NAME = values.get('GCLOUD_STORAGE_HOST_NAME')
         self.GCLOUD_STORAGE_REGION_NAME = values.get('GCLOUD_STORAGE_REGION_NAME')
         self.GCLOUD_STORAGE_SIGNATURE_VERSION = values.get('GCLOUD_STORAGE_SIGNATURE_VERSION')
+        self.ROUTERS_ENV_ID = values.get('ROUTERS_ENV_ID')
 
     @classmethod
     def set(cls, set_type, *args):
