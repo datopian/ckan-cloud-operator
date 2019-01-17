@@ -47,7 +47,8 @@ class DeisCkanInstanceCKAN(object):
         """Start port forwarding to the CKAN deployment, using the CKAN varnish port 5000 by default"""
         if len(args) == 0:
             args = ['5000']
-        self.instance.kubectl(f'port-forward deployment/{self.instance.id} ' + " ".join(args))
+        pod_name = self._get_ckan_pod_name()
+        self.instance.kubectl(f'port-forward {pod_name} ' + " ".join(args))
         subprocess.check_call(['kubectl', '-n', self.instance.id, 'port-forward', f'deployment/{self.instance.id}', *args])
 
     def _create(self):

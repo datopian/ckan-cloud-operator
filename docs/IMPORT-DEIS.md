@@ -132,6 +132,16 @@ ckan-cloud-operator initialize-gitlab <REPO_NAME>
 
 Follow the gitlab build to get the Docker image
 
+## Initialize the DataPusher
+
+all datapushers were migrated, this step is probably not needed anymore, unless we find a new datapusher being used somewhere
+
+Get the relevant DataPusher image from Rancher
+
+ssh to one of the old cluster servers, tag and push the image to `registry.gitlab.com/viderum/docker-datapusher:cloud-<DATAPUSHER_IMAGE_TAG>`
+
+Use the image to create the DataPusher using ckan-cloud-operator datapushers create command
+
 ## create an instance using ckan-cloud-operator
 
 Use [ckan-cloud-operator](https://github.com/ViderumGlobal/ckan-cloud-operator) to create an instance using deis-instance create from-gcloud-envvars command
