@@ -358,7 +358,8 @@ def traefik(command, router_name, args=None):
         print(f'Setting datapusher route from {sub_domain}.{root_domain} to datapusher name {datapusher_name}')
         labels = {'ckan-cloud/router-type': 'traefik',
                   'ckan-cloud/router-name': router_name,
-                  'ckan-cloud/route-type': 'datapusher-subdomain'}
+                  'ckan-cloud/route-type': 'datapusher-subdomain',
+                  'ckan-cloud/datapusher-name': datapusher_name}
         route = kubectl.get_resource('stable.viderum.com/v1', 'CkanCloudRoute', route_name, labels)
         route['spec'] = {'type': 'datapusher-subdomain',
                          'root-domain': root_domain,

@@ -4,6 +4,7 @@ import base64
 import json
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.gitlab import CkanGitlab
+from ckan_cloud_operator.deis_ckan import datapusher
 
 
 class DeisCkanInstanceEnvvars(object):
@@ -53,6 +54,7 @@ class DeisCkanInstanceEnvvars(object):
             CKANEXT__S3FILESTORE__HOST_NAME=f'https://{ckan_infra.GCLOUD_STORAGE_BUCKET}.{ckan_infra.GCLOUD_STORAGE_HOST_NAME}/',
             CKANEXT__S3FILESTORE__REGION_NAME=ckan_infra.GCLOUD_STORAGE_REGION_NAME,
             CKANEXT__S3FILESTORE__SIGNATURE_VERSION=ckan_infra.GCLOUD_STORAGE_SIGNATURE_VERSION,
+            CKAN__DATAPUSHER__URL=datapusher.get_datapusher_url(envvars.get('CKAN__DATAPUSHER__URL')),
         )
         instance_envvars_secret = {'apiVersion': 'v1',
                                    'kind': 'Secret',
