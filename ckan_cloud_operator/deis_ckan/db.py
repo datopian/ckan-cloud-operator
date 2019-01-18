@@ -61,14 +61,17 @@ class DeisCkanInstanceDb(object):
         if 'fromDeisInstance' in self.db_spec:
             raise NotImplementedError('import of DB from old deis instance id is not supported yet')
         else:
-            self._create_base_db()
-            db_name = self.db_spec['name']
-            if self.db_type == 'db':
-                self._initialize_db_postgis(db_name)
-            if 'importGcloudSqlDumpUrl' in self.db_spec:
-                self._import_gcloud_sql_db()
-            if self.db_type == 'datastore':
-                self._create_datastore_ro_user()
+            if self._check_db_exists():
+                print('DB already exists, skipping import')
+            else:
+                self._create_base_db()
+                db_name = self.db_spec['name']
+                if self.db_type == 'db':
+                    self._initialize_db_postgis(db_name)
+                if 'importGcloudSqlDumpUrl' in self.db_spec:
+                    self._import_gcloud_sql_db()
+                if self.db_type == 'datastore':
+                    self._create_datastore_ro_user()
 
     def _psql(self, cmd, *args):
         postgres_host = self.instance.ckan_infra.POSTGRES_HOST
@@ -175,14 +178,21 @@ class DeisCkanInstanceDb(object):
             f'sql databases describe --instance={gcloud_sql_instance_name} {db_name}',
             project=gcloud_sql_project
         )
-        if returncode == 0:
-            print('DB already exists, skipping import')
-        else:
-            importUrl = self.db_spec["importGcloudSqlDumpUrl"]
-            print(f'Importing Gcloud SQL from: {importUrl}')
-            self._set_gcloud_storage_sql_permissions(importUrl)
-            postgres_user = self.instance.ckan_infra.POSTGRES_USER
-            gcloud.check_call(
-                f'--quiet sql import sql {gcloud_sql_instance_name} {importUrl} --database={db_name} --user={postgres_user}',
-                project=gcloud_sql_project
-            )
+        importUrl = self.db_spec["importGcloudSqlDumpUrl"]
+        print(f'Importing Gcloud SQL from: {importUrl}')
+        self._set_gcloud_storage_sql_permissions(importUrl)
+        postgres_user = self.instance.ckan_infra.POSTGRES_USER
+        gcloud.check_call(
+            f'--quiet sql import sql {gcloud_sql_instance_name} {importUrl} --database={db_name} --user={postgres_user}',
+            project=gcloud_sql_project
+        )
+
+    def _check_db_exists(self):
+        gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
+        gcloud_sql_project = self.instance.ckan_infra.GCLOUD_SQL_PROJECT
+        db_name = self.db_spec['name']
+        returncode, output = gcloud.getstatusoutput(
+            f'sql databases describe --instance={gcloud_sql_instance_name} {db_name}',
+            project=gcloud_sql_project
+        )
+        return returncode == 0
