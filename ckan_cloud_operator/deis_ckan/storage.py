@@ -17,7 +17,9 @@ class DeisCkanInstanceStorage(object):
     def get(self):
         storage_path = self.storage_spec['path']
         storage_bucket = self.instance.ckan_infra.GCLOUD_STORAGE_BUCKET
-        returncode, output = gcloud.getstatusoutput(f'ls gs://{storage_bucket}{storage_path}', gsutil=True)
+        returncode, output = gcloud.getstatusoutput(f'ls gs://{storage_bucket}{storage_path}',
+                                                    gsutil=True,
+                                                    ckan_infra=self.instance.ckan_infra)
         if returncode == 0:
             return {'ready': True, 'path': storage_path, 'bucket': storage_bucket,
                     'root_paths': [l.strip() for l in output.split('\n')]}

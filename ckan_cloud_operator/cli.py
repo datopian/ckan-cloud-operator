@@ -50,7 +50,7 @@ def cluster_info(full):
     if full:
         infra = CkanInfra()
         output = gcloud.check_output(f'sql instances describe {infra.GCLOUD_SQL_INSTANCE_NAME} --format=json',
-                                     project=infra.GCLOUD_SQL_PROJECT)
+                                     ckan_infra=infra)
         data = yaml.load(output)
         print(yaml.dump({'gcloud_sql': {'connectionName': data['connectionName'],
                                         'databaseVersion': data['databaseVersion'],
@@ -96,13 +96,16 @@ def activate_gcloud_auth():
     gcloud_project = infra.GCLOUD_AUTH_PROJECT
     service_account_email = infra.GCLOUD_SERVICE_ACCOUNT_EMAIL
     service_account_json = infra.GCLOUD_SERVICE_ACCOUNT_JSON
+    compute_zone = infra.GCLOUD_COMPUTE_ZONE
     if all([gcloud_project, service_account_email, service_account_json]):
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
             f.write(service_account_json.encode())
         try:
             gcloud.check_call(
-                f'auth activate-service-account {service_account_email} --key-file={f.name}',
-                with_activate=False
+                f'auth activate-service-account {service_account_email} --key-file={f.name} && '
+                f'gcloud --project={gcloud_project} config set compute/zone {compute_zone}',
+                with_activate=False,
+                ckan_infra=infra
             )
         except Exception:
             traceback.print_exc()
@@ -146,7 +149,8 @@ def initialize_storage():
                                f'--trigger-event google.storage.object.finalize '
                                f'--source {tmpdir} '
                                f'--retry '
-                               f'--timeout 30s '
+                               f'--timeout 30s ',
+            ckan_infra=ckan_infra
         )
 
 

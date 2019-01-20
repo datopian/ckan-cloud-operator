@@ -162,7 +162,8 @@ def get(name):
     secret = kubectl.decode_secret(kubectl.get(f'secret {secret_name}'))
     ckan_infra = CkanInfra()
     cluster_name = ckan_infra.GCLOUD_CLUSTER_NAME
-    cluster = yaml.load(gcloud.check_output(f'container clusters describe {cluster_name}'))
+    cluster = yaml.load(gcloud.check_output(f'container clusters describe {cluster_name}',
+                                            ckan_infra=ckan_infra))
     return {
         "apiVersion": "v1",
         "kind": "Config",

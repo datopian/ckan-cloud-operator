@@ -9,36 +9,33 @@ def activate():
     return True
 
 
-def check_output(cmd, project=None, with_activate=True):
+def check_output(cmd, project=None, with_activate=True, ckan_infra=None):
     if with_activate: activate()
+    if not ckan_infra:
+        ckan_infra = CkanInfra()
     if not project:
-        infra = CkanInfra()
-        project = infra.GCLOUD_AUTH_PROJECT
-    return subprocess.check_output(f'gcloud --project={project} {cmd}', shell=True)
+        project = ckan_infra.GCLOUD_AUTH_PROJECT
+    compute_zone = ckan_infra.GCLOUD_COMPUTE_ZONE
+    return subprocess.check_output(f'CLOUDSDK_COMPUTE_ZONE={compute_zone} gcloud --project={project} {cmd}', shell=True)
 
 
-def check_call(cmd, project=None, with_activate=True, gsutil=False):
+def check_call(cmd, project=None, with_activate=True, gsutil=False, ckan_infra=None):
     if with_activate: activate()
+    if not ckan_infra:
+        ckan_infra = CkanInfra()
     if not project:
-        infra = CkanInfra()
-        project = infra.GCLOUD_AUTH_PROJECT
-    bin = 'gsutil' if gsutil else f'gcloud --project={project}'
+        project = ckan_infra.GCLOUD_AUTH_PROJECT
+        compute_zone = ckan_infra.GCLOUD_COMPUTE_ZONE
+    bin = 'gsutil' if gsutil else f'CLOUDSDK_COMPUTE_ZONE={compute_zone} gcloud --project={project}'
     return subprocess.check_call(f'{bin} {cmd}', shell=True)
 
 
-def call(cmd, project=None, with_activate=True, gsutil=False):
+def getstatusoutput(cmd, project=None, with_activate=True, gsutil=False, ckan_infra=None):
     if with_activate: activate()
+    if not ckan_infra:
+        ckan_infra = CkanInfra()
     if not project:
-        infra = CkanInfra()
-        project = infra.GCLOUD_AUTH_PROJECT
-    bin = 'gsutil' if gsutil else f'gcloud --project={project}'
-    return subprocess.check_call(f'{bin} {cmd}', shell=True)
-
-
-def getstatusoutput(cmd, project=None, with_activate=True, gsutil=False):
-    if with_activate: activate()
-    if not project:
-        infra = CkanInfra()
-        project = infra.GCLOUD_AUTH_PROJECT
-    bin = 'gsutil' if gsutil else f'gcloud --project={project}'
+        project = ckan_infra.GCLOUD_AUTH_PROJECT
+        compute_zone = ckan_infra.GCLOUD_COMPUTE_ZONE
+    bin = 'gsutil' if gsutil else f'CLOUDSDK_COMPUTE_ZONE={compute_zone} gcloud --project={project}'
     return subprocess.getstatusoutput(f'{bin} {cmd}')
