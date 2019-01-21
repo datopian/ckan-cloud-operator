@@ -26,11 +26,10 @@ class DeisCkanInstanceDb(object):
 
     def delete(self):
         gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
-        gcloud_sql_project = self.instance.ckan_infra.GCLOUD_SQL_PROJECT
         db_name = self.db_spec['name']
         gcloud.check_call(
             f'-q sql databases delete {db_name} --instance {gcloud_sql_instance_name}',
-            project=gcloud_sql_project
+            ckan_infra=self.instance.ckan_infra
         )
 
     def get(self):
@@ -39,7 +38,7 @@ class DeisCkanInstanceDb(object):
         db_name = self.db_spec['name']
         exitcode, output = gcloud.getstatusoutput(
             f'-q sql databases describe {db_name} --instance {gcloud_sql_instance_name}',
-            project=gcloud_sql_project
+            ckan_infra=self.instance.ckan_infra
         )
         if exitcode == 0:
             gcloud_status = yaml.load(output)
@@ -138,15 +137,15 @@ class DeisCkanInstanceDb(object):
     def _set_gcloud_storage_sql_permissions(self, importUrl):
         print('setting permissions to cloud storage for import to sql')
         gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
-        gcloud_sql_project = self.instance.ckan_infra.GCLOUD_SQL_PROJECT
         gcloud_sql_instance = yaml.load(gcloud.check_output(
             f'sql instances describe {gcloud_sql_instance_name}',
-            project=gcloud_sql_project
+            ckan_infra=self.instance.ckan_infra
         ))
         gcloud_sql_service_account_email = gcloud_sql_instance['serviceAccountEmailAddress']
         gcloud.check_call(
             f'acl ch -u {gcloud_sql_service_account_email}:R {importUrl}',
-            gsutil=True
+            gsutil=True,
+            ckan_infra=self.instance.ckan_infra
         )
 
     def _create_base_db(self):
@@ -176,7 +175,7 @@ class DeisCkanInstanceDb(object):
         db_name = self.db_spec['name']
         returncode, output = gcloud.getstatusoutput(
             f'sql databases describe --instance={gcloud_sql_instance_name} {db_name}',
-            project=gcloud_sql_project
+            ckan_infra=self.instance.ckan_infra
         )
         importUrl = self.db_spec["importGcloudSqlDumpUrl"]
         print(f'Importing Gcloud SQL from: {importUrl}')
@@ -184,7 +183,7 @@ class DeisCkanInstanceDb(object):
         postgres_user = self.instance.ckan_infra.POSTGRES_USER
         gcloud.check_call(
             f'--quiet sql import sql {gcloud_sql_instance_name} {importUrl} --database={db_name} --user={postgres_user}',
-            project=gcloud_sql_project
+            ckan_infra=self.instance.ckan_infra
         )
 
     def _check_db_exists(self):
@@ -193,6 +192,6 @@ class DeisCkanInstanceDb(object):
         db_name = self.db_spec['name']
         returncode, output = gcloud.getstatusoutput(
             f'sql databases describe --instance={gcloud_sql_instance_name} {db_name}',
-            project=gcloud_sql_project
+            ckan_infra=self.instance.ckan_infra
         )
         return returncode == 0

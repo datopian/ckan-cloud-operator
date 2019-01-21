@@ -2,10 +2,16 @@
 
 ## Prepare Gcloud SQL for import via Google Store bucket
 
+Authenticate to gcloud using ckan-cloud-operator
+
+```
+ckan-cloud-operator activate-gcloud-auth
+```
+
 Get the service account email for the cloud sql instance (you should be authorized to the relevant Google account)
 
 ```
-GCLOUD_SQL_INSTANCE_ID=
+GCLOUD_SQL_INSTANCE_ID=`ckan-cloud-operator ckan-infra get GCLOUD_SQL_INSTANCE_NAME`
 
 GCLOUD_SQL_SERVICE_ACCOUNT=`gcloud sql instances describe $GCLOUD_SQL_INSTANCE_ID \
     | python -c "import sys,yaml; print(yaml.load(sys.stdin)['serviceAccountEmailAddress'])" | tee /dev/stderr`
@@ -14,10 +20,10 @@ GCLOUD_SQL_SERVICE_ACCOUNT=`gcloud sql instances describe $GCLOUD_SQL_INSTANCE_I
 Give permissions to the bucket used for importing:
 
 ```
-GCLOUD_SQL_DUMPS_BUCKET=
+GCLOUD_SQL_DEIS_IMPORT_BUCKET=`ckan-cloud-operator ckan-infra get GCLOUD_SQL_DEIS_IMPORT_BUCKET`
 
-gsutil acl ch -u ${GCLOUD_SQL_SERVICE_ACCOUNT}:W gs://${GCLOUD_SQL_DUMPS_BUCKET}/ &&\
-gsutil acl ch -R -u ${GCLOUD_SQL_SERVICE_ACCOUNT}:R gs://${GCLOUD_SQL_DUMPS_BUCKET}/
+gsutil acl ch -u ${GCLOUD_SQL_SERVICE_ACCOUNT}:W gs://${GCLOUD_SQL_DEIS_IMPORT_BUCKET}/ &&\
+gsutil acl ch -R -u ${GCLOUD_SQL_SERVICE_ACCOUNT}:R gs://${GCLOUD_SQL_DEIS_IMPORT_BUCKET}/
 ```
 
 ## Import DBs from Deis
@@ -31,6 +37,8 @@ KUBECONFIG=$DEIS_KUBECONFIG kubectl get nodes
 ```
 
 Download the db operations pod yaml: https://github.com/ViderumGlobal/ckan-cloud-dataflows/blob/master/db-operations/pod.yaml
+
+Use the following image for the cca-operator container: `orihoch/ckan-cloud-docker:cca-operator-db-import`
 
 Edit and modify the pod name to the a unique, personal name (it uses your personal gcloud credentials)
 
@@ -73,6 +81,32 @@ dump_dbs $SITE_ID $DB_URL $DATASTORE_URL && upload_db_dumps_to_storage $SITE_ID
 Copy the output containing the gs:// urls - you will need them to create the import configuration
 
 Dump files are stored locally in the container and will be removed when db-operations pod is deleted
+
+Run the following to create a script that imports all db instances based on deis config yamls:
+
+```
+INSTANCE_YAMLS_PATH="/path/to/instance/yamls/directory/"
+
+echo source functions.sh '&&\' &&\
+for YAML in $(ls $INSTANCE_YAMLS_PATH); do
+    python3.6 -c '
+import yaml
+file_name = "'${YAML}'"
+dir_name = "'${INSTANCE_YAMLS_PATH}'"
+data = yaml.load(open("{}{}".format(dir_name, file_name)))
+instance_id = file_name.replace(".yaml", "")
+db_url = data.get("CKAN_SQLALCHEMY_URL")
+datastore_url = data.get("CKAN__DATASTORE__WRITE_URL")
+if db_url and datastore_url:
+    print("echo '"'"'{}'"'"' && ( dump_dbs '"'"'{}'"'"' '"'"'{}'"'"' '"'"'{}'"'"' &&\\".format(instance_id, instance_id, db_url, datastore_url))
+    print("upload_db_dumps_to_storage '"'"'{instance_id}'"'"') > '"'"'{instance_id}.logs'"'"'; echo $? > '"'"'{instance_id}.returncode'"'"'; ".format(instance_id=instance_id))
+    print("rm -f *.dump.sql; ")
+'
+done &&\
+echo '[ "$?" != "0" ] && echo Import failed'
+```
+
+Run the output script on the db-operations pod
 
 ## Get the instance's solrcloud config name
 
@@ -131,6 +165,10 @@ ckan-cloud-operator initialize-gitlab <REPO_NAME>
 ```
 
 Follow the gitlab build to get the Docker image
+
+Run the following to ensure gitlab is initialized on all repos
+
+
 
 ## Initialize the DataPusher
 

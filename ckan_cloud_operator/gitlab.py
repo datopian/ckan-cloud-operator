@@ -3,6 +3,7 @@ import subprocess
 import re
 import functools
 import traceback
+import requests
 
 
 class CkanGitlab(object):
@@ -11,8 +12,16 @@ class CkanGitlab(object):
         self.ckan_infra = ckan_infra
 
     def initialize(self, project):
+        project_id = self._get_project_id(project)
+        print({k: v for k, v in json.loads(self._curl(
+            f'projects/{project_id}',
+            postjson={'container_registry_enabled': True},
+            method='PUT'
+        )).items() if k in ['id', 'path_with_namespace', 'container_registry_enabled']})
         for fname in ['.env', 'Dockerfile', '.gitlab-ci.yml']:
             data = self._get_file(project, fname, required=False)
+            if fname == 'Dockerfile':
+                self._update_dockerfile(project_id, data)
             if data:
                 size_b = len(data)
                 assert size_b > 0
@@ -29,8 +38,54 @@ class CkanGitlab(object):
                 print(f'Repository is missing {project}/{fname}')
                 exit(1)
 
+    def is_ready(self, project):
+        project_id = self._get_project_id(project)
+        project_pipelines = json.loads(self._curl(
+            f'projects/{project_id}/pipelines'
+        ))
+        print(project_pipelines)
+        success =  [p for p in project_pipelines if p['status'] == 'success']
+        pending =  [p for p in project_pipelines if p['status'] == 'pending']
+        failed =  [p for p in project_pipelines if p['status'] == 'failed']
+        running =  [p for p in project_pipelines if p['status'] == 'running']
+        others = [p for p in project_pipelines if p['status'] not in ['failed', 'success', 'pending', 'running']]
+        assert len(others) == 0, f'unknown status: {others}'
+        if len(success) > 0 and len(pending) == 0:
+            print(f'successful pipelines: {success}')
+            print(f'pending pipelines: {pending}')
+            print(f'failed pipelines: {failed}')
+            print(f'running pipelines: {running}')
+            return True
+        else:
+            return False
+
     def get_envvars(self, project):
         return self._parse_dotenv(self._get_file(project, '.env'))
+
+    def _get_updated_dockerfile(self, data):
+        needs_update = False
+        got_upgraded = False
+        lines = []
+        for line in data.splitlines():
+            if 'pip install --upgrade pip' in line:
+                got_upgraded = True
+            elif not got_upgraded and line.startswith('RUN pip install '):
+                needs_update = True
+                line = 'RUN pip install --upgrade pip && pip install {}'.format(line[15:])
+            lines.append(line)
+        if needs_update:
+            return '{}\n'.format('\n'.join(lines))
+        else:
+            return None
+
+    def _update_dockerfile(self, project_id, data):
+        updated_data = self._get_updated_dockerfile(data)
+        if updated_data:
+            self._curl(f'projects/{project_id}/repository/files/Dockerfile', postjson={
+                'branch': 'master', 'author_email': 'admin@ckan-cloud-operator',
+                'author_name': 'ckan-cloud-operator',
+                'content': updated_data, 'commit_message': 'Add pip install --upgrade pip to Dockerfile'
+            }, method='PUT')
 
     def _get_file(self, project, file, ref='master', required=True):
         try:
@@ -44,22 +99,24 @@ class CkanGitlab(object):
                 traceback.print_exc()
                 return None
 
-    def _curl(self, urlpart, postjson=None):
+    def _curl(self, urlpart, postjson=None, method='POST'):
         gitlab_token = self.ckan_infra.GITLAB_TOKEN_PASSWORD
         if postjson:
-            postjson = json.dumps(postjson)
-            return subprocess.check_output(
-                f'curl -f -s --request POST --header "PRIVATE-TOKEN: {gitlab_token}" '
-                f'--header "Content-Type: application/json" --data \'{postjson}\' '
-                f'"https://gitlab.com/api/v4/{urlpart}"',
-                shell=True
-            ).decode()
+            r = requests.request(
+                method,
+                f'https://gitlab.com/api/v4/{urlpart}',
+                headers={
+                    'PRIVATE-TOKEN': gitlab_token
+                },
+                json=postjson
+            )
+            assert r.status_code == 200, r.text
+            return r.text
         else:
-            return subprocess.check_output(
-                f'curl -f -s --header "PRIVATE-TOKEN: {gitlab_token}" '
-                f'"https://gitlab.com/api/v4/{urlpart}"',
-                shell=True
-            ).decode()
+            cmd = ['curl', '-f', '-s',
+                   '--header', f'PRIVATE-TOKEN: {gitlab_token}',
+                   f'https://gitlab.com/api/v4/{urlpart}']
+            return subprocess.check_output(cmd).decode()
 
     @functools.lru_cache()
     def _get_project_id(self, project):
