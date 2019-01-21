@@ -10,6 +10,7 @@ class CkanInfra(object):
         values = kubectl.decode_secret(kubectl.get('secret ckan-infra'))
         self.GCLOUD_SQL_INSTANCE_NAME = values.get('GCLOUD_SQL_INSTANCE_NAME')
         self.GCLOUD_SQL_PROJECT = values.get('GCLOUD_SQL_PROJECT')
+        self.GCLOUD_SQL_DEIS_IMPORT_BUCKET = values.get('GCLOUD_SQL_DEIS_IMPORT_BUCKET')
         self.POSTGRES_HOST = values.get('POSTGRES_HOST')
         self.POSTGRES_USER = values.get('POSTGRES_USER')
         self.POSTGRES_PASSWORD = values.get('POSTGRES_PASSWORD')
