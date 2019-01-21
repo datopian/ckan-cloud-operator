@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import os
 import click
+import time
 from xml.etree import ElementTree
 from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
 from ckan_cloud_operator.infra import CkanInfra
@@ -83,9 +84,20 @@ def install_crds():
 
 @main.command()
 @click.argument('GITLAB_PROJECT_NAME')
-def initialize_gitlab(gitlab_project_name):
-    """Initialize the gitlab integration"""
-    CkanGitlab(CkanInfra()).initialize(gitlab_project_name)
+@click.option('-w', '--wait-ready', is_flag=True)
+def initialize_gitlab(gitlab_project_name, wait_ready):
+    """Initialize the gitlab integration
+
+    Example:
+
+        ckan-cloud-operator initialize-gitlab repo/project
+    """
+    ckan_gitlab = CkanGitlab(CkanInfra())
+    ckan_gitlab.initialize(gitlab_project_name)
+    if wait_ready and not ckan_gitlab.is_ready(gitlab_project_name):
+        print(f'Waiting for GitLab project {gitlab_project_name} to be ready...')
+        while not ckan_gitlab.is_ready(gitlab_project_name):
+            time.sleep(5)
     great_success()
 
 
@@ -252,9 +264,13 @@ def ckan_infra_set_docker_registry(*args):
 
 
 @ckan_infra.command('get')
-def ckan_infra_get():
+@click.argument('CKAN_INFRA_KEY', required=False)
+def ckan_infra_get(ckan_infra_key):
     """Get the ckan-infra secrets"""
-    print(yaml.dump(CkanInfra.get(), default_flow_style=False))
+    if ckan_infra_key:
+        print(getattr(CkanInfra(), ckan_infra_key))
+    else:
+        print(yaml.dump(CkanInfra.get(), default_flow_style=False))
 
 
 @ckan_infra.command('admin-db-connection-string')
