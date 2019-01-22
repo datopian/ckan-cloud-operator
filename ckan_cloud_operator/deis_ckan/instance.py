@@ -2,8 +2,12 @@ import subprocess
 import yaml
 import traceback
 import time
+import os
+import json
+import datetime
 
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import gcloud
 from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator.deis_ckan.ckan import DeisCkanInstanceCKAN
 from ckan_cloud_operator.deis_ckan.annotations import DeisCkanInstanceAnnotations
@@ -297,6 +301,47 @@ class DeisCkanInstance(object):
                     'path': storage_path
                 }
             }
+        elif create_type == 'from-deis':
+            old_instance_id, path_to_all_instances_env_yamls, path_to_old_cluster_kubeconfig, instsance_id = args[1:]
+            print(f'Creating Deis CKAN instance {instance_id} from old deis instance {old_instance_id}')
+            output = subprocess.check_output(f'KUBECONFIG={path_to_old_cluster_kubeconfig} '
+                                             f'kubectl -n solr exec zk-0 zkCli.sh '
+                                             f'get /collections/{old_instance_id} 2>&1', shell=True)
+            solr_config = None
+            for line in output.decode().splitlines():
+                if line.startswith('{"configName":'):
+                    solr_config = json.loads(line)["configName"]
+            assert solr_config, 'failed to get solr config name'
+            ckan_infra = CkanInfra()
+            import_backup = ckan_infra.GCLOUD_SQL_DEIS_IMPORT_BUCKET
+            instance_latest_datestring = None
+            instance_latest_dt = None
+            instance_latest_datastore_datestring = None
+            instance_latest_datastore_dt = None
+            for line in gcloud.check_output(f"ls 'gs://{import_backup}/postgres/????????/*.sql'",
+                                            gsutil=True).decode().splitlines():
+                # gs://viderum-deis-backups/postgres/20190122/nav.20190122.dump.sql
+                datestring, filename = line.split('/')[4:]
+                file_instance = '.'.join(filename.split('.')[:-3])
+                is_datastore = file_instance.endswith('-datastore')
+                file_instance = file_instance.replace('-datastore', '')
+                dt = datetime.datetime.strptime(datestring, '%Y%M%d')
+                if file_instance == old_instance_id:
+                    if is_datastore:
+                        if instance_latest_datastore_dt is None or instance_latest_datastore_dt < dt:
+                            instance_latest_datastore_datestring = datestring
+                            instance_latest_datastore_dt = dt
+                    elif instance_latest_dt is None or instance_latest_dt < dt:
+                        instance_latest_datestring = datestring
+                        instance_latest_dt = dt
+            return cls.create(*['from-gcloud-envvars',
+                                os.path.join(path_to_all_instances_env_yamls, f'{old_instance_id}.yaml'),
+                                f'registry.gitlab.com/viderum/cloud-{old_instance_id}',
+                                solr_config,
+                                f'gs://{import_backup}/postgres/{instance_latest_datestring}/{old_instance_id}.{instance_latest_datestring}.dump.sql',
+                                f'gs://{import_backup}/postgres/{instance_latest_datastore_datestring}/{old_instance_id}.{instance_latest_datastore_datestring}.dump.sql',
+                                f'/ckan/{old_instance_id}',
+                                instance_id])
         else:
             raise NotImplementedError(f'invalid create type: {create_type}')
         instance = {

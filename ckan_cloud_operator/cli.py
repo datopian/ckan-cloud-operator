@@ -429,6 +429,26 @@ def deis_instance_create_from_gcloud_envvars(
     great_success()
 
 
+@deis_instance_create.command('from-deis')
+@click.argument('OLD_INSTANCE_ID')
+@click.argument('PATH_TO_ALL_INSTANCES_ENV_YAMLS')
+@click.argument('PATH_TO_OLD_CLUSTER_KUBECONFIG')
+@click.argument('NEW_INSTANCE_ID')
+def deis_instance_create_from_deis(old_instance_id,
+                                   path_to_all_instances_env_yamls,
+                                   path_to_old_cluster_kubeconfig,
+                                   new_instance_id):
+    """Create and update an instance from an old deis instance"""
+    DeisCkanInstance.create(
+        'from-deis',
+        old_instance_id,
+        path_to_all_instances_env_yamls,
+        path_to_old_cluster_kubeconfig,
+        new_instance_id
+    ).update()
+    great_success()
+
+
 #### deis-instance ckan
 
 

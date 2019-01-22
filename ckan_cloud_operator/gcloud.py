@@ -9,14 +9,15 @@ def activate():
     return True
 
 
-def check_output(cmd, project=None, with_activate=True, ckan_infra=None):
+def check_output(cmd, project=None, with_activate=True, ckan_infra=None, gsutil=False):
     if with_activate: activate()
     if not ckan_infra:
         ckan_infra = CkanInfra()
     if not project:
         project = ckan_infra.GCLOUD_AUTH_PROJECT
     compute_zone = ckan_infra.GCLOUD_COMPUTE_ZONE
-    return subprocess.check_output(f'CLOUDSDK_COMPUTE_ZONE={compute_zone} gcloud --project={project} {cmd}', shell=True)
+    bin = 'gsutil' if gsutil else f'CLOUDSDK_COMPUTE_ZONE={compute_zone} gcloud --project={project}'
+    return subprocess.check_output(f'{bin} {cmd}', shell=True)
 
 
 def check_call(cmd, project=None, with_activate=True, gsutil=False, ckan_infra=None):
