@@ -2,6 +2,8 @@ import subprocess
 import binascii
 import os
 import yaml
+import time
+
 from ckan_cloud_operator.datastore_permissions import DATASTORE_PERMISSIONS_SQL_TEMPLATE
 from ckan_cloud_operator import gcloud
 
@@ -174,20 +176,25 @@ class DeisCkanInstanceDb(object):
 
     def _import_gcloud_sql_db(self):
         gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
-        gcloud_sql_project = self.instance.ckan_infra.GCLOUD_SQL_PROJECT
         db_name = self.db_spec['name']
-        returncode, output = gcloud.getstatusoutput(
-            f'sql databases describe --instance={gcloud_sql_instance_name} {db_name}',
-            ckan_infra=self.instance.ckan_infra
-        )
         importUrl = self.db_spec["importGcloudSqlDumpUrl"]
         print(f'Importing Gcloud SQL from: {importUrl}')
         self._set_gcloud_storage_sql_permissions(importUrl)
         postgres_user = self.instance.ckan_infra.POSTGRES_USER
-        gcloud.check_call(
-            f'--quiet sql import sql {gcloud_sql_instance_name} {importUrl} --database={db_name} --user={postgres_user}',
+        returncode, output = gcloud.getstatusoutput(
+            f'--quiet sql import sql {gcloud_sql_instance_name} {importUrl} --database={db_name} --user={postgres_user} '
+            f'  | tee /dev/stderr',
             ckan_infra=self.instance.ckan_infra
         )
+        if returncode == 1:
+            if 'You can continue waiting for the operation by running `gcloud beta sql operations wait --project ckan-cloud ' in output:
+                operation_id = output.split('You can continue waiting for the operation by running `gcloud beta sql operations wait --project ckan-cloud ')[1].split('`')[0]
+                print(f'Waiting for sql import operation {operation_id} to complete...')
+                while time.sleep(5):
+                    operation = yaml.load(gcloud.check_output(f'sql operations describe {operation_id}'))
+                    print(operation['status'])
+                    if operation['status'] == 'DONE':
+                        break
 
     def _check_db_exists(self):
         gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
