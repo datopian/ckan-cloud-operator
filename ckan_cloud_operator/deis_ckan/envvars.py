@@ -63,7 +63,7 @@ class DeisCkanInstanceEnvvars(object):
                                        'namespace': self.instance.id
                                    },
                                    'type': 'Opaque',
-                                   'data': {k: base64.b64encode(v.encode()).decode()
+                                   'data': {k: base64.b64encode(v.encode() if v else b'').decode()
                                             for k, v in envvars.items()}}
         self._apply_instance_envvars_overrides(instance_envvars_secret)
         subprocess.run('kubectl apply -f -', input=yaml.dump(instance_envvars_secret).encode(),
