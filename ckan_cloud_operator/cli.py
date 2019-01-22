@@ -282,10 +282,21 @@ def ckan_infra_admin_db_connection_string():
     infra = CkanInfra()
     postgres_user = infra.POSTGRES_USER
     postgres_password = infra.POSTGRES_PASSWORD
-    postgres_host = infra.POSTGRES_HOST
+    if os.environ.get('CKAN_CLOUD_OPERATOR_USE_PROXY') in ['yes', '1', 'true']:
+        postgres_host = '127.0.0.1'
+    else:
+        postgres_host = infra.POSTGRES_HOST
     postgres_port = '5432'
-    db = sys.argv[3] if len(sys.argv) > 3 else ''
-    print(f'postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{db}')
+    print(f'postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}')
+
+
+@ckan_infra.command('cloudsql-proxy')
+def ckan_infra_cloudsql_proxy():
+    """Starts a local proxy to the cloud SQL instance"""
+    print("Keep this running in the background")
+    print("Set the following environment variable to cause ckan-cloud-operator to connect via the proxy")
+    print("export CKAN_CLOUD_OPERATOR_USE_PROXY=yes")
+    subprocess.check_call(f'kubectl -n ckan-cloud port-forward deployment/cloudsql-proxy 5432', shell=True)
 
 
 #################################

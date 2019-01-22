@@ -73,7 +73,10 @@ class DeisCkanInstanceDb(object):
                     self._create_datastore_ro_user()
 
     def _psql(self, cmd, *args):
-        postgres_host = self.instance.ckan_infra.POSTGRES_HOST
+        if os.environ.get('CKAN_CLOUD_OPERATOR_USE_PROXY') in ['yes', '1', 'true']:
+            postgres_host = '127.0.0.1'
+        else:
+            postgres_host = self.instance.ckan_infra.POSTGRES_HOST
         postgres_password = self.instance.ckan_infra.POSTGRES_PASSWORD
         postgres_user = self.instance.ckan_infra.POSTGRES_USER
         subprocess.check_call(['psql', '-v', 'ON_ERROR_STOP=on', '-h', postgres_host,
