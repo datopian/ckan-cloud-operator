@@ -47,6 +47,8 @@ class DeisCkanInstanceEnvvars(object):
             CKAN__DATASTORE__READ_URL=f"postgresql://{datastore_ro_user}:{datastore_ro_password}@{postgres_host}:5432/{datastore_name}",
             CKAN__DATASTORE__WRITE_URL=f"postgresql://{datastore_name}:{datastore_password}@{postgres_host}:5432/{datastore_name}",
             CKAN_SOLR_URL=f"{solr_http_endpoint}/{solr_collection_name}",
+            CKAN_SOLR_USER=ckan_infra.SOLR_USER,
+            CKAN_SOLR_PASSWORD=ckan_infra.SOLR_PASSWORD,
             CKANEXT__S3FILESTORE__AWS_STORAGE_PATH=storage_path,
             CKANEXT__S3FILESTORE__AWS_ACCESS_KEY_ID=ckan_infra.GCLOUD_STORAGE_ACCESS_KEY_ID,
             CKANEXT__S3FILESTORE__AWS_SECRET_ACCESS_KEY=ckan_infra.GCLOUD_STORAGE_SECRET_ACCESS_KEY,
