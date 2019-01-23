@@ -344,7 +344,7 @@ class BaseAnnotations(object):
             'name': env_name,
             'valueFrom': {
                 'secretKeyRef': {
-                    'name': 'ckancloudrouter-ori-test-1-annotations',
+                    'name': f'{self.resource_kind}-{self.resource_id}-annotations',
                     'key': value_key
                 }
             }
