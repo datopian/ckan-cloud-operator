@@ -15,6 +15,7 @@ class CkanInfra(object):
         self.POSTGRES_USER = values.get('POSTGRES_USER')
         self.POSTGRES_PASSWORD = values.get('POSTGRES_PASSWORD')
         self.SOLR_HTTP_ENDPOINT = values.get('SOLR_HTTP_ENDPOINT')
+        self.SOLR_HTTP_ENDPOINT_SIMPLE = values.get('SOLR_HTTP_ENDPOINT_SIMPLE')
         self.SOLR_USER = values.get('SOLR_USER')
         self.SOLR_PASSWORD = values.get('SOLR_PASSWORD')
         self.SOLR_NUM_SHARDS = values.get('SOLR_NUM_SHARDS')
