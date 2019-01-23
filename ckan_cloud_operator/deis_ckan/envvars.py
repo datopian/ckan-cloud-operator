@@ -29,7 +29,7 @@ class DeisCkanInstanceEnvvars(object):
         datastore_password = self.instance.annotations.get_secret('datastorePassword')
         datastore_ro_user = self.instance.annotations.get_secret('datastoreReadonlyUser')
         datastore_ro_password = self.instance.annotations.get_secret('datatastoreReadonlyPassword')
-        solr_http_endpoint = ckan_infra.SOLR_HTTP_ENDPOINT
+        solr_http_endpoint = ckan_infra.SOLR_HTTP_ENDPOINT_SIMPLE
         solr_collection_name = spec.solrCloudCollection['name']
         if 'fromSecret' in spec.envvars:
             envvars = kubectl.get(f'secret {spec.envvars["fromSecret"]}')
