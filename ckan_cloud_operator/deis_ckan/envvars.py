@@ -29,7 +29,9 @@ class DeisCkanInstanceEnvvars(object):
         datastore_password = self.instance.annotations.get_secret('datastorePassword')
         datastore_ro_user = self.instance.annotations.get_secret('datastoreReadonlyUser')
         datastore_ro_password = self.instance.annotations.get_secret('datatastoreReadonlyPassword')
-        solr_http_endpoint = ckan_infra.SOLR_HTTP_ENDPOINT_SIMPLE
+        # solr_http_endpoint = ckan_infra.SOLR_HTTP_ENDPOINT_SIMPLE
+        # a proxy solr to support authenticated requests for ckan 2.6, 2.7
+        solr_http_endpoint = 'http://solrcloud-proxy.ckan-cloud:8983/solr'
         solr_collection_name = spec.solrCloudCollection['name']
         if 'fromSecret' in spec.envvars:
             envvars = kubectl.get(f'secret {spec.envvars["fromSecret"]}')
@@ -47,8 +49,9 @@ class DeisCkanInstanceEnvvars(object):
             CKAN__DATASTORE__READ_URL=f"postgresql://{datastore_ro_user}:{datastore_ro_password}@{postgres_host}:5432/{datastore_name}",
             CKAN__DATASTORE__WRITE_URL=f"postgresql://{datastore_name}:{datastore_password}@{postgres_host}:5432/{datastore_name}",
             CKAN_SOLR_URL=f"{solr_http_endpoint}/{solr_collection_name}",
-            CKAN_SOLR_USER=ckan_infra.SOLR_USER,
-            CKAN_SOLR_PASSWORD=ckan_infra.SOLR_PASSWORD,
+            # we are using the non-authenticated proxy, so this has to be disabled to prevent ckans which support auth from using them
+            # CKAN_SOLR_USER=ckan_infra.SOLR_USER,
+            # CKAN_SOLR_PASSWORD=ckan_infra.SOLR_PASSWORD,
             CKANEXT__S3FILESTORE__AWS_STORAGE_PATH=storage_path,
             CKANEXT__S3FILESTORE__AWS_ACCESS_KEY_ID=ckan_infra.GCLOUD_STORAGE_ACCESS_KEY_ID,
             CKANEXT__S3FILESTORE__AWS_SECRET_ACCESS_KEY=ckan_infra.GCLOUD_STORAGE_SECRET_ACCESS_KEY,

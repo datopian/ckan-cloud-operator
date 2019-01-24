@@ -7,6 +7,8 @@ import tempfile
 import os
 import click
 import time
+import datetime
+from urllib.parse import urlparse
 from xml.etree import ElementTree
 from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
 from ckan_cloud_operator.infra import CkanInfra
@@ -297,6 +299,55 @@ def ckan_infra_cloudsql_proxy():
     print("Set the following environment variable to cause ckan-cloud-operator to connect via the proxy")
     print("export CKAN_CLOUD_OPERATOR_USE_PROXY=yes")
     subprocess.check_call(f'kubectl -n ckan-cloud port-forward deployment/cloudsql-proxy 5432', shell=True)
+
+
+@ckan_infra.command('deploy-solr-proxy')
+def deploy_ckan_infra_solr_proxy():
+    """Deploys a proxy inside the cluster which allows to access the centralized solr without authentication"""
+    labels = {'app': 'ckan-cloud-solrcloud-proxy'}
+    infra = CkanInfra()
+    solr_url = urlparse(infra.SOLR_HTTP_ENDPOINT)
+    scheme = solr_url.scheme
+    hostname = solr_url.hostname
+    port = solr_url.port
+    if not port:
+        port = '443' if scheme == 'https' else '8983'
+    kubectl.update_secret('solrcloud-proxy', {
+        'SOLR_URL': f'{scheme}://{hostname}:{port}',
+        'SOLR_USER': infra.SOLR_USER,
+        'SOLR_PASSWORD': infra.SOLR_PASSWORD
+    })
+    kubectl.apply(kubectl.get_deployment('solrcloud-proxy', labels, {
+        'replicas': 1,
+        'revisionHistoryLimit': 10,
+        'strategy': {'type': 'RollingUpdate',},
+        'template': {
+            'metadata': {
+                'labels': labels,
+                'annotations': {
+                    'ckan-cloud/operator-timestamp': str(datetime.datetime.now())
+                }
+            },
+            'spec': {
+                'containers': [
+                    {
+                        'name': 'solrcloud-proxy',
+                        'image': 'viderum/ckan-cloud-operator-solrcloud-proxy',
+                        'envFrom': [{'secretRef': {'name': 'solrcloud-proxy'}}],
+                        'ports': [{'containerPort': 8983}],
+                    }
+                ]
+            }
+        }
+    }))
+    service = kubectl.get_resource('v1', 'Service','solrcloud-proxy', labels)
+    service['spec'] = {
+        'ports': [
+            {'name': '8983', 'port': 8983}
+        ],
+        'selector': labels
+    }
+    kubectl.apply(service)
 
 
 #################################
