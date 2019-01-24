@@ -59,6 +59,7 @@ elif [ "${1}" == "add" ]; then
     echo Failed to install >/dev/stderr && exit 1
 
 elif [ "${1}" == "activate" ]; then
+    ENVIRONMENT_NAME="${2}"
     cp -f "/usr/local/bin/ckan-cloud-operator-${ENVIRONMENT_NAME}" "/usr/local/bin/ckan-cloud-operator" &&\
     chmod o+x "/usr/local/bin/ckan-cloud-operator" &&\
     echo Great Success! >/dev/stderr && exit 0
