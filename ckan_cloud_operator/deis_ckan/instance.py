@@ -304,9 +304,10 @@ class DeisCkanInstance(object):
         elif create_type == 'from-deis':
             old_instance_id, path_to_all_instances_env_yamls, path_to_old_cluster_kubeconfig, instsance_id = args[1:]
             print(f'Creating Deis CKAN instance {instance_id} from old deis instance {old_instance_id}')
+            collection_name = old_instance_id.replace('-', 'dash')
             output = subprocess.check_output(f'KUBECONFIG={path_to_old_cluster_kubeconfig} '
                                              f'kubectl -n solr exec zk-0 zkCli.sh '
-                                             f'get /collections/{old_instance_id} 2>&1', shell=True)
+                                             f'get /collections/{collection_name} 2>&1', shell=True)
             solr_config = None
             for line in output.decode().splitlines():
                 if line.startswith('{"configName":'):
