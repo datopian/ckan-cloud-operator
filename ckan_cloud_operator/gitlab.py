@@ -71,7 +71,7 @@ class CkanGitlab(object):
                 got_upgraded = True
             elif not got_upgraded and line.startswith('RUN pip install '):
                 needs_update = True
-                line = 'RUN pip install --upgrade pip && pip install {}'.format(line[15:])
+                line = 'RUN pip install --upgrade pip==18.1 && pip install {}'.format(line[15:])
             lines.append(line)
         if needs_update:
             return '{}\n'.format('\n'.join(lines))
@@ -166,4 +166,3 @@ build:
     - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
   except:
     - master"""
-
