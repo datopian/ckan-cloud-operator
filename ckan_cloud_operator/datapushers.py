@@ -39,8 +39,8 @@ def delete(name):
     )
 
 
-def update_service(name):
-    labels = _get_labels(name)
+def update_service(name, labels):
+    labels.update(**_get_labels(name))
     service = kubectl.get_resource('v1', 'Service', get_service_name(name), labels)
     service['spec'] = {
         'ports': [

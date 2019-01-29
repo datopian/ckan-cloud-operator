@@ -8,6 +8,7 @@ import os
 import click
 import time
 import datetime
+import binascii
 from urllib.parse import urlparse
 from xml.etree import ElementTree
 from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
@@ -15,7 +16,8 @@ from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator import gcloud
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.gitlab import CkanGitlab
-import ckan_cloud_operator.routers
+import ckan_cloud_operator.routers.manager as routers_manager
+import ckan_cloud_operator.routers.traefik.manager as traefik_router_manager
 import ckan_cloud_operator.users
 import ckan_cloud_operator.storage
 import ckan_cloud_operator.datapushers
@@ -78,7 +80,7 @@ def cluster_info(full):
 def install_crds():
     """Install ckan-cloud-operator custom resource definitions"""
     DeisCkanInstance.install_crd()
-    ckan_cloud_operator.routers.install_crds()
+    routers_manager.install_crds()
     ckan_cloud_operator.users.install_crds()
     ckan_cloud_operator.datapushers.install_crds()
     great_success()
@@ -141,31 +143,23 @@ def bash_completion():
 
 @main.command()
 def initialize_storage():
-    """Initialize the centralized storage bucket"""
-    ckan_infra = CkanInfra()
-    bucket_name = ckan_infra.GCLOUD_STORAGE_BUCKET
-    project_id = ckan_infra.GCLOUD_AUTH_PROJECT
-    function_name = bucket_name.replace('-', '') + 'permissions'
-    function_js = ckan_cloud_operator.storage.PERMISSIONS_FUNCTION_JS(function_name, project_id, bucket_name)
-    package_json = ckan_cloud_operator.storage.PERMISSIONS_FUNCTION_PACKAGE_JSON
-    print(f'bucket_name = {bucket_name}\nproject_id={project_id}\nfunction_name={function_name}')
-    print(package_json)
-    print(function_js)
-    with tempfile.TemporaryDirectory() as tmpdir:
-        with open(f'{tmpdir}/package.json', 'w') as f:
-            f.write(package_json)
-        with open(f'{tmpdir}/index.js', 'w') as f:
-            f.write(function_js)
-        gcloud.check_call(
-            f'functions deploy {function_name} '
-                               f'--runtime nodejs6 '
-                               f'--trigger-resource {bucket_name} '
-                               f'--trigger-event google.storage.object.finalize '
-                               f'--source {tmpdir} '
-                               f'--retry '
-                               f'--timeout 30s ',
-            ckan_infra=ckan_infra
-        )
+    """Initialize the centralized storage"""
+    ckan_cloud_operator.storage.deploy_storage_permissions_function()
+    ckan_cloud_operator.storage.deploy_gcs_minio_proxy()
+    great_success()
+
+
+@main.command()
+def start_gcs_minio_proxy_port_forward():
+    """Start port-forward to the minio proxy and display the credentials"""
+    creds = kubectl.decode_secret(kubectl.get('secret gcsminio-proxy-credentials'))
+    minio_access_key = creds['MINIO_ACCESS_KEY']
+    minio_secret_key = creds['MINIO_SECRET_KEY']
+    print('\nhttp://localhost:9000\n')
+    print(f'MINIO_ACCESS_KEY = {minio_access_key}')
+    print(f'MINIO_SECRET_KEY = {minio_secret_key}')
+    print('\n')
+    kubectl.check_call('port-forward deployment/gcsminio-proxy 9000')
 
 
 #################################
@@ -568,7 +562,7 @@ def routers():
 @click.argument('ROUTER_TYPE', default='traefik')
 def routers_create(router_name, router_type):
     """Create a router, uses `traefik` router type by default"""
-    ckan_cloud_operator.routers.create(router_name, router_type)
+    routers_manager.create(router_name, router_type)
     great_success()
 
 
@@ -577,7 +571,7 @@ def routers_create(router_name, router_type):
 @click.option('--wait-ready', is_flag=True)
 def routers_update(router_name, wait_ready):
     """Update a router to latest resource spec"""
-    ckan_cloud_operator.routers.update(router_name, wait_ready)
+    routers_manager.update(router_name, wait_ready)
     great_success()
 
 
@@ -586,7 +580,7 @@ def routers_update(router_name, wait_ready):
 @click.option('-v', '--values-only', is_flag=True)
 def routers_list(**kwargs):
     """List the router resources"""
-    ckan_cloud_operator.routers.list(**kwargs)
+    routers_manager.list(**kwargs)
 
 
 @routers.command('kubectl-get-all')
@@ -607,12 +601,12 @@ def routers_traefik():
 @click.argument('API_KEY')
 @click.option('--wait-ready', is_flag=True)
 def routers_traefik_enable_letsencrypt_cloudflare(traefik_router_name, email, api_key, wait_ready):
-    ckan_cloud_operator.routers.traefik_enable_letsencrypt_cloudflare(
+    traefik_router_manager.enable_letsencrypt_cloudflare(
         traefik_router_name,
         email,
         api_key
     )
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
+    routers_manager.update(traefik_router_name, wait_ready)
     great_success()
 
 @routers_traefik.command('set-default-root-domain')
@@ -620,8 +614,8 @@ def routers_traefik_enable_letsencrypt_cloudflare(traefik_router_name, email, ap
 @click.argument('DEFAULT_ROOT_DOMAIN')
 @click.option('--wait-ready', is_flag=True)
 def routers_traefik_set_default_root_domain(traefik_router_name, default_root_domain, wait_ready):
-    ckan_cloud_operator.routers.traefik_set_default_root_domain(traefik_router_name, default_root_domain)
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
+    traefik_router_manager.set_default_root_domain(traefik_router_name, default_root_domain)
+    routers_manager.update(traefik_router_name, wait_ready)
     great_success()
 
 @routers_traefik.command('set-deis-instance-subdomain-route')
@@ -634,14 +628,14 @@ def routers_traefik_set_default_root_domain(traefik_router_name, default_root_do
 def routers_traefik_set_deis_instance_route(traefik_router_name, deis_instance_id, root_domain,
                                             sub_domain, route_name, wait_ready):
     deis_instance = DeisCkanInstance(deis_instance_id)
-    ckan_cloud_operator.routers.traefik_set_deis_instance_subdomain_route(
+    traefik_router_manager.set_deis_instance_subdomain_route(
         traefik_router_name,
         deis_instance,
         root_domain,
         sub_domain,
         route_name
     )
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
+    routers_manager.update(traefik_router_name, wait_ready)
     great_success()
 
 @routers_traefik.command('set-deis-instance-default-subdomain-route')
@@ -650,17 +644,17 @@ def routers_traefik_set_deis_instance_route(traefik_router_name, deis_instance_i
 @click.option('--wait-ready', is_flag=True)
 def routers_traefik_set_deis_instance_default_subdomain_route(traefik_router_name, deis_instance_id, wait_ready):
     deis_instance = DeisCkanInstance(deis_instance_id)
-    ckan_cloud_operator.routers.traefik_set_instance_default_subdomain_route(
+    traefik_router_manager.set_instance_default_subdomain_route(
         traefik_router_name,
         deis_instance
     )
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
+    routers_manager.update(traefik_router_name, wait_ready)
     great_success()
 
 @routers_traefik.command('delete')
 @click.argument('TRAEFIK_ROUTER_NAME')
 def routers_traefik_delete(traefik_router_name):
-    ckan_cloud_operator.routers.traefik_delete(traefik_router_name)
+    traefik_router_manager.delete(traefik_router_name)
 
 
 @routers_traefik.command('set-datapusher-subdomain-route')
@@ -672,21 +666,21 @@ def routers_traefik_delete(traefik_router_name):
 @click.option('--wait-ready', is_flag=True)
 def routers_traefik_set_datapushers_subdomain_route(traefik_router_name, datapusher_name, root_domain,
                                                     sub_domain, route_name, wait_ready):
-    ckan_cloud_operator.routers.traefik_set_datapusher_subdomain_route(
+    traefik_router_manager.set_datapusher_subdomain_route(
         traefik_router_name,
         datapusher_name,
         root_domain,
         sub_domain,
         route_name
     )
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
+    routers_manager.update(traefik_router_name, wait_ready)
     great_success()
 
 
 @routers.command('get')
 @click.argument('ROUTER_NAME')
 def get(router_name):
-    print(yaml.dump(ckan_cloud_operator.routers.get(router_name), default_flow_style=False))
+    print(yaml.dump(routers_manager.get(router_name), default_flow_style=False))
 
 
 #################################

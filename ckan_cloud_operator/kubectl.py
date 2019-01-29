@@ -24,6 +24,12 @@ def get(what, required=True, namespace='ckan-cloud'):
             return None
 
 
+def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cloud'):
+    label_selector = ','.join([f'{k}={v}' for k,v in labels.items()])
+    res = get(f'{resource_kind} -l {label_selector}', required=required, namespace=namespace)
+    return res['items'] if res else None
+
+
 def decode_secret(secret, attr=None):
     if attr:
         return base64.b64decode(secret['data'][attr]).decode()
