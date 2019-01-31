@@ -107,7 +107,7 @@ class DeisCkanInstanceAnnotations(object):
                 return bool(value)
 
     def get(self):
-        data = {k.replace('ckan-cloud/', ''): v for k, v in self.instance.values['metadata']['annotations'].items()
+        data = {k.replace('ckan-cloud/', ''): v for k, v in self.instance.values['metadata'].get('annotations', {}).items()
                 if k.startswith('ckan-cloud/')}
         data['ready'] = True
         return data

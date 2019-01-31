@@ -2,12 +2,9 @@ import subprocess
 import yaml
 import traceback
 import time
-import os
 import json
-import datetime
 
 from ckan_cloud_operator import kubectl
-from ckan_cloud_operator import gcloud
 from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator.deis_ckan.ckan import DeisCkanInstanceCKAN
 from ckan_cloud_operator.deis_ckan.annotations import DeisCkanInstanceAnnotations
@@ -19,10 +16,182 @@ from ckan_cloud_operator.deis_ckan.registry import DeisCkanInstanceRegistry
 from ckan_cloud_operator.deis_ckan.solr import DeisCkanInstanceSolr
 from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
+from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
 
 
 class DeisCkanInstance(object):
     """Root object for Deis CKAN instances"""
+
+    @classmethod
+    def add_cli_commands(cls, click, command_group, great_success):
+
+        @command_group.command('list')
+        @click.option('-f', '--full', is_flag=True)
+        def deis_instance_list(full):
+            """List the Deis instances"""
+            cls.list(full)
+
+        @command_group.command('get')
+        @click.argument('INSTANCE_ID')
+        @click.argument('ATTR', required=False)
+        def deis_instance_get(instance_id, attr):
+            """Get detailed information about an instance, optionally returning only a single get attribute
+
+            Example: ckan-cloud-operator get <INSTANCE_ID> deployment
+            """
+            print(yaml.dump(cls(instance_id).get(attr), default_flow_style=False))
+
+        @command_group.command('edit')
+        @click.argument('INSTANCE_ID')
+        @click.argument('EDITOR', default='nano')
+        def deis_instance_edit(instance_id, editor):
+            """Launch an editor to modify and update an instance"""
+            subprocess.call(f'EDITOR={editor} kubectl -n ckan-cloud edit DeisCkanInstance/{instance_id}', shell=True)
+            cls(instance_id).update()
+            great_success()
+
+        @command_group.command('update')
+        @click.argument('INSTANCE_ID')
+        @click.argument('OVERRIDE_SPEC_JSON', required=False)
+        @click.option('--persist-overrides', is_flag=True)
+        @click.option('--wait-ready', is_flag=True)
+        def deis_instance_update(instance_id, override_spec_json, persist_overrides, wait_ready):
+            """Update an instance to the latest resource spec, optionally applying the given json override to the resource spec
+
+            Examples:
+
+            ckan-cloud-operator update <INSTANCE_ID> '{"envvars":{"CKAN_SITE_URL":"http://localhost:5000"}}' --wait-ready
+
+            ckan-cloud-operator update <INSTANCE_ID> '{"flags":{"skipDbPermissions":false}}' --persist-overrides
+            """
+            override_spec = json.loads(override_spec_json) if override_spec_json else None
+            cls(instance_id, override_spec=override_spec, persist_overrides=persist_overrides).update(
+                wait_ready=wait_ready)
+            great_success()
+
+        @command_group.command('delete')
+        @click.argument('INSTANCE_ID', nargs=-1)
+        @click.option('--force', is_flag=True)
+        def deis_instance_delete(instance_id, force):
+            """Permanently delete the instances and all related infrastructure"""
+            failed = None
+            for id in instance_id:
+                try:
+                    cls(id).delete(force)
+                except Exception:
+                    traceback.print_exc()
+                    failed = True
+            if failed and not force:
+                raise Exception('Instance deletion failed')
+            great_success()
+
+
+
+        @command_group.command('migrate')
+        @click.argument('OLD_SITE_ID')
+        @click.argument('NEW_INSTANCE_ID')
+        @click.argument('ROUTER_NAME')
+        def deis_instance_migrate(old_site_id, new_instance_id, router_name):
+            """Run a full end-to-end migration of an instasnce"""
+            migrate_from_deis(old_site_id, new_instance_id, router_name, cls)
+            great_success()
+
+        #### deis-instance create
+
+        @command_group.group('create')
+        def deis_instance_create():
+            """Create and update an instance"""
+            pass
+
+        @deis_instance_create.command('from-gitlab')
+        @click.argument('GITLAB_REPO_NAME')
+        @click.argument('SOLR_CONFIG_NAME')
+        @click.argument('NEW_INSTANCE_ID')
+        def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_instance_id):
+            """Create and update a new instance from a GitLab repo containing Dockerfile and .env
+
+            Example: ckan-cloud-operator deis-isntance create --from-gitlab viderum/cloud-demo2 ckan_27_default <NEW_INSTANCE_ID>
+            """
+            cls.create('from-gitlab', gitlab_repo_name, solr_config_name, new_instance_id).update()
+            great_success()
+
+        @deis_instance_create.command('from-gcloud-envvars')
+        @click.argument('PATH_TO_INSTANCE_ENV_YAML')
+        @click.argument('IMAGE')
+        @click.argument('SOLR_CONFIG')
+        @click.argument('GCLOUD_DB_URL')
+        @click.argument('GCLOUD_DATASTORE_URL')
+        @click.argument('STORAGE_PATH')
+        @click.argument('NEW_INSTANCE_ID')
+        def deis_instance_create_from_gcloud_envvars(
+                path_to_instance_env_yaml,
+                image,
+                solr_config,
+                gcloud_db_url,
+                gcloud_datastore_url,
+                storage_path,
+                new_instance_id):
+            """Create and update an instance from existing DB dump stored in gcloud sql format on google cloud storage.
+
+            Example:
+
+                ckan-cloud-operator deis-instance create from-gcloud-envvars "/path/to/configs/my-instance.yaml" "registry.gitlab.com/viderum/cloud-my-instance" "ckan_default" "gs://.." "gs://.." "/path/in/central/google/storage/bucket" "my-new-instance-id"
+            """
+            cls.create(
+                'from-gcloud-envvars',
+                path_to_instance_env_yaml,
+                image,
+                solr_config,
+                gcloud_db_url,
+                gcloud_datastore_url,
+                storage_path,
+                new_instance_id
+            ).update()
+            great_success()
+
+        #### deis-instance ckan
+
+        @command_group.group('ckan')
+        def deis_instance_ckan():
+            """Manage a running CKAN instance"""
+            pass
+
+        @deis_instance_ckan.command('paster')
+        @click.argument('INSTANCE_ID')
+        @click.argument('PASTER_ARGS', nargs=-1)
+        def deis_instance_ckan_paster(instance_id, paster_args):
+            """Run CKAN Paster commands
+
+            Run without PASTER_ARGS to get the available paster commands from the server
+
+            Examples:
+
+              ckan-cloud-operator deis-instance ckan-paster <INSTANCE_ID> sysadmin add admin name=admin email=admin@ckan
+
+              ckan-cloud-operator deis-instance ckan-paster <INSTANCE_ID> search-index rebuild
+            """
+            cls(instance_id).ckan.run('paster', *paster_args)
+
+        @deis_instance_ckan.command('port-forward')
+        @click.argument('INSTANCE_ID')
+        @click.argument('PORT', default='5000')
+        def deis_instance_port_forward(instance_id, port):
+            """Start a port-forward to the CKAN instance pod"""
+            cls(instance_id).ckan.run('port-forward', port)
+
+        @deis_instance_ckan.command('exec')
+        @click.argument('INSTANCE_ID')
+        @click.argument('KUBECTL_EXEC_ARGS', nargs=-1)
+        def deis_instance_ckan_exec(instance_id, kubectl_exec_args):
+            """Run kubectl exec on the first CKAN instance pod"""
+            cls(instance_id).ckan.run('exec', *kubectl_exec_args)
+
+        @deis_instance_ckan.command('logs')
+        @click.argument('INSTANCE_ID')
+        @click.argument('KUBECTL_LOGS_ARGS', nargs=-1)
+        def deis_instance_ckan_logs(instance_id, kubectl_logs_args):
+            """Run kubectl logs on the first CKAN instance pod"""
+            cls(instance_id).ckan.run('logs', *kubectl_logs_args)
 
     def __init__(self, id, values=None, override_spec=None, persist_overrides=False):
         """
@@ -157,14 +326,17 @@ class DeisCkanInstance(object):
         subprocess.call(f'kubectl -n ckan-cloud delete DeisCkanInstance {self.id}', shell=True)
         if has_spec:
             num_exceptions = 0
-            for delete_code in [lambda: DeisCkanInstanceDeployment(self).delete(),
-                                lambda: DeisCkanInstanceEnvvars(self).delete(),
-                                lambda: DeisCkanInstanceRegistry(self).delete(),
-                                lambda: DeisCkanInstanceSolr(self).delete(),
-                                lambda: DeisCkanInstanceStorage(self).delete(),
-                                lambda: DeisCkanInstanceDb(self, 'datastore').delete(),
-                                lambda: DeisCkanInstanceDb(self, 'db').delete(),
-                                lambda: DeisCkanInstanceNamespace(self).delete()]:
+            for delete_code in [
+                lambda: DeisCkanInstanceDeployment(self).delete(),
+                lambda: DeisCkanInstanceEnvvars(self).delete(),
+                lambda: DeisCkanInstanceRegistry(self).delete(),
+                lambda: DeisCkanInstanceSolr(self).delete(),
+                lambda: DeisCkanInstanceStorage(self).delete(),
+                lambda: DeisCkanInstanceDb(self, 'datastore').delete(),
+                lambda: DeisCkanInstanceDb(self, 'db').delete(),
+                lambda: DeisCkanInstanceNamespace(self).delete(),
+                lambda: kubectl.check_call(f'delete --ignore-not-found secret/{self.id}-envvars'),
+            ]:
                 try:
                     delete_code()
                 except Exception as e:
@@ -173,7 +345,7 @@ class DeisCkanInstance(object):
         else:
             num_exceptions = 1
         if num_exceptions != 0 and not force:
-            print('instance was not deleted, run with --force to force deletion with risk of remaining infra')
+            raise Exception('instance was not deleted, run with --force to force deletion with risk of remaining infra')
         else:
             print(f'Removing finalizers from DeisCkanInstance {self.id}')
             subprocess.check_call(
@@ -277,10 +449,13 @@ class DeisCkanInstance(object):
         elif create_type == 'from-gcloud-envvars':
             print(f'Creating Deis CKAN instance {instance_id} from gcloud envvars import')
             instance_env_yaml, image, solr_config, gcloud_db_url, gcloud_datastore_url, storage_path, instance_id = args[1:]
-            subprocess.check_call(
-                f'kubectl -n ckan-cloud create secret generic {instance_id}-envvars --from-file=envvars.yaml={instance_env_yaml}',
-                shell=True
-            )
+            if type(instance_env_yaml) == str:
+                subprocess.check_call(
+                    f'kubectl -n ckan-cloud create secret generic {instance_id}-envvars --from-file=envvars.yaml={instance_env_yaml}',
+                    shell=True
+                )
+            else:
+                kubectl.update_secret(f'{instance_id}-envvars', {'envvars.yaml': yaml.dump(instance_env_yaml, default_flow_style=False)})
             spec = {
                 'ckanPodSpec': {},
                 'ckanContainerSpec': {'image': image},
@@ -302,47 +477,8 @@ class DeisCkanInstance(object):
                 }
             }
         elif create_type == 'from-deis':
-            old_instance_id, path_to_all_instances_env_yamls, path_to_old_cluster_kubeconfig, instsance_id = args[1:]
-            print(f'Creating Deis CKAN instance {instance_id} from old deis instance {old_instance_id}')
-            collection_name = old_instance_id.replace('-', 'dash')
-            output = subprocess.check_output(f'KUBECONFIG={path_to_old_cluster_kubeconfig} '
-                                             f'kubectl -n solr exec zk-0 zkCli.sh '
-                                             f'get /collections/{collection_name} 2>&1', shell=True)
-            solr_config = None
-            for line in output.decode().splitlines():
-                if line.startswith('{"configName":'):
-                    solr_config = json.loads(line)["configName"]
-            assert solr_config, 'failed to get solr config name'
-            ckan_infra = CkanInfra()
-            import_backup = ckan_infra.GCLOUD_SQL_DEIS_IMPORT_BUCKET
-            instance_latest_datestring = None
-            instance_latest_dt = None
-            instance_latest_datastore_datestring = None
-            instance_latest_datastore_dt = None
-            for line in gcloud.check_output(f"ls 'gs://{import_backup}/postgres/????????/*.sql'",
-                                            gsutil=True).decode().splitlines():
-                # gs://viderum-deis-backups/postgres/20190122/nav.20190122.dump.sql
-                datestring, filename = line.split('/')[4:]
-                file_instance = '.'.join(filename.split('.')[:-3])
-                is_datastore = file_instance.endswith('-datastore')
-                file_instance = file_instance.replace('-datastore', '')
-                dt = datetime.datetime.strptime(datestring, '%Y%M%d')
-                if file_instance == old_instance_id:
-                    if is_datastore:
-                        if instance_latest_datastore_dt is None or instance_latest_datastore_dt < dt:
-                            instance_latest_datastore_datestring = datestring
-                            instance_latest_datastore_dt = dt
-                    elif instance_latest_dt is None or instance_latest_dt < dt:
-                        instance_latest_datestring = datestring
-                        instance_latest_dt = dt
-            return cls.create(*['from-gcloud-envvars',
-                                os.path.join(path_to_all_instances_env_yamls, f'{old_instance_id}.yaml'),
-                                f'registry.gitlab.com/viderum/cloud-{old_instance_id}',
-                                solr_config,
-                                f'gs://{import_backup}/postgres/{instance_latest_datestring}/{old_instance_id}.{instance_latest_datestring}.dump.sql',
-                                f'gs://{import_backup}/postgres/{instance_latest_datastore_datestring}/{old_instance_id}.{instance_latest_datastore_datestring}.dump.sql',
-                                f'/ckan/{old_instance_id}',
-                                instance_id])
+            old_site_id, new_instance_id = args[1:]
+            return migrate_from_deis(old_site_id, new_instance_id, cls)
         else:
             raise NotImplementedError(f'invalid create type: {create_type}')
         instance = {

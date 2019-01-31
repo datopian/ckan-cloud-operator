@@ -41,8 +41,10 @@ class DeisCkanInstanceEnvvars(object):
         else:
             raise Exception(f'invalid envvars spec: {spec.envvars}')
         assert envvars['CKAN_SITE_ID'] and envvars['CKAN_SITE_URL'] and envvars['CKAN_SQLALCHEMY_URL']
-        storage_bucket_name, *storage_path = spec.storage['path'].strip('/').split('/')
-        storage_path = '/'.join(storage_path)
+        minio_secret = kubectl.decode_secret(kubectl.get('secret minio-credentials'))
+        storage_path_parts = spec.storage['path'].strip('/').split('/')
+        storage_bucket = storage_path_parts[0]
+        storage_path = '/'.join(storage_path_parts[1:])
         envvars.update(
             CKAN_SQLALCHEMY_URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:5432/{db_name}",
             CKAN___BEAKER__SESSION__URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:5432/{db_name}",
@@ -53,14 +55,15 @@ class DeisCkanInstanceEnvvars(object):
             # CKAN_SOLR_USER=ckan_infra.SOLR_USER,
             # CKAN_SOLR_PASSWORD=ckan_infra.SOLR_PASSWORD,
             CKANEXT__S3FILESTORE__AWS_STORAGE_PATH=storage_path,
-            CKANEXT__S3FILESTORE__AWS_ACCESS_KEY_ID=ckan_infra.GCLOUD_STORAGE_ACCESS_KEY_ID,
-            CKANEXT__S3FILESTORE__AWS_SECRET_ACCESS_KEY=ckan_infra.GCLOUD_STORAGE_SECRET_ACCESS_KEY,
-            CKANEXT__S3FILESTORE__AWS_BUCKET_NAME=storage_bucket_name,
-            CKANEXT__S3FILESTORE__HOST_NAME=f'https://{ckan_infra.GCLOUD_STORAGE_BUCKET}.{ckan_infra.GCLOUD_STORAGE_HOST_NAME}/',
-            CKANEXT__S3FILESTORE__REGION_NAME=ckan_infra.GCLOUD_STORAGE_REGION_NAME,
-            CKANEXT__S3FILESTORE__SIGNATURE_VERSION=ckan_infra.GCLOUD_STORAGE_SIGNATURE_VERSION,
+            CKANEXT__S3FILESTORE__AWS_ACCESS_KEY_ID=minio_secret['MINIO_ACCESS_KEY'],
+            CKANEXT__S3FILESTORE__AWS_SECRET_ACCESS_KEY=minio_secret['MINIO_SECRET_KEY'],
+            CKANEXT__S3FILESTORE__AWS_BUCKET_NAME=storage_bucket,
+            CKANEXT__S3FILESTORE__HOST_NAME=f'https://cc-{ckan_infra.ROUTERS_ENV_ID}-minio.{ckan_infra.ROUTERS_DEFAULT_ROOT_DOMAIN}/',
+            CKANEXT__S3FILESTORE__REGION_NAME='us-east-1',
+            CKANEXT__S3FILESTORE__SIGNATURE_VERSION='s3v4',
             CKAN__DATAPUSHER__URL=datapusher.get_datapusher_url(envvars.get('CKAN__DATAPUSHER__URL')),
         )
+        print(yaml.dump(envvars, default_flow_style=False))
         instance_envvars_secret = {'apiVersion': 'v1',
                                    'kind': 'Secret',
                                    'metadata': {

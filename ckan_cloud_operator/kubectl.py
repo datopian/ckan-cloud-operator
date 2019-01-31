@@ -24,6 +24,12 @@ def get(what, required=True, namespace='ckan-cloud'):
             return None
 
 
+def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cloud'):
+    label_selector = ','.join([f'{k}={v}' for k,v in labels.items()])
+    res = get(f'{resource_kind} -l {label_selector}', required=required, namespace=namespace)
+    return res['items'] if res else None
+
+
 def decode_secret(secret, attr=None):
     if attr:
         return base64.b64decode(secret['data'][attr]).decode()
@@ -31,8 +37,11 @@ def decode_secret(secret, attr=None):
         return {k: base64.b64decode(v).decode() for k, v in secret['data'].items()}
 
 
-def update_secret(name, values, namespace='ckan-cloud'):
+def update_secret(name, values, namespace='ckan-cloud', labels=None):
+    if not labels:
+        labels = {}
     secret = get(f'secret {name}', required=False, namespace=namespace)
+    labels = dict(secret.get('metadata', {}).get('labels', {}), **labels) if secret else labels
     data = secret['data'] if secret else {}
     for k, v in values.items():
         data[k] = base64.b64encode(v.encode()).decode()
@@ -41,7 +50,8 @@ def update_secret(name, values, namespace='ckan-cloud'):
         'kind': 'Secret',
         'metadata': {
             'name': name,
-            'namespace': namespace
+            'namespace': namespace,
+            'labels': labels,
         },
         'type': 'Opaque',
         'data': data
@@ -135,7 +145,7 @@ def install_crd(plural, singular, kind):
         subprocess.run('kubectl create -f -', input=yaml.dump(crd).encode(), shell=True, check=True)
 
 
-def get_resource(api_version, kind, name, labels, namespace='ckan-cloud'):
+def get_resource(api_version, kind, name, labels, namespace='ckan-cloud', **kwargs):
     resource = {
         'apiVersion': api_version,
         'kind': kind,
@@ -146,6 +156,7 @@ def get_resource(api_version, kind, name, labels, namespace='ckan-cloud'):
             'annotations': {}
         },
     }
+    resource.update(**kwargs)
     add_operator_timestamp_annotation(resource['metadata'])
     return resource
 
@@ -217,6 +228,9 @@ class BaseAnnotations(object):
     @property
     def RESOURCE_KIND(self):
         raise NotImplementedError()
+
+    def get_secret_labels(self):
+        return {'ckan-cloud/annotations-secret': self.resource_id}
 
     def __init__(self, resource_id, resource_values=None, override_flags=None, persist_overrides=False):
         """Initializes an annotations object, optionally specifying previously fetched resource values"""
@@ -314,7 +328,8 @@ class BaseAnnotations(object):
             'kind': 'Secret',
             'metadata': {
                 'name': f'{self.resource_kind}-{self.resource_id}-annotations',
-                'namespace': 'ckan-cloud'
+                'namespace': 'ckan-cloud',
+                'labels': self.get_secret_labels()
             },
             'type': 'Opaque',
             'data': secret['data']

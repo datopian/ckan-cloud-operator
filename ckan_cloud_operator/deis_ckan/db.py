@@ -27,12 +27,11 @@ class DeisCkanInstanceDb(object):
             self.instance.annotations.set_flag(skip_permissions_flag)
 
     def delete(self):
-        gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
         db_name = self.db_spec['name']
-        gcloud.check_call(
-            f'-q sql databases delete {db_name} --instance {gcloud_sql_instance_name}',
-            ckan_infra=self.instance.ckan_infra
-        )
+        self._psql(f'DROP DATABASE IF EXISTS "{db_name}";')
+        # TODO: get the ro_user from the instance annotations
+        self._psql(f'DROP ROLE IF EXISTS "{db_name}";')
+        self._psql(f'DROP ROLE IF EXISTS "{db_name}-ro";')
 
     def get(self):
         gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME

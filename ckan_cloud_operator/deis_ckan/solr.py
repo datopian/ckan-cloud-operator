@@ -1,5 +1,8 @@
 import subprocess
 import json
+import yaml
+
+from ckan_cloud_operator import logs
 
 
 class DeisCkanInstanceSolr(object):
@@ -9,7 +12,7 @@ class DeisCkanInstanceSolr(object):
         self.solr_spec = self.instance.spec.solrCloudCollection
 
     def update(self):
-        self.instance.annotations.update_status('solr', 'created', lambda: self._create())
+        self.instance.annotations.update_status('solr', 'created', lambda: self._update(), force_update=True)
 
     def delete(self):
         collection_name = self.solr_spec['name']
@@ -39,16 +42,25 @@ class DeisCkanInstanceSolr(object):
     def is_ready(self):
         return 'error' not in self.get()
 
-    def _create(self):
+    def _update(self):
         collection_name = self.solr_spec['name']
-        if 'configName' in self.solr_spec:
-            config_name = self.solr_spec['configName']
-            print(f'creating solrcloud collection {collection_name} using config {config_name}')
-            http_endpoint = self.instance.ckan_infra.SOLR_HTTP_ENDPOINT
-            replication_factor = self.instance.ckan_infra.SOLR_REPLICATION_FACTOR
-            num_shards = self.instance.ckan_infra.SOLR_NUM_SHARDS
-            subprocess.check_call(
-                f'curl -f "{http_endpoint}/admin/collections?action=CREATE&name={collection_name}&collection.configName={config_name}&replicationFactor={replication_factor}&numShards={num_shards}"',
-                shell=True)
+        http_endpoint = self.instance.ckan_infra.SOLR_HTTP_ENDPOINT
+        returncode, output = subprocess.getstatusoutput(f'curl -s -f "{http_endpoint}/{collection_name}/schema"')
+        schema_name_version = None
+        if returncode == 0:
+            schema = yaml.load(output)
+            schema_name_version = str(schema['schema']['name']) + ' ' + str(schema['schema']['version'])
+        if schema_name_version is not None:
+            logs.info(f'Using existing solr schema {schema_name_version}')
         else:
-            raise NotImplementedError(f'Unsupported solr cloud collection spec: {self.solr_spec}')
+            if 'configName' in self.solr_spec:
+                config_name = self.solr_spec['configName']
+                print(f'creating solrcloud collection {collection_name} using config {config_name}')
+                replication_factor = self.instance.ckan_infra.SOLR_REPLICATION_FACTOR
+                num_shards = self.instance.ckan_infra.SOLR_NUM_SHARDS
+                subprocess.check_call(
+                    f'curl -f "{http_endpoint}/admin/collections?action=CREATE&name={collection_name}&collection.configName={config_name}&replicationFactor={replication_factor}&numShards={num_shards}"',
+                    shell=True
+                )
+            else:
+                raise NotImplementedError(f'Unsupported solr cloud collection spec: {self.solr_spec}')

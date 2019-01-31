@@ -64,6 +64,13 @@ class DeisCkanInstanceDeployment(object):
                     'port': 5000
                 },
                 'timeoutSeconds': 5
+            },
+            lifecycle={
+                'postStart': {
+                    'exec': {
+                        'command': ["sh", "-c", "sleep 60 && pkill -f 'pre'run || true"]
+                    }
+                }
             }
         )
         if 'imageFromGitlab' in ckanContainerSpec:

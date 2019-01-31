@@ -1,39 +1,31 @@
-import sys
-import json
-import yaml
-import traceback
-import subprocess
-import tempfile
-import os
 import click
 import time
-import datetime
-from urllib.parse import urlparse
-from xml.etree import ElementTree
+import tempfile
+import traceback
+import os
+import subprocess
+import yaml
+
 from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
 from ckan_cloud_operator.infra import CkanInfra
-from ckan_cloud_operator import gcloud
-from ckan_cloud_operator import kubectl
-from ckan_cloud_operator.gitlab import CkanGitlab
-import ckan_cloud_operator.routers
+
+import ckan_cloud_operator.routers.cli
 import ckan_cloud_operator.users
-import ckan_cloud_operator.storage
 import ckan_cloud_operator.datapushers
+import ckan_cloud_operator.manager
+from ckan_cloud_operator.gitlab import CkanGitlab
+from ckan_cloud_operator import gcloud
+import ckan_cloud_operator.storage
+from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
 
 
-def great_success():
-    print('Great Success!')
+def great_success(**kwargs):
+    logs.info('Great Success!', **kwargs)
     exit(0)
-
-
-#################################
-####                         ####
-####           main          ####
-####                         ####
-#################################
 
 
 @click.group(context_settings={'max_content_width': CLICK_CLI_MAX_CONTENT_WIDTH})
@@ -42,45 +34,17 @@ def main():
     pass
 
 
-@main.command()
+@main.command('cluster-info')
 @click.option('-f', '--full', is_flag=True)
-def cluster_info(full):
+def __cluster_info(full):
     """Get information about the cluster"""
-    subprocess.check_call('kubectl cluster-info && '
-                          '( kubectl -n ckan-cloud get secret ckan-infra || true ) && '
-                          'kubectl config get-contexts $(kubectl config current-context) && '
-                          'kubectl get nodes', shell=True)
-    if full:
-        infra = CkanInfra()
-        output = gcloud.check_output(f'sql instances describe {infra.GCLOUD_SQL_INSTANCE_NAME} --format=json',
-                                     ckan_infra=infra)
-        data = yaml.load(output)
-        print(yaml.dump({'gcloud_sql': {'connectionName': data['connectionName'],
-                                        'databaseVersion': data['databaseVersion'],
-                                        'gceZone': data['gceZone'],
-                                        'ipAddresses': data['ipAddresses'],
-                                        'name': data['name'],
-                                        'project': data['project'],
-                                        'region': data['region'],
-                                        'selfLink': data['selfLink'],
-                                        'state': data['state']}}))
-        output = subprocess.check_output(f'curl {infra.SOLR_HTTP_ENDPOINT}/admin/collections?action=LIST', shell=True)
-        if output:
-            root = ElementTree.fromstring(output.decode())
-            print('solr-collections:')
-            for e in root.find('arr').getchildren():
-                print(f'- {e.text}')
-        else:
-            raise Exception()
+    ckan_cloud_operator.manager.print_cluster_info(full)
 
 
-@main.command()
-def install_crds():
+@main.command('install-crds')
+def __install_crds():
     """Install ckan-cloud-operator custom resource definitions"""
-    DeisCkanInstance.install_crd()
-    ckan_cloud_operator.routers.install_crds()
-    ckan_cloud_operator.users.install_crds()
-    ckan_cloud_operator.datapushers.install_crds()
+    ckan_cloud_operator.manager.install_crds()
     great_success()
 
 
@@ -97,7 +61,7 @@ def initialize_gitlab(gitlab_project_name, wait_ready):
     ckan_gitlab = CkanGitlab(CkanInfra())
     ckan_gitlab.initialize(gitlab_project_name)
     if wait_ready and not ckan_gitlab.is_ready(gitlab_project_name):
-        print(f'Waiting for GitLab project {gitlab_project_name} to be ready...')
+        logs.info(f'Waiting for GitLab project {gitlab_project_name} to be ready...')
         while not ckan_gitlab.is_ready(gitlab_project_name):
             time.sleep(5)
     great_success()
@@ -126,7 +90,7 @@ def activate_gcloud_auth():
         os.unlink(f.name)
         exit(0)
     else:
-        print('missing gcloud auth details')
+        logs.critical('missing gcloud auth details')
         exit(1)
 
 
@@ -140,86 +104,26 @@ def bash_completion():
 
 
 @main.command()
-def initialize_storage():
-    """Initialize the centralized storage bucket"""
-    ckan_infra = CkanInfra()
-    bucket_name = ckan_infra.GCLOUD_STORAGE_BUCKET
-    project_id = ckan_infra.GCLOUD_AUTH_PROJECT
-    function_name = bucket_name.replace('-', '') + 'permissions'
-    function_js = ckan_cloud_operator.storage.PERMISSIONS_FUNCTION_JS(function_name, project_id, bucket_name)
-    package_json = ckan_cloud_operator.storage.PERMISSIONS_FUNCTION_PACKAGE_JSON
-    print(f'bucket_name = {bucket_name}\nproject_id={project_id}\nfunction_name={function_name}')
-    print(package_json)
-    print(function_js)
-    with tempfile.TemporaryDirectory() as tmpdir:
-        with open(f'{tmpdir}/package.json', 'w') as f:
-            f.write(package_json)
-        with open(f'{tmpdir}/index.js', 'w') as f:
-            f.write(function_js)
-        gcloud.check_call(
-            f'functions deploy {function_name} '
-                               f'--runtime nodejs6 '
-                               f'--trigger-resource {bucket_name} '
-                               f'--trigger-event google.storage.object.finalize '
-                               f'--source {tmpdir} '
-                               f'--retry '
-                               f'--timeout 30s ',
-            ckan_infra=ckan_infra
-        )
+@click.argument('MINIO_ROUTER_NAME')
+@click.argument('DISK_SIZE_GB')
+def initialize_storage(minio_router_name, disk_size_gb):
+    """Initialize the centralized storage"""
+    # ckan_cloud_operator.storage.deploy_gcs_minio_proxy(gcs_minio_proxy_router_name)
+    # ckan_cloud_operator.storage.deploy_storage_permissions_function()
+    ckan_cloud_operator.storage.deploy_minio(minio_router_name, disk_size_gb)
+    great_success()
 
 
-#################################
-####                         ####
-####         users           ####
-####                         ####
-#################################
-
+@main.command()
+def get_storage_credentials():
+    print(yaml.dump(kubectl.decode_secret(kubectl.get('secret minio-credentials')), default_flow_style=False))
 
 @main.group()
 def users():
     """Manage ckan-cloud-operator users"""
     pass
 
-
-@users.command('create')
-@click.argument('NAME')
-@click.argument('ROLE')
-def users_create(name, role):
-    ckan_cloud_operator.users.create(name, role)
-    ckan_cloud_operator.users.update(name)
-    great_success()
-
-
-@users.command('update')
-@click.argument('NAME')
-def users_update(name):
-    ckan_cloud_operator.users.update(name)
-    great_success()
-
-
-@users.command('get')
-@click.argument('NAME')
-def users_get(name):
-    print(yaml.dump(ckan_cloud_operator.users.get(name), default_flow_style=False))
-
-
-@users.command('delete')
-@click.argument('NAME')
-def users_delete(name):
-    ckan_cloud_operator.users.delete(name)
-
-
-@users.command('list')
-@click.argument('ARGS', nargs=-1)
-def users_list(args):
-    kubectl.call('get CkanCloudUser ' + ' '.join(args))
-
-
-#################################
-####                         ####
-####       ckan-infra        ####
-####                         ####
-#################################
+ckan_cloud_operator.users.add_cli_commands(click, users, great_success)
 
 
 @main.group()
@@ -228,133 +132,7 @@ def ckan_infra():
     pass
 
 
-@ckan_infra.command('clone')
-def ckan_infra_clone():
-    """Clone the infrastructure secret from an existing secret piped on stdin
-
-    Example: KUBECONFIG=/other/.kube-config kubectl -n ckan-cloud get secret ckan-infra -o yaml | ckan-cloud-operator ckan-infra clone
-    """
-    CkanInfra.clone(yaml.load(sys.stdin.read()))
-    great_success()
-
-
-@ckan_infra.group('set')
-def ckan_infra_set():
-    """Set or overwrite infrastructure secrets"""
-    pass
-
-
-@ckan_infra_set.command('gcloud')
-@click.argument('GCLOUD_SERVICE_ACCOUNT_JSON_FILE')
-@click.argument('GCLOUD_SERVICE_ACCOUNT_EMAIL')
-@click.argument('GCLOUD_AUTH_PROJECT')
-def ckan_infra_set_gcloud(*args):
-    """Sets the Google cloud authentication details, should run locally or mount the json file into the container"""
-    CkanInfra.set('gcloud', *args)
-    great_success()
-
-
-@ckan_infra_set.command('docker-registry')
-@click.argument('DOCKER_REGISTRY_SERVER')
-@click.argument('DOCKER_REGISTRY_USERNAME')
-@click.argument('DOCKER_REGISTRY_PASSWORD')
-@click.argument('DOCKER_REGISTRY_EMAIL')
-def ckan_infra_set_docker_registry(*args):
-    """Sets the Docker registry details for getting private images for CKAN pods in the cluster"""
-    CkanInfra.set('docker-registry', *args)
-    great_success()
-
-
-@ckan_infra.command('get')
-@click.argument('CKAN_INFRA_KEY', required=False)
-def ckan_infra_get(ckan_infra_key):
-    """Get the ckan-infra secrets"""
-    if ckan_infra_key:
-        print(getattr(CkanInfra(), ckan_infra_key))
-    else:
-        print(yaml.dump(CkanInfra.get(), default_flow_style=False))
-
-
-@ckan_infra.command('admin-db-connection-string')
-def ckan_infra_admin_db_connection_string():
-    """Get a DB connection string for administration
-
-    Example: psql -d $(ckan-cloud-operator admin-db-connection-string)
-    """
-    infra = CkanInfra()
-    postgres_user = infra.POSTGRES_USER
-    postgres_password = infra.POSTGRES_PASSWORD
-    if os.environ.get('CKAN_CLOUD_OPERATOR_USE_PROXY') in ['yes', '1', 'true']:
-        postgres_host = '127.0.0.1'
-    else:
-        postgres_host = infra.POSTGRES_HOST
-    postgres_port = '5432'
-    print(f'postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}')
-
-
-@ckan_infra.command('cloudsql-proxy')
-def ckan_infra_cloudsql_proxy():
-    """Starts a local proxy to the cloud SQL instance"""
-    print("Keep this running in the background")
-    print("Set the following environment variable to cause ckan-cloud-operator to connect via the proxy")
-    print("export CKAN_CLOUD_OPERATOR_USE_PROXY=yes")
-    subprocess.check_call(f'kubectl -n ckan-cloud port-forward deployment/cloudsql-proxy 5432', shell=True)
-
-
-@ckan_infra.command('deploy-solr-proxy')
-def deploy_ckan_infra_solr_proxy():
-    """Deploys a proxy inside the cluster which allows to access the centralized solr without authentication"""
-    labels = {'app': 'ckan-cloud-solrcloud-proxy'}
-    infra = CkanInfra()
-    solr_url = urlparse(infra.SOLR_HTTP_ENDPOINT)
-    scheme = solr_url.scheme
-    hostname = solr_url.hostname
-    port = solr_url.port
-    if not port:
-        port = '443' if scheme == 'https' else '8983'
-    kubectl.update_secret('solrcloud-proxy', {
-        'SOLR_URL': f'{scheme}://{hostname}:{port}',
-        'SOLR_USER': infra.SOLR_USER,
-        'SOLR_PASSWORD': infra.SOLR_PASSWORD
-    })
-    kubectl.apply(kubectl.get_deployment('solrcloud-proxy', labels, {
-        'replicas': 1,
-        'revisionHistoryLimit': 10,
-        'strategy': {'type': 'RollingUpdate',},
-        'template': {
-            'metadata': {
-                'labels': labels,
-                'annotations': {
-                    'ckan-cloud/operator-timestamp': str(datetime.datetime.now())
-                }
-            },
-            'spec': {
-                'containers': [
-                    {
-                        'name': 'solrcloud-proxy',
-                        'image': 'viderum/ckan-cloud-operator-solrcloud-proxy',
-                        'envFrom': [{'secretRef': {'name': 'solrcloud-proxy'}}],
-                        'ports': [{'containerPort': 8983}],
-                    }
-                ]
-            }
-        }
-    }))
-    service = kubectl.get_resource('v1', 'Service','solrcloud-proxy', labels)
-    service['spec'] = {
-        'ports': [
-            {'name': '8983', 'port': 8983}
-        ],
-        'selector': labels
-    }
-    kubectl.apply(service)
-
-
-#################################
-####                         ####
-####     deis-instance       ####
-####                         ####
-#################################
+CkanInfra.add_cli_commands(click, ckan_infra, great_success)
 
 
 @main.group()
@@ -363,198 +141,7 @@ def deis_instance():
     pass
 
 
-@deis_instance.command('list')
-@click.option('-f', '--full', is_flag=True)
-def deis_instance_list(full):
-    """List the Deis instances"""
-    DeisCkanInstance.list(full)
-
-
-@deis_instance.command('get')
-@click.argument('INSTANCE_ID')
-@click.argument('ATTR', required=False)
-def deis_instance_get(instance_id, attr):
-    """Get detailed information about an instance, optionally returning only a single get attribute
-
-    Example: ckan-cloud-operator get <INSTANCE_ID> deployment
-    """
-    print(yaml.dump(DeisCkanInstance(instance_id).get(attr), default_flow_style=False))
-
-
-@deis_instance.command('edit')
-@click.argument('INSTANCE_ID')
-@click.argument('EDITOR', default='nano')
-def deis_instance_edit(instance_id, editor):
-    """Launch an editor to modify and update an instance"""
-    subprocess.call(f'EDITOR={editor} kubectl -n ckan-cloud edit DeisCkanInstance/{instance_id}', shell=True)
-    DeisCkanInstance(instance_id).update()
-    great_success()
-
-
-@deis_instance.command('update')
-@click.argument('INSTANCE_ID')
-@click.argument('OVERRIDE_SPEC_JSON', required=False)
-@click.option('--persist-overrides', is_flag=True)
-@click.option('--wait-ready', is_flag=True)
-def deis_instance_update(instance_id, override_spec_json, persist_overrides, wait_ready):
-    """Update an instance to the latest resource spec, optionally applying the given json override to the resource spec
-
-    Examples:
-
-    ckan-cloud-operator update <INSTANCE_ID> '{"envvars":{"CKAN_SITE_URL":"http://localhost:5000"}}' --wait-ready
-
-    ckan-cloud-operator update <INSTANCE_ID> '{"flags":{"skipDbPermissions":false}}' --persist-overrides
-    """
-    override_spec = json.loads(override_spec_json) if override_spec_json else None
-    DeisCkanInstance(instance_id, override_spec=override_spec, persist_overrides=persist_overrides).update(wait_ready=wait_ready)
-    great_success()
-
-
-@deis_instance.command('delete')
-@click.argument('INSTANCE_ID', nargs=-1)
-@click.option('--force', is_flag=True)
-def deis_instance_delete(instance_id, force):
-    """Permanently delete the instances and all related infrastructure"""
-    for id in instance_id:
-        try:
-            DeisCkanInstance(id).delete(force)
-        except Exception:
-            traceback.print_exc()
-    great_success()
-
-
-#### deis-instance create
-
-
-@deis_instance.group('create')
-def deis_instance_create():
-    """Create and update an instance"""
-    pass
-
-
-@deis_instance_create.command('from-gitlab')
-@click.argument('GITLAB_REPO_NAME')
-@click.argument('SOLR_CONFIG_NAME')
-@click.argument('NEW_INSTANCE_ID')
-def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_instance_id):
-    """Create and update a new instance from a GitLab repo containing Dockerfile and .env
-
-    Example: ckan-cloud-operator deis-isntance create --from-gitlab viderum/cloud-demo2 ckan_27_default <NEW_INSTANCE_ID>
-    """
-    DeisCkanInstance.create('from-gitlab', gitlab_repo_name, solr_config_name, new_instance_id).update()
-    great_success()
-
-
-@deis_instance_create.command('from-gcloud-envvars')
-@click.argument('PATH_TO_INSTANCE_ENV_YAML')
-@click.argument('IMAGE')
-@click.argument('SOLR_CONFIG')
-@click.argument('GCLOUD_DB_URL')
-@click.argument('GCLOUD_DATASTORE_URL')
-@click.argument('STORAGE_PATH')
-@click.argument('NEW_INSTANCE_ID')
-def deis_instance_create_from_gcloud_envvars(
-                                        path_to_instance_env_yaml,
-                                        image,
-                                        solr_config,
-                                        gcloud_db_url,
-                                        gcloud_datastore_url,
-                                        storage_path,
-                                        new_instance_id):
-    """Create and update an instance from existing DB dump stored in gcloud sql format on google cloud storage.
-
-    Example:
-
-        ckan-cloud-operator deis-instance create from-gcloud-envvars "/path/to/configs/my-instance.yaml" "registry.gitlab.com/viderum/cloud-my-instance" "ckan_default" "gs://.." "gs://.." "/path/in/central/google/storage/bucket" "my-new-instance-id"
-    """
-    DeisCkanInstance.create(
-        'from-gcloud-envvars',
-        path_to_instance_env_yaml,
-        image,
-        solr_config,
-        gcloud_db_url,
-        gcloud_datastore_url,
-        storage_path,
-        new_instance_id
-    ).update()
-    great_success()
-
-
-@deis_instance_create.command('from-deis')
-@click.argument('OLD_INSTANCE_ID')
-@click.argument('PATH_TO_ALL_INSTANCES_ENV_YAMLS')
-@click.argument('PATH_TO_OLD_CLUSTER_KUBECONFIG')
-@click.argument('NEW_INSTANCE_ID')
-def deis_instance_create_from_deis(old_instance_id,
-                                   path_to_all_instances_env_yamls,
-                                   path_to_old_cluster_kubeconfig,
-                                   new_instance_id):
-    """Create and update an instance from an old deis instance"""
-    DeisCkanInstance.create(
-        'from-deis',
-        old_instance_id,
-        path_to_all_instances_env_yamls,
-        path_to_old_cluster_kubeconfig,
-        new_instance_id
-    ).update()
-    great_success()
-
-
-#### deis-instance ckan
-
-
-@deis_instance.group('ckan')
-def deis_instance_ckan():
-    """Manage a running CKAN instance"""
-    pass
-
-
-@deis_instance_ckan.command('paster')
-@click.argument('INSTANCE_ID')
-@click.argument('PASTER_ARGS', nargs=-1)
-def deis_instance_ckan_paster(instance_id, paster_args):
-    """Run CKAN Paster commands
-
-    Run without PASTER_ARGS to get the available paster commands from the server
-
-    Examples:
-
-      ckan-cloud-operator deis-instance ckan-paster <INSTANCE_ID> sysadmin add admin name=admin email=admin@ckan
-
-      ckan-cloud-operator deis-instance ckan-paster <INSTANCE_ID> search-index rebuild
-    """
-    DeisCkanInstance(instance_id).ckan.run('paster', *paster_args)
-
-
-@deis_instance_ckan.command('port-forward')
-@click.argument('INSTANCE_ID')
-@click.argument('PORT', default='5000')
-def deis_instance_port_forward(instance_id, port):
-    """Start a port-forward to the CKAN instance pod"""
-    DeisCkanInstance(instance_id).ckan.run('port-forward', port)
-
-
-@deis_instance_ckan.command('exec')
-@click.argument('INSTANCE_ID')
-@click.argument('KUBECTL_EXEC_ARGS', nargs=-1)
-def deis_instance_ckan_exec(instance_id, kubectl_exec_args):
-    """Run kubectl exec on the first CKAN instance pod"""
-    DeisCkanInstance(instance_id).ckan.run('exec', *kubectl_exec_args)
-
-
-@deis_instance_ckan.command('logs')
-@click.argument('INSTANCE_ID')
-@click.argument('KUBECTL_LOGS_ARGS', nargs=-1)
-def deis_instance_ckan_logs(instance_id, kubectl_logs_args):
-    """Run kubectl logs on the first CKAN instance pod"""
-    DeisCkanInstance(instance_id).ckan.run('logs', *kubectl_logs_args)
-
-
-#################################
-####                         ####
-####       routers           ####
-####                         ####
-#################################
+DeisCkanInstance.add_cli_commands(click, deis_instance, great_success)
 
 
 @main.group()
@@ -563,137 +150,7 @@ def routers():
     pass
 
 
-@routers.command('create')
-@click.argument('ROUTER_NAME')
-@click.argument('ROUTER_TYPE', default='traefik')
-def routers_create(router_name, router_type):
-    """Create a router, uses `traefik` router type by default"""
-    ckan_cloud_operator.routers.create(router_name, router_type)
-    great_success()
-
-
-@routers.command('update')
-@click.argument('ROUTER_NAME')
-@click.option('--wait-ready', is_flag=True)
-def routers_update(router_name, wait_ready):
-    """Update a router to latest resource spec"""
-    ckan_cloud_operator.routers.update(router_name, wait_ready)
-    great_success()
-
-
-@routers.command('list')
-@click.option('-f', '--full', is_flag=True)
-@click.option('-v', '--values-only', is_flag=True)
-def routers_list(**kwargs):
-    """List the router resources"""
-    ckan_cloud_operator.routers.list(**kwargs)
-
-
-@routers.command('kubectl-get-all')
-@click.argument('ROUTER_TYPE', default='traefik')
-def routers_kubectl_get_all(router_type):
-    assert router_type in ['traefik']
-    subprocess.check_call(f'kubectl -n ckan-cloud get all -l ckan-cloud/router-type={router_type}',
-                          shell=True)
-
-@routers.group('traefik')
-def routers_traefik():
-    """Manage traefik routers"""
-    pass
-
-@routers_traefik.command('enable-letsencrypt-cloudflare')
-@click.argument('TRAEFIK_ROUTER_NAME')
-@click.argument('EMAIL')
-@click.argument('API_KEY')
-@click.option('--wait-ready', is_flag=True)
-def routers_traefik_enable_letsencrypt_cloudflare(traefik_router_name, email, api_key, wait_ready):
-    ckan_cloud_operator.routers.traefik_enable_letsencrypt_cloudflare(
-        traefik_router_name,
-        email,
-        api_key
-    )
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
-    great_success()
-
-@routers_traefik.command('set-default-root-domain')
-@click.argument('TRAEFIK_ROUTER_NAME')
-@click.argument('DEFAULT_ROOT_DOMAIN')
-@click.option('--wait-ready', is_flag=True)
-def routers_traefik_set_default_root_domain(traefik_router_name, default_root_domain, wait_ready):
-    ckan_cloud_operator.routers.traefik_set_default_root_domain(traefik_router_name, default_root_domain)
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
-    great_success()
-
-@routers_traefik.command('set-deis-instance-subdomain-route')
-@click.argument('TRAEFIK_ROUTER_NAME')
-@click.argument('DEIS_INSTANCE_ID')
-@click.argument('ROOT_DOMAIN')
-@click.argument('SUB_DOMAIN')
-@click.argument('ROUTE_NAME')
-@click.option('--wait-ready', is_flag=True)
-def routers_traefik_set_deis_instance_route(traefik_router_name, deis_instance_id, root_domain,
-                                            sub_domain, route_name, wait_ready):
-    deis_instance = DeisCkanInstance(deis_instance_id)
-    ckan_cloud_operator.routers.traefik_set_deis_instance_subdomain_route(
-        traefik_router_name,
-        deis_instance,
-        root_domain,
-        sub_domain,
-        route_name
-    )
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
-    great_success()
-
-@routers_traefik.command('set-deis-instance-default-subdomain-route')
-@click.argument('TRAEFIK_ROUTER_NAME')
-@click.argument('DEIS_INSTANCE_ID')
-@click.option('--wait-ready', is_flag=True)
-def routers_traefik_set_deis_instance_default_subdomain_route(traefik_router_name, deis_instance_id, wait_ready):
-    deis_instance = DeisCkanInstance(deis_instance_id)
-    ckan_cloud_operator.routers.traefik_set_instance_default_subdomain_route(
-        traefik_router_name,
-        deis_instance
-    )
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
-    great_success()
-
-@routers_traefik.command('delete')
-@click.argument('TRAEFIK_ROUTER_NAME')
-def routers_traefik_delete(traefik_router_name):
-    ckan_cloud_operator.routers.traefik_delete(traefik_router_name)
-
-
-@routers_traefik.command('set-datapusher-subdomain-route')
-@click.argument('TRAEFIK_ROUTER_NAME')
-@click.argument('DATAPUSHER_NAME')
-@click.argument('ROOT_DOMAIN')
-@click.argument('SUB_DOMAIN')
-@click.argument('ROUTE_NAME')
-@click.option('--wait-ready', is_flag=True)
-def routers_traefik_set_datapushers_subdomain_route(traefik_router_name, datapusher_name, root_domain,
-                                                    sub_domain, route_name, wait_ready):
-    ckan_cloud_operator.routers.traefik_set_datapusher_subdomain_route(
-        traefik_router_name,
-        datapusher_name,
-        root_domain,
-        sub_domain,
-        route_name
-    )
-    ckan_cloud_operator.routers.update(traefik_router_name, wait_ready)
-    great_success()
-
-
-@routers.command('get')
-@click.argument('ROUTER_NAME')
-def get(router_name):
-    print(yaml.dump(ckan_cloud_operator.routers.get(router_name), default_flow_style=False))
-
-
-#################################
-####                         ####
-####      datapushers        ####
-####                         ####
-#################################
+ckan_cloud_operator.routers.cli.add_cli_commands(click, routers, great_success)
 
 
 @main.group()
@@ -702,42 +159,4 @@ def datapushers():
     pass
 
 
-@datapushers.command('create')
-@click.argument('DATAPUSHER_NAME')
-@click.argument('DOCKER_IMAGE')
-@click.argument('PATH_TO_CONFIG_YAML')
-def datapushers_create(datapusher_name, docker_image, path_to_config_yaml):
-    """Create and update a DataPusher deployment
-
-    Example:
-
-        ckan-cloud-operator datapushers create datapusher-1 registry.gitlab.com/viderum/docker-datapusher:cloud-datapusher-1-v9 /path/to/datapusher-1.yaml
-    """
-    ckan_cloud_operator.datapushers.create(datapusher_name, docker_image, path_to_config_yaml)
-    ckan_cloud_operator.datapushers.update(datapusher_name)
-    great_success()
-
-
-@datapushers.command('update')
-@click.argument('DATAPUSHER_NAME')
-def datapushers_update(datapusher_name):
-    ckan_cloud_operator.datapushers.update(datapusher_name)
-    great_success()
-
-
-@datapushers.command('list')
-@click.option('--full', is_flag=True)
-def datapushers_list(full):
-    print(yaml.dump(ckan_cloud_operator.datapushers.list(full=full), default_flow_style=False))
-
-
-@datapushers.command('get')
-@click.argument('DATAPUSHER_NAME')
-def datapushers_get(datapusher_name):
-    print(yaml.dump(ckan_cloud_operator.datapushers.get(datapusher_name), default_flow_style=False))
-
-@datapushers.command('delete')
-@click.argument('DATAPUSHER_NAME')
-def datapushers_delete(datapusher_name):
-    ckan_cloud_operator.datapushers.delete(datapusher_name)
-    great_success()
+ckan_cloud_operator.datapushers.add_cli_commands(click, datapushers, great_success)
