@@ -3,6 +3,46 @@ from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.infra import CkanInfra
 
 
+def add_cli_commands(click, command_group, great_success):
+
+    @command_group.command('create')
+    @click.argument('DATAPUSHER_NAME')
+    @click.argument('DOCKER_IMAGE')
+    @click.argument('PATH_TO_CONFIG_YAML')
+    def datapushers_create(datapusher_name, docker_image, path_to_config_yaml):
+        """Create and update a DataPusher deployment
+
+        Example:
+
+            ckan-cloud-operator datapushers create datapusher-1 registry.gitlab.com/viderum/docker-datapusher:cloud-datapusher-1-v9 /path/to/datapusher-1.yaml
+        """
+        create(datapusher_name, docker_image, path_to_config_yaml)
+        update(datapusher_name)
+        great_success()
+
+    @command_group.command('update')
+    @click.argument('DATAPUSHER_NAME')
+    def datapushers_update(datapusher_name):
+        update(datapusher_name)
+        great_success()
+
+    @command_group.command('list')
+    @click.option('--full', is_flag=True)
+    def datapushers_list(full):
+        print(yaml.dump(list(full=full), default_flow_style=False))
+
+    @command_group.command('get')
+    @click.argument('DATAPUSHER_NAME')
+    def datapushers_get(datapusher_name):
+        print(yaml.dump(get(datapusher_name), default_flow_style=False))
+
+    @command_group.command('delete')
+    @click.argument('DATAPUSHER_NAME')
+    def datapushers_delete(datapusher_name):
+        delete(datapusher_name)
+        great_success()
+
+
 def install_crds():
     """Ensures installaion of the datapusher custom resource definitions on the cluster"""
     kubectl.install_crd('ckanclouddatapushers', 'ckanclouddatapusher', 'CkanCloudDatapusher')
@@ -46,7 +86,10 @@ def update_service(name, labels):
         'ports': [
             {'name': '8000', 'port': 8000}
         ],
-        'selector': labels
+        'selector': {
+            'ckan-cloud/datapusher-name': name,
+            'app': 'datapusher',
+        }
     }
     kubectl.apply(service)
 
@@ -107,7 +150,7 @@ def _get_deployment_spec(labels, spec):
         'revisionHistoryLimit': 10,
         'template': {
             'metadata': {
-                'labels': labels
+                'labels': dict(labels, app='datapusher')
             },
             'spec': {
                 'imagePullSecrets': [

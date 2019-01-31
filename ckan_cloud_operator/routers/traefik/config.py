@@ -43,7 +43,7 @@ def _add_letsencrypt_cloudflare(config, letsencrypt_cloudflare_email, domains):
 def _add_route(config, domains, route, enable_ssl_redirect):
     route_name = routes_manager.get_name(route)
     backend_url = routes_manager.get_backend_url(route)
-    frontend_host = routes_manager.get_frontend_host(route)
+    frontend_hostname = routes_manager.get_frontend_hostname(route)
     root_domain, sub_domain = routes_manager.get_domain_parts(route)
     domains.setdefault(root_domain, []).append(sub_domain)
     config['backends'][route_name] = {
@@ -61,18 +61,17 @@ def _add_route(config, domains, route, enable_ssl_redirect):
         },
         'routes': {
             'route1': {
-                'rule': f'Host:{frontend_host}'
+                'rule': f'Host:{frontend_hostname}'
             }
         }
     }
 
 
-def get(annotations, routes):
+def get(routes, letsencrypt_cloudflare_email):
     config = _get_base_config()
-    letsencrypt_cloudflare_enabled = bool(annotations.get_flag('letsencryptCloudflareEnabled'))
     domains = {}
     for route in routes:
-        _add_route(config, domains, route, letsencrypt_cloudflare_enabled)
-    if letsencrypt_cloudflare_enabled:
-        _add_letsencrypt_cloudflare(config, annotations.get_secret('LETSENCRYPT_CLOUDFLARE_EMAIL'), domains)
+        _add_route(config, domains, route, bool(letsencrypt_cloudflare_email))
+    if letsencrypt_cloudflare_email:
+        _add_letsencrypt_cloudflare(config, letsencrypt_cloudflare_email, domains)
     return config

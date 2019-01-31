@@ -11,6 +11,39 @@ ROLES = {
 }
 
 
+
+def add_cli_commands(click, users_group, great_success):
+
+    @users_group.command('create')
+    @click.argument('NAME')
+    @click.argument('ROLE')
+    def __users_create(name, role):
+        create(name, role)
+        update(name)
+        great_success()
+
+    @users_group.command('update')
+    @click.argument('NAME')
+    def __users_update(name):
+        update(name)
+        great_success()
+
+    @users_group.command('get')
+    @click.argument('NAME')
+    def __users_get(name):
+        print(yaml.dump(get(name), default_flow_style=False))
+
+    @users_group.command('delete')
+    @click.argument('NAME')
+    def __users_delete(name):
+        delete(name)
+
+    @users_group.command('list')
+    @click.argument('ARGS', nargs=-1)
+    def __users_list(args):
+        kubectl.call('get CkanCloudUser ' + ' '.join(args))
+
+
 def create(name, role):
     print(f'Creating CkanCloudUser {name} (role={role})')
     assert role in ROLES

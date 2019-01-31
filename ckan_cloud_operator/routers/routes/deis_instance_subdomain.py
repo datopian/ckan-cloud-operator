@@ -1,24 +1,20 @@
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator.infra import CkanInfra
 
 
-def _init_route(route):
-    spec = route['spec']
-    assert spec['type'] == 'deis-instance-subdomain'
-    name = route['metadata']['name']
-    return name, spec
+from ckan_cloud_operator.routers.routes.backend_url_subdomain import (
+    get_frontend_hostname,
+    get_domain_parts,
+    get_default_root_domain,
+    get_route,
+    _init_route
+)
 
 
 def get_backend_url(route):
     name, spec = _init_route(route)
     deis_instance_id = spec['deis-instance-id']
     return f'http://{name}.{deis_instance_id}:5000'
-
-
-def get_frontend_host(route):
-    _, spec = _init_route(route)
-    root_domain = spec['root-domain']
-    sub_domain = spec['sub-domain']
-    return f'Host:{sub_domain}.{root_domain}'
 
 
 def pre_deployment_hook(route, labels):
@@ -36,8 +32,3 @@ def pre_deployment_hook(route, labels):
             }
         }
         kubectl.apply(route_service)
-
-
-def get_domain_parts(route):
-    _, spec = _init_route(route)
-    return spec['root-domain'], spec['sub-domain']

@@ -152,21 +152,24 @@ cd /export &&\
 gsutil -m rsync -d -R ./ gs://ckan-cloud-staging-storage/
 ```
 
-## Initialize the gitlab repo
-
-Enable container registry for the repo, using the gitlab UI:
-
-project settings > permissions > enable registry
-
-Initialize the CI
+## Initialize the Minio storage proxy
 
 ```
-ckan-cloud-operator initialize-gitlab <REPO_NAME>
+ckan-cloud-operator initialize-storage
 ```
 
-Follow the gitlab build to get the Docker image
+To debug minio and perform operations - start minio client shell:
 
-Run the following to ensure gitlab is initialized on all repos
+```
+docker run -it --entrypoint=/bin/sh minio/mc
+```
+
+Run the following inside the minio client shell to setup the relevant hosts
+
+```
+mc config host add prod https://cc-p-minio.ckan.io MINIO_ACCESS_KEY MINIO_SECRET_KEY
+mc config host add deis https://minio.l3.ckan.io MINIO_ACCESS_KEY MINIO_SECRET_KEY
+```
 
 
 
@@ -180,6 +183,15 @@ ssh to one of the old cluster servers, tag and push the image to `registry.gitla
 
 Use the image to create the DataPusher using ckan-cloud-operator datapushers create command
 
-## create an instance using ckan-cloud-operator
+## migrate the instance
 
-Use [ckan-cloud-operator](https://github.com/ViderumGlobal/ckan-cloud-operator) to create an instance using deis-instance create from-gcloud-envvars command
+Assuming:
+
+* you used previous stesp to prepare the import data for all instances
+* ckan-cloud-operator is configured with required secrets to support the migration
+
+you can run the following to migrate an instance:
+
+```
+ckan-cloud-operator deis-instance create from-deis OLD_SITE_ID NEW_INSTANCE_ID
+```

@@ -35,3 +35,7 @@ class CkanRoutersAnnotations(kubectl.BaseAnnotations):
     @property
     def RESOURCE_KIND(self):
         return 'CkanCloudRouter'
+
+    def get_secret_labels(self):
+        return {'ckan-cloud/annotations-secret': self.resource_id,
+                'ckan-cloud/router-name': self.resource_id}

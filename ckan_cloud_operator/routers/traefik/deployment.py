@@ -1,9 +1,11 @@
 import toml
 import time
+
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.routers.traefik import config as traefik_router_config
 from ckan_cloud_operator.routers.routes import manager as routes_manager
 from ckan_cloud_operator import cloudflare
+from ckan_cloud_operator.infra import CkanInfra
 
 
 def _get_deployment_spec(router_name, labels, annotations):
@@ -37,10 +39,13 @@ def _get_deployment_spec(router_name, labels, annotations):
     if annotations.get_flag('letsencryptCloudflareEnabled'):
         container = deployment_spec['template']['spec']['containers'][0]
         container['ports'].append({'containerPort': 443})
-        container['env'] = [
-            {'name': 'CLOUDFLARE_EMAIL', 'value': annotations.get_secret('LETSENCRYPT_CLOUDFLARE_EMAIL')},
-            annotations.get_pod_env_spec_from_secret('CLOUDFLARE_API_KEY', 'LETSENCRYPT_CLOUDFLARE_API_KEY')
-        ]
+        cloudflare_api_key, cloudflare_email = get_cloudflare_credentials(annotations, CkanInfra())
+        secret_name = f'ckancloudrouter-{router_name}-cloudflare'
+        kubectl.update_secret(secret_name, {
+            'CLOUDFLARE_EMAIL': cloudflare_email,
+            'CLOUDFLARE_API_KEY': cloudflare_api_key,
+        }, labels=labels)
+        container['envFrom'] = [{'secretRef': {'name': secret_name}}]
     return deployment_spec
 
 
@@ -52,8 +57,9 @@ def _update(router_name, ckan_infra, spec, annotations, routes):
         'ckan-cloud/router-name': router_name,
         'ckan-cloud/router-type': router_type,
     }
+    cloudflare_auth_key, cloudflare_email = get_cloudflare_credentials(annotations, ckan_infra)
     kubectl.apply(kubectl.get_configmap(resource_name, labels, {
-        'traefik.toml': toml.dumps(traefik_router_config.get(annotations, routes))
+        'traefik.toml': toml.dumps(traefik_router_config.get(routes, cloudflare_email))
     }))
     kubectl.apply(kubectl.get_persistent_volume_claim(resource_name, labels, {
         'storageClassName': storage_class_name,
@@ -90,40 +96,52 @@ def _update(router_name, ckan_infra, spec, annotations, routes):
         if load_balancer_ip:
             break
     print(f'load balancer ip: {load_balancer_ip}')
-    cloudflare_auth_key = annotations.get_secret('LETSENCRYPT_CLOUDFLARE_API_KEY')
-    cloudflare_auth_email = annotations.get_secret('LETSENCRYPT_CLOUDFLARE_EMAIL')
     for root_domain, sub_domains in domains.items():
         for sub_domain in sub_domains:
-            cloudflare.update_a_record(cloudflare_auth_email, cloudflare_auth_key, root_domain,
+            cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, root_domain,
                                        f'{sub_domain}.{root_domain}', load_balancer_ip)
     kubectl.apply(kubectl.get_deployment(resource_name, labels,
                                          _get_deployment_spec(router_name, labels, annotations)))
 
 
-def update(router_name, wait_ready, ckan_infra, spec, annotations, routes):
+def get_cloudflare_credentials(annotations, ckan_infra):
+    cloudflare_auth_key = annotations.get_secret('LETSENCRYPT_CLOUDFLARE_API_KEY')
+    cloudflare_email = annotations.get_secret('LETSENCRYPT_CLOUDFLARE_EMAIL')
+    if not cloudflare_auth_key or cloudflare_auth_key == 'default':
+        cloudflare_auth_key = ckan_infra.ROUTERS_DEFAULT_CLOUDFLARE_AUTH_KEY
+        assert cloudflare_auth_key, 'missing ckan-infra value for ROUTERS_DEFAULT_CLOUDFLARE_AUTH_KEY'
+    if not cloudflare_email or cloudflare_email == 'default':
+        cloudflare_email = ckan_infra.ROUTERS_DEFAULT_CLOUDFLARE_EMAIL
+        assert cloudflare_email, 'missing ckan-infra value for ROUTERS_DEFAULT_CLOUDFLARE_EMAIL'
+    return cloudflare_auth_key, cloudflare_email
+
+
+def update(router_name, wait_ready, spec, annotations, routes):
+    ckan_infra = CkanInfra()
     old_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
     old_generation = old_deployment.get('metadata', {}).get('generation') if old_deployment else None
-    if old_generation:
-        expected_new_generation = old_generation + 1
+    expected_new_generation = old_generation + 1 if old_generation else None
+    if expected_new_generation:
+        print(f'old deployment generation: {old_generation}')
     else:
-        expected_new_generation = 1
-    print(f'old deployment generation: {old_generation}')
+        print('Creating new deployment')
     annotations.update_status(
         'router', 'created',
         lambda: _update(router_name, ckan_infra, spec, annotations, routes),
         force_update=True
     )
-    while True:
-        time.sleep(.2)
-        new_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
-        if not new_deployment: continue
-        new_generation = new_deployment.get('metadata', {}).get('generation')
-        if not new_generation: continue
-        if new_generation == old_generation: continue
-        if new_generation != expected_new_generation:
-            raise Exception(f'Invalid generation: {new_generation} (expected: {expected_new_generation}')
-        print(f'new deployment generation: {new_generation}')
-        break
+    if expected_new_generation:
+        while True:
+            time.sleep(.2)
+            new_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
+            if not new_deployment: continue
+            new_generation = new_deployment.get('metadata', {}).get('generation')
+            if not new_generation: continue
+            if new_generation == old_generation: continue
+            if new_generation != expected_new_generation:
+                raise Exception(f'Invalid generation: {new_generation} (expected: {expected_new_generation})')
+            print(f'new deployment generation: {new_generation}')
+            break
     if wait_ready:
         print('Waiting for instance to be ready...')
         while time.sleep(2):
