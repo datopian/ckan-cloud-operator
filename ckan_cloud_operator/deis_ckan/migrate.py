@@ -144,4 +144,4 @@ def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_c
         })
     routers_manager.update(router_name, wait_ready=True)
     logs.info('Rebuilding solr search index', **log_labels)
-    deis_instance_class(new_instance_id).ckan.paster('search-index rebuild')
+    deis_instance_class(new_instance_id).ckan.paster('search-index rebuild --force')
