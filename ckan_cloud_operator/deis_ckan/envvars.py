@@ -5,6 +5,7 @@ import json
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.gitlab import CkanGitlab
 from ckan_cloud_operator.deis_ckan import datapusher
+from ckan_cloud_operator.db import manager as db_manager
 
 
 class DeisCkanInstanceEnvvars(object):
@@ -24,7 +25,6 @@ class DeisCkanInstanceEnvvars(object):
         ckan_infra = self.instance.ckan_infra
         db_name = spec.db['name']
         db_password = self.instance.annotations.get_secret('databasePassword')
-        postgres_host = ckan_infra.POSTGRES_HOST
         datastore_name = spec.datastore['name']
         datastore_password = self.instance.annotations.get_secret('datastorePassword')
         datastore_ro_user = self.instance.annotations.get_secret('datastoreReadonlyUser')
@@ -45,9 +45,10 @@ class DeisCkanInstanceEnvvars(object):
         storage_path_parts = spec.storage['path'].strip('/').split('/')
         storage_bucket = storage_path_parts[0]
         storage_path = '/'.join(storage_path_parts[1:])
+        postgres_host, postgres_port = db_manager.get_internal_proxy_host_port()
         envvars.update(
-            CKAN_SQLALCHEMY_URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:5432/{db_name}",
-            CKAN___BEAKER__SESSION__URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:5432/{db_name}",
+            CKAN_SQLALCHEMY_URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
+            CKAN___BEAKER__SESSION__URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
             CKAN__DATASTORE__READ_URL=f"postgresql://{datastore_ro_user}:{datastore_ro_password}@{postgres_host}:5432/{datastore_name}",
             CKAN__DATASTORE__WRITE_URL=f"postgresql://{datastore_name}:{datastore_password}@{postgres_host}:5432/{datastore_name}",
             CKAN_SOLR_URL=f"{solr_http_endpoint}/{solr_collection_name}",
@@ -63,7 +64,7 @@ class DeisCkanInstanceEnvvars(object):
             CKANEXT__S3FILESTORE__SIGNATURE_VERSION='s3v4',
             CKAN__DATAPUSHER__URL=datapusher.get_datapusher_url(envvars.get('CKAN__DATAPUSHER__URL')),
         )
-        print(yaml.dump(envvars, default_flow_style=False))
+        # print(yaml.dump(envvars, default_flow_style=False))
         instance_envvars_secret = {'apiVersion': 'v1',
                                    'kind': 'Secret',
                                    'metadata': {
