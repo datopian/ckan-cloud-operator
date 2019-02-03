@@ -3,6 +3,7 @@ import binascii
 import os
 import yaml
 import time
+import traceback
 
 from ckan_cloud_operator.datastore_permissions import DATASTORE_PERMISSIONS_SQL_TEMPLATE
 from ckan_cloud_operator import gcloud
@@ -34,27 +35,33 @@ class DeisCkanInstanceDb(object):
         self._psql(f'DROP ROLE IF EXISTS "{db_name}-ro";')
 
     def get(self):
-        gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
-        gcloud_sql_project = self.instance.ckan_infra.GCLOUD_SQL_PROJECT
         db_name = self.db_spec['name']
-        exitcode, output = gcloud.getstatusoutput(
-            f'-q sql databases describe {db_name} --instance {gcloud_sql_instance_name}',
-            ckan_infra=self.instance.ckan_infra
-        )
-        if exitcode == 0:
-            gcloud_status = yaml.load(output)
-            assert gcloud_status['instance'] == gcloud_sql_instance_name
-            assert gcloud_status['name'] == db_name
-            assert gcloud_status['project'] == gcloud_sql_project
-            return {'ready': True,
-                    'name': db_name,
-                    'selfLink': gcloud_status['selfLink']}
-        else:
-            return {'ready': False,
-                    'name': db_name,
-                    'gcloud_sql_instance_name': gcloud_sql_instance_name,
-                    'gcloud_sql_project': gcloud_sql_project,
-                    'error': output}
+        try:
+            self._psql('select 1', '-d', db_name, '-q', '-o', '/dev/null')
+            return {'ready': True}
+        except Exception:
+            traceback.print_exc()
+            return {'ready': False}
+        # gcloud sql commands related to DBs don't work due to missing permissions to gcloud account
+        # TODO: allow to run gcloud db commands
+        # exitcode, output = gcloud.getstatusoutput(
+        #     f'-q sql databases describe {db_name} --instance {gcloud_sql_instance_name}',
+        #     ckan_infra=self.instance.ckan_infra
+        # )
+        # if exitcode == 0:
+        #     gcloud_status = yaml.load(output)
+        #     assert gcloud_status['instance'] == gcloud_sql_instance_name
+        #     assert gcloud_status['name'] == db_name
+        #     assert gcloud_status['project'] == gcloud_sql_project
+        #     return {'ready': True,
+        #             'name': db_name,
+        #             'selfLink': gcloud_status['selfLink']}
+        # else:
+        #     return {'ready': False,
+        #             'name': db_name,
+        #             'gcloud_sql_instance_name': gcloud_sql_instance_name,
+        #             'gcloud_sql_project': gcloud_sql_project,
+        #             'error': output}
 
     def _create(self):
         print(f'Creating {self.db_type}')

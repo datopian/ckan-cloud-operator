@@ -27,3 +27,12 @@ def log(level, *args, **kwargs):
         msg += '(' + ','.join([f'{k}="{v}"' for k, v in kwargs.items()]) + ') '
     msg += ' '.join(args)
     print(msg)
+
+
+def exit_great_success():
+    info('Great Success!')
+    exit(0)
+
+def exit_catastrophic_failure(exitcode=1):
+    critical('Catastrophic Failure!')
+    exit(exitcode)

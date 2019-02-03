@@ -19,6 +19,8 @@ import ckan_cloud_operator.storage
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
 
+from ckan_cloud_operator.providers import cli as providers_cli
+
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
 
@@ -32,6 +34,9 @@ def great_success(**kwargs):
 def main():
     """Manage, provision and configure CKAN Clouds and related infrastructure"""
     pass
+
+
+main.add_command(providers_cli.providers_group, 'providers')
 
 
 @main.command('cluster-info')

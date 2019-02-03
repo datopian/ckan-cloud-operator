@@ -30,8 +30,13 @@ def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cl
     return res['items'] if res else None
 
 
-def decode_secret(secret, attr=None):
-    if attr:
+def decode_secret(secret, attr=None, required=False):
+    if not secret:
+        if required:
+            raise Exception()
+        else:
+            return {}
+    elif attr:
         return base64.b64decode(secret['data'][attr]).decode()
     else:
         return {k: base64.b64decode(v).decode() for k, v in secret['data'].items()}
@@ -161,7 +166,6 @@ def get_resource(api_version, kind, name, labels, namespace='ckan-cloud', **kwar
     return resource
 
 
-
 def get_configmap(name, labels, data, namespace='ckan-cloud'):
     configmap = get_resource('v1', 'ConfigMap', name, labels, namespace)
     return dict(configmap, data=data)
@@ -177,6 +181,18 @@ def get_deployment(name, labels, spec, namespace='ckan-cloud'):
     deployment = dict(deployment, spec=spec)
     add_operator_timestamp_annotation(deployment['spec']['template']['metadata'])
     return deployment
+
+
+def get_service(name, labels, ports, selector, namespace='ckan-cloud'):
+    service = get_resource('v1', 'Service', name, labels, namespace)
+    service['spec'] = {
+        'ports': [
+            {'name': str(port), 'port': int(port)}
+            for port in ports
+        ],
+        'selector': selector
+    }
+    return service
 
 
 def add_operator_timestamp_annotation(metadata):

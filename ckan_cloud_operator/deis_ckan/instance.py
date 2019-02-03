@@ -17,6 +17,7 @@ from ckan_cloud_operator.deis_ckan.solr import DeisCkanInstanceSolr
 from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
+from ckan_cloud_operator.db import manager as db_manager
 
 
 class DeisCkanInstance(object):
@@ -281,6 +282,7 @@ class DeisCkanInstance(object):
         DeisCkanInstanceNamespace(self).update()
         DeisCkanInstanceDb(self, 'db').update()
         DeisCkanInstanceDb(self, 'datastore').update()
+        db_manager.update()
         DeisCkanInstanceSolr(self).update()
         DeisCkanInstanceStorage(self).update()
         DeisCkanInstanceRegistry(self).update()
@@ -307,7 +309,12 @@ class DeisCkanInstance(object):
                     print(yaml.dump(data, default_flow_style=False))
                     break
                 else:
-                    print('.')
+                    print(yaml.dump(
+                        {
+                            k: v for k, v in data if k not in ['ready'] and not v.get('ready')
+                        },
+                        default_flow_style=False)
+                    )
                     time.sleep(2)
         self.ckan.update()
 
