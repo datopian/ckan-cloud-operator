@@ -9,6 +9,7 @@ from ckan_cloud_operator.providers.db_proxy.constants import PROVIDER_SUBMODULE
 from ckan_cloud_operator.providers.db_proxy.pgbouncer.constants import PROVIDER_ID
 from ckan_cloud_operator.db import manager as db_manager
 from ckan_cloud_operator.providers.service import set_provider
+from ckan_cloud_operator.providers.manager import get_provider
 from ckan_cloud_operator.cluster.constants import OPERATOR_NAMESPACE
 
 
@@ -40,7 +41,9 @@ def _apply_config_secret(deis_instance_id=None, wait_updated=False):
     update_dbs = {}
     update_users = {}
     if deis_instance_id:
-        user, password, db_name, db_host, db_port = db_manager.get_deis_instance_internal_connection_details(
+        db_provider = get_provider('db')
+        db_host, db_port = db_provider.get_postgres_host_port()
+        user, password, db_name, _, _ = db_manager.get_deis_instance_internal_connection_details(
             deis_instance_id, required=False
         )
         if all([user, password, db_name, db_host, db_port]):
@@ -48,7 +51,7 @@ def _apply_config_secret(deis_instance_id=None, wait_updated=False):
             update_dbs[db_name] = f'{db_name} = host={db_host} port={db_port} dbname={db_name}'
             assert user not in update_users
             update_users[user] = password
-        user, password, db_name, db_host, db_port = db_manager.get_deis_instance_internal_connection_details(
+        user, password, db_name, _, _ = db_manager.get_deis_instance_internal_connection_details(
             deis_instance_id, is_datastore=True, required=False
         )
         if all([user, password, db_name, db_host, db_port]):
@@ -56,7 +59,7 @@ def _apply_config_secret(deis_instance_id=None, wait_updated=False):
             update_dbs[db_name] = f'{db_name} = host={db_host} port={db_port} dbname={db_name}'
             assert user not in update_users
             update_users[user] = password
-        user, password, db_name, db_host, db_port = db_manager.get_deis_instance_internal_connection_details(
+        user, password, db_name, _, _ = db_manager.get_deis_instance_internal_connection_details(
             deis_instance_id, is_datastore=True, is_datastore_readonly=True, required=False
         )
         if all([user, password, db_name, db_host, db_port]):
@@ -86,6 +89,7 @@ def _apply_config_secret(deis_instance_id=None, wait_updated=False):
     for db_name, line in update_dbs.items():
         pg_bouncer_ini.append(line)
     db_admin_user, _, _ = db_manager.get_admin_db_credentials()
+    # see https://pgbouncer.github.io/config.html
     pg_bouncer_ini += [
         "",
         "[pgbouncer]",
@@ -95,6 +99,12 @@ def _apply_config_secret(deis_instance_id=None, wait_updated=False):
         "auth_file = /var/local/pgbouncer/users.txt",
         "logfile = /var/log/pgbouncer/pgbouncer.log",
         "pidfile = /var/run/pgbouncer/pgbouncer.pid",
+        "pool_mode = transaction",
+        "max_client_conn = 100",
+        "default_pool_size = 20",
+        "min_pool_size = 0",
+        "reserve_pool_size = 0",
+        "reserve_pool_timeout = 2.0",
         f"admin_users = {db_admin_user}",
     ]
     users_txt = []
