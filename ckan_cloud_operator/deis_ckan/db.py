@@ -86,11 +86,11 @@ class DeisCkanInstanceDb(object):
         else:
             postgres_host = self.instance.ckan_infra.POSTGRES_HOST
         if not db_user:
-            db_user = self.instance.ckan_infra.POSTGRES_PASSWORD
+            db_user = self.instance.ckan_infra.POSTGRES_USER
         if not db_password:
-            db_password = self.instance.ckan_infra.POSTGRES_USER
+            db_password = self.instance.ckan_infra.POSTGRES_PASSWORD
         subprocess.check_call(['psql', '-v', 'ON_ERROR_STOP=on', '-h', postgres_host,
-                               '-U', db_password, *args, '-c', cmd],
+                               '-U', db_user, *args, '-c', cmd],
                               env={'PGPASSWORD': db_password})
 
     def _set_db_permissions(self):
