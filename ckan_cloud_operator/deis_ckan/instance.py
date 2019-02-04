@@ -310,9 +310,7 @@ class DeisCkanInstance(object):
                     break
                 else:
                     print(yaml.dump(
-                        {
-                            k: v for k, v in data if k not in ['ready'] and not v.get('ready')
-                        },
+                        {k: v for k, v in data.items() if k not in ['ready', 'id'] and not v.get('ready')},
                         default_flow_style=False)
                     )
                     time.sleep(2)
