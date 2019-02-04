@@ -20,7 +20,8 @@ def initialize():
 
 
 @pgbouncer_group.command()
-def update():
+@click.option('--deis-instance')
+def update(deis_instance):
     """Update with all currently enabled instance db details"""
-    pgbouncer_manager.update()
+    pgbouncer_manager.update(deis_instance_id=deis_instance)
     logs.exit_great_success()

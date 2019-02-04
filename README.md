@@ -121,3 +121,23 @@ Enable Bash completion
 ```
 eval "$(ckan-cloud-operator bash-completion)"
 ```
+
+## Using Jupyter Lab
+
+Jupyter Lab can be used to run bulk operations or aggregate data from ckan-cloud-operator
+
+You should run ckan-cloud-operator locally and run the following from the activated ckan-cloud-operator environment
+
+Install jupyterlab
+
+```
+python3 -m pip install jupyterlab
+```
+
+Run jupyterlab
+
+```
+jupyter lab
+```
+
+Open notebooks from the `notebooks` directory

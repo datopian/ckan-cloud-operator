@@ -20,6 +20,7 @@ from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
 
 from ckan_cloud_operator.providers import cli as providers_cli
+from ckan_cloud_operator.db import cli as db_cli
 
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
@@ -37,6 +38,7 @@ def main():
 
 
 main.add_command(providers_cli.providers_group, 'providers')
+main.add_command(db_cli.db_group, 'db')
 
 
 @main.command('cluster-info')

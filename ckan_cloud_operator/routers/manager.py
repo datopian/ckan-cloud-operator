@@ -172,6 +172,43 @@ def get_deis_instance_routes(deis_instance_id):
     return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
 
 
+def get_domain_routes(root_domain=None, sub_domain=None):
+    if not root_domain or root_domain == CkanInfra().ROUTERS_DEFAULT_ROOT_DOMAIN:
+        root_domain = 'default'
+    assert sub_domain or root_domain != 'default', 'cannot delete all routes from default root domain'
+    labels = {'ckan-cloud/route-root-domain': root_domain}
+    if sub_domain:
+        labels['ckan-cloud/route-sub-domain']: sub_domain
+    return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
+
+
+def delete_routes(routes=None, deis_instance_id=None, backend_url_target_resource_id=None, datapusher_name=None,
+                  root_domain=None, sub_domain=None):
+    if deis_instance_id:
+        assert not routes and not backend_url_target_resource_id and not datapusher_name and not root_domain and not sub_domain
+        routes = get_deis_instance_routes(deis_instance_id)
+    elif backend_url_target_resource_id:
+        assert not routes and not datapusher_name and not root_domain and not sub_domain
+        routes = get_backend_url_routes(backend_url_target_resource_id)
+    elif datapusher_name:
+        assert not routes and not root_domain and not sub_domain
+        routes = get_datapusher_routes(datapusher_name)
+    elif root_domain or sub_domain:
+        assert not routes
+        routes = get_domain_routes(root_domain, sub_domain)
+    assert routes
+    delete_route_names = set()
+    update_router_names = set()
+    for route in routes:
+        delete_route_names.add(route['metadata']['name'])
+        update_router_names.add(route['spec']['router_name'])
+    if len(delete_route_names) > 0:
+        delete_route_names = ' '.join(delete_route_names)
+        kubectl.check_call(f'delete CkanCloudRoute {delete_route_names}')
+        for router_name in update_router_names:
+            update(router_name)
+
+
 def _get_labels(router_name, router_type):
     return {'ckan-cloud/router-name': router_name, 'ckan-cloud/router-type': router_type}
 

@@ -17,7 +17,9 @@ from ckan_cloud_operator.deis_ckan.solr import DeisCkanInstanceSolr
 from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
+from ckan_cloud_operator.routers import manager as routers_manager
 from ckan_cloud_operator.db import manager as db_manager
+from ckan_cloud_operator import logs
 
 
 class DeisCkanInstance(object):
@@ -28,9 +30,10 @@ class DeisCkanInstance(object):
 
         @command_group.command('list')
         @click.option('-f', '--full', is_flag=True)
-        def deis_instance_list(full):
+        @click.option('-q', '--quick', is_flag=True)
+        def deis_instance_list(full, quick):
             """List the Deis instances"""
-            cls.list(full)
+            cls.list(full, quick)
 
         @command_group.command('get')
         @click.argument('INSTANCE_ID')
@@ -92,9 +95,10 @@ class DeisCkanInstance(object):
         @click.argument('OLD_SITE_ID')
         @click.argument('NEW_INSTANCE_ID')
         @click.argument('ROUTER_NAME')
-        def deis_instance_migrate(old_site_id, new_instance_id, router_name):
+        @click.option('--only-dbs', is_flag=True)
+        def deis_instance_migrate(old_site_id, new_instance_id, router_name, only_dbs):
             """Run a full end-to-end migration of an instasnce"""
-            migrate_from_deis(old_site_id, new_instance_id, router_name, cls)
+            migrate_from_deis(old_site_id, new_instance_id, router_name, cls, only_dbs=only_dbs)
             great_success()
 
         #### deis-instance create
@@ -267,56 +271,60 @@ class DeisCkanInstance(object):
             self._ckan = ckan = DeisCkanInstanceCKAN(self)
         return ckan
 
-    def update(self, wait_ready=False):
+    def update(self, wait_ready=False, only_dbs=False):
         """Ensure the instance is updated to latest spec"""
-        old_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
-        if old_deployment:
-            old_deployment_generation = old_deployment.get('metadata', {}).get('generation')
-        else:
+        if only_dbs:
             old_deployment_generation = None
-        if old_deployment_generation:
-            expected_new_deployment_generation = old_deployment_generation + 1
+            expected_new_deployment_generation = None
         else:
-            expected_new_deployment_generation = 1
-        print(f'old deployment generation = {old_deployment_generation}')
+            old_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
+            if old_deployment:
+                old_deployment_generation = old_deployment.get('metadata', {}).get('generation')
+            else:
+                old_deployment_generation = None
+            if old_deployment_generation:
+                expected_new_deployment_generation = old_deployment_generation + 1
+            else:
+                expected_new_deployment_generation = 1
+            print(f'old deployment generation = {old_deployment_generation}')
         DeisCkanInstanceNamespace(self).update()
         DeisCkanInstanceDb(self, 'db').update()
         DeisCkanInstanceDb(self, 'datastore').update()
-        db_manager.update()
-        DeisCkanInstanceSolr(self).update()
-        DeisCkanInstanceStorage(self).update()
-        DeisCkanInstanceRegistry(self).update()
-        DeisCkanInstanceEnvvars(self).update()
-        DeisCkanInstanceDeployment(self).update()
-        while True:
-            time.sleep(.2)
-            new_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
-            if not new_deployment: continue
-            new_deployment_generation = new_deployment.get('metadata', {}).get('generation')
-            if not new_deployment_generation: continue
-            if new_deployment_generation == old_deployment_generation: continue
-            if new_deployment_generation != expected_new_deployment_generation:
-                raise Exception(f'Invalid generation: {new_deployment_generation} '
-                                f'(expected: {expected_new_deployment_generation}')
-            print(f'new deployment generation: {new_deployment_generation}')
-            break
-        if wait_ready:
-            print('Waiting for ready status')
-            time.sleep(3)
+        if not only_dbs:
+            DeisCkanInstanceSolr(self).update()
+            DeisCkanInstanceStorage(self).update()
+            DeisCkanInstanceRegistry(self).update()
+            DeisCkanInstanceEnvvars(self).update()
+            DeisCkanInstanceDeployment(self).update()
             while True:
-                data = self.get()
-                if data.get('ready'):
-                    print(yaml.dump(data, default_flow_style=False))
-                    break
-                else:
-                    print(yaml.dump(
-                        {
-                            k: v for k, v in data if k not in ['ready'] and not v.get('ready')
-                        },
-                        default_flow_style=False)
-                    )
-                    time.sleep(2)
-        self.ckan.update()
+                time.sleep(.2)
+                new_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
+                if not new_deployment: continue
+                new_deployment_generation = new_deployment.get('metadata', {}).get('generation')
+                if not new_deployment_generation: continue
+                if new_deployment_generation == old_deployment_generation: continue
+                if new_deployment_generation != expected_new_deployment_generation:
+                    raise Exception(f'Invalid generation: {new_deployment_generation} '
+                                    f'(expected: {expected_new_deployment_generation}')
+                print(f'new deployment generation: {new_deployment_generation}')
+                break
+            if wait_ready:
+                print('Waiting for ready status')
+                time.sleep(3)
+                while True:
+                    data = self.get()
+                    if data.get('ready'):
+                        print(yaml.dump(data, default_flow_style=False))
+                        break
+                    else:
+                        print(yaml.dump(
+                            {
+                                k: v for k, v in data.items() if k not in ['ready'] and type(v) == dict and not v.get('ready')
+                            },
+                            default_flow_style=False)
+                        )
+                        time.sleep(2)
+            self.ckan.update()
 
     def delete(self, force=False):
         """
@@ -343,6 +351,7 @@ class DeisCkanInstance(object):
                 lambda: DeisCkanInstanceDb(self, 'db').delete(),
                 lambda: DeisCkanInstanceNamespace(self).delete(),
                 lambda: kubectl.check_call(f'delete --ignore-not-found secret/{self.id}-envvars'),
+                lambda: routers_manager.delete_routes(deis_instance_id=self.id)
             ]:
                 try:
                     delete_code()
@@ -350,6 +359,7 @@ class DeisCkanInstance(object):
                     print(f'delete exception: {e}')
                     num_exceptions += 1
         else:
+            routers_manager.delete_routes(deis_instance_id=self.id)
             num_exceptions = 1
         if num_exceptions != 0 and not force:
             raise Exception('instance was not deleted, run with --force to force deletion with risk of remaining infra')
@@ -363,7 +373,7 @@ class DeisCkanInstance(object):
     def kubectl(self, cmd):
         subprocess.check_call(f'kubectl -n {self.id} {cmd}', shell=True)
 
-    def get(self, attr=None):
+    def get(self, attr=None, exclude_attr=None):
         """Get detailed information about the instance and related components"""
         gets = {
             'annotations': lambda: DeisCkanInstanceAnnotations(self).get(),
@@ -376,6 +386,8 @@ class DeisCkanInstance(object):
             'solr': lambda: DeisCkanInstanceSolr(self).get(),
             'storage': lambda: DeisCkanInstanceStorage(self).get(),
         }
+        if exclude_attr:
+            gets = {k: v for k, v in gets.items() if k not in exclude_attr}
         if attr:
             return gets[attr]()
         else:
@@ -415,15 +427,21 @@ class DeisCkanInstance(object):
             subprocess.run('kubectl create -f -', input=yaml.dump(crd).encode(), shell=True, check=True)
 
     @classmethod
-    def list(cls, full=False):
+    def list(cls, full=False, quick=False):
         for item in kubectl.get('DeisCkanInstance')['items']:
-            try:
-                instance = DeisCkanInstance(item['metadata']['name'], values=item)
-                data = instance.get()
-                if not full:
-                    data = {'id': instance.id, 'ready': data['ready']}
-            except Exception:
-                data = {'id': item['metadata']['name'], 'ready': False, 'error': traceback.format_exc()}
+            if quick:
+                data = {
+                    'id': item['metadata']['name'],
+                    'ready': None
+                }
+            else:
+                try:
+                    instance = DeisCkanInstance(item['metadata']['name'], values=item)
+                    data = instance.get()
+                    if not full:
+                        data = {'id': instance.id, 'ready': data['ready']}
+                except Exception:
+                    data = {'id': item['metadata']['name'], 'ready': False, 'error': traceback.format_exc()}
             print(yaml.dump([data], default_flow_style=False))
 
     @classmethod
@@ -488,6 +506,24 @@ class DeisCkanInstance(object):
             return migrate_from_deis(old_site_id, new_instance_id, cls)
         else:
             raise NotImplementedError(f'invalid create type: {create_type}')
+        if db_manager.check_db_exists(spec['db']['name']):
+            logs.info('db already exists, incrementing suffix')
+            db_name = None
+            for i in range(1, 20):
+                db_name = spec['db']['name'] + '__' + str(i)
+                if not db_manager.check_db_exists(db_name): break
+            assert db_name
+            spec['db']['name'] = db_name
+            logs.info(f'db name: {db_name}')
+        if db_manager.check_db_exists(spec['datastore']['name']):
+            logs.info('datastore already exists, incrementing suffix')
+            datastore_name = None
+            for i in range(1, 20):
+                datastore_name = spec['datastore']['name'] + '__' + str(i)
+                if not db_manager.check_db_exists(datastore_name): break
+            assert datastore_name
+            spec['datastore']['name'] = datastore_name
+            logs.info(f'datastore name: {datastore_name}')
         instance = {
             'apiVersion': 'stable.viderum.com/v1',
             'kind': 'DeisCkanInstance',
@@ -498,8 +534,9 @@ class DeisCkanInstance(object):
             },
             'spec': spec
         }
+        instance = cls(instance_id, values=instance)
         subprocess.run('kubectl create -f -', input=yaml.dump(instance).encode(), shell=True, check=True)
-        return cls(instance_id, values=instance)
+        return instance
 
     def set_subdomain_route(self, router_type, router_name, route_type, router_annotations):
         assert router_type in ['traefik-subdomain']

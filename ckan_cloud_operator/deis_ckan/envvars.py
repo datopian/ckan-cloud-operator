@@ -49,8 +49,8 @@ class DeisCkanInstanceEnvvars(object):
         envvars.update(
             CKAN_SQLALCHEMY_URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
             CKAN___BEAKER__SESSION__URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
-            CKAN__DATASTORE__READ_URL=f"postgresql://{datastore_ro_user}:{datastore_ro_password}@{postgres_host}:5432/{datastore_name}",
-            CKAN__DATASTORE__WRITE_URL=f"postgresql://{datastore_name}:{datastore_password}@{postgres_host}:5432/{datastore_name}",
+            CKAN__DATASTORE__READ_URL=f"postgresql://{datastore_ro_user}:{datastore_ro_password}@{postgres_host}:{postgres_port}/{datastore_name}",
+            CKAN__DATASTORE__WRITE_URL=f"postgresql://{datastore_name}:{datastore_password}@{postgres_host}:{postgres_port}/{datastore_name}",
             CKAN_SOLR_URL=f"{solr_http_endpoint}/{solr_collection_name}",
             # we are using the non-authenticated proxy, so this has to be disabled to prevent ckans which support auth from using them
             # CKAN_SOLR_USER=ckan_infra.SOLR_USER,

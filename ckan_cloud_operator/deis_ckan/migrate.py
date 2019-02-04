@@ -67,7 +67,7 @@ def get_db_import_urls(old_site_id, ckan_infra):
                 instance_latest_dt = dt
     return (
         f'gs://{import_backup}/postgres/{instance_latest_datestring}/{old_site_id}.{instance_latest_datestring}.dump.sql',
-        f'gs://{import_backup}/postgres/{instance_latest_datastore_datestring}/{old_site_id}.{instance_latest_datastore_datestring}.dump.sql'
+        f'gs://{import_backup}/postgres/{instance_latest_datastore_datestring}/{old_site_id}-datastore.{instance_latest_datastore_datestring}.dump.sql'
     )
 
 
@@ -103,7 +103,8 @@ def get_instance_env(old_site_id, path_to_old_cluster_kubeconfig):
     return instance_env
 
 
-def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_class):
+def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_class,
+                      only_dbs=False):
     log_labels = {'instance': new_instance_id}
     logs.info(f'Migrating from old site id {old_site_id} to new instance id {new_instance_id}', **log_labels)
     values = kubectl.get(f'DeisCkanInstance {new_instance_id}', required=False)
@@ -131,17 +132,18 @@ def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_c
         new_instance_id, values,
         override_spec={'envvars': {'CKAN_SITE_URL': ckan_site_url}},
         persist_overrides=True
-    ).update(wait_ready=True)
-    if routers_manager.get_deis_instance_routes(new_instance_id):
-        logs.info('default instance route already exists', **log_labels)
-    else:
-        logs.info('creating instance route', **log_labels)
-        routers_manager.create_subdomain_route(router_name, {
-            'target-type': 'deis-instance',
-            'deis-instance-id': new_instance_id,
-            'root-domain': 'default',
-            'sub-domain': 'default'
-        })
-    routers_manager.update(router_name, wait_ready=True)
-    logs.info('Rebuilding solr search index', **log_labels)
-    deis_instance_class(new_instance_id).ckan.paster('search-index rebuild --force')
+    ).update(wait_ready=True, only_dbs=only_dbs)
+    if not only_dbs:
+        if routers_manager.get_deis_instance_routes(new_instance_id):
+            logs.info('default instance route already exists', **log_labels)
+        else:
+            logs.info('creating instance route', **log_labels)
+            routers_manager.create_subdomain_route(router_name, {
+                'target-type': 'deis-instance',
+                'deis-instance-id': new_instance_id,
+                'root-domain': 'default',
+                'sub-domain': 'default'
+            })
+        routers_manager.update(router_name, wait_ready=True)
+        logs.info('Rebuilding solr search index', **log_labels)
+        deis_instance_class(new_instance_id).ckan.paster('search-index rebuild --force')

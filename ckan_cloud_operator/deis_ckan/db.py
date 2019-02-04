@@ -7,6 +7,7 @@ import traceback
 
 from ckan_cloud_operator.datastore_permissions import DATASTORE_PERMISSIONS_SQL_TEMPLATE
 from ckan_cloud_operator import gcloud
+from ckan_cloud_operator.db import manager as db_manager
 
 
 class DeisCkanInstanceDb(object):
@@ -21,6 +22,7 @@ class DeisCkanInstanceDb(object):
         is_created = self.instance.annotations.update_status(self.db_type, 'created', lambda: self._create())
         skip_permissions_flag = 'skipDatastorePermissions' if self.db_type == 'datastore' else 'skipDbPermissions'
         if is_created or not self.instance.annotations.get_flag(skip_permissions_flag):
+            db_manager.update(deis_instance_id=self.instance.id)
             self._set_db_permissions()
             if self.db_type == 'datastore':
                 self._set_datastore_permissions()
@@ -68,28 +70,28 @@ class DeisCkanInstanceDb(object):
         if 'fromDeisInstance' in self.db_spec:
             raise NotImplementedError('import of DB from old deis instance id is not supported yet')
         else:
-            if self._check_db_exists():
-                print('DB already exists, skipping import')
-            else:
-                self._create_base_db()
-                db_name = self.db_spec['name']
-                if self.db_type == 'db':
-                    self._initialize_db_postgis(db_name)
-                if 'importGcloudSqlDumpUrl' in self.db_spec:
-                    self._import_gcloud_sql_db()
-                if self.db_type == 'datastore':
-                    self._create_datastore_ro_user()
+            self._create_base_db()
+            db_manager.update(deis_instance_id=self.instance.id)
+            db_name = self.db_spec['name']
+            if self.db_type == 'db':
+                self._initialize_db_postgis(db_name)
+            if 'importGcloudSqlDumpUrl' in self.db_spec:
+                self._import_gcloud_sql_db()
+            if self.db_type == 'datastore':
+                self._create_datastore_ro_user()
 
-    def _psql(self, cmd, *args):
+    def _psql(self, cmd, *args, db_user=None, db_password=None):
         if os.environ.get('CKAN_CLOUD_OPERATOR_USE_PROXY') in ['yes', '1', 'true']:
             postgres_host = '127.0.0.1'
         else:
             postgres_host = self.instance.ckan_infra.POSTGRES_HOST
-        postgres_password = self.instance.ckan_infra.POSTGRES_PASSWORD
-        postgres_user = self.instance.ckan_infra.POSTGRES_USER
+        if not db_user:
+            db_user = self.instance.ckan_infra.POSTGRES_PASSWORD
+        if not db_password:
+            db_password = self.instance.ckan_infra.POSTGRES_USER
         subprocess.check_call(['psql', '-v', 'ON_ERROR_STOP=on', '-h', postgres_host,
-                               '-U', postgres_user, *args, '-c', cmd],
-                              env={'PGPASSWORD': postgres_password})
+                               '-U', db_password, *args, '-c', cmd],
+                              env={'PGPASSWORD': db_password})
 
     def _set_db_permissions(self):
         print('setting db permissions')
@@ -100,8 +102,10 @@ class DeisCkanInstanceDb(object):
             f'GRANT ALL PRIVILEGES ON DATABASE "{db_name}" to "{db_name}";',
             f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public to "{db_name}";',
             f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public to "{db_name}";',
+            f'GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public to "{db_name}";',
             f'alter default privileges in schema public grant all on tables to "{db_name}";',
             f'alter default privileges in schema public grant all on sequences to "{db_name}";',
+            f'alter default privileges in schema public grant all on functions to "{db_name}";',
             f"ALTER DATABASE \"{db_name}\" OWNER TO \"{db_name}\";",
         ]:
             self._psql(line, '-d', db_name)
@@ -201,13 +205,3 @@ class DeisCkanInstanceDb(object):
                     print(operation['status'])
                     if operation['status'] == 'DONE':
                         break
-
-    def _check_db_exists(self):
-        gcloud_sql_instance_name = self.instance.ckan_infra.GCLOUD_SQL_INSTANCE_NAME
-        gcloud_sql_project = self.instance.ckan_infra.GCLOUD_SQL_PROJECT
-        db_name = self.db_spec['name']
-        returncode, output = gcloud.getstatusoutput(
-            f'sql databases describe --instance={gcloud_sql_instance_name} {db_name}',
-            ckan_infra=self.instance.ckan_infra
-        )
-        return returncode == 0
