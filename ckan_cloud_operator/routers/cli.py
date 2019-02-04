@@ -3,7 +3,7 @@ import yaml
 
 from ckan_cloud_operator.routers import manager as routers_manager
 from ckan_cloud_operator.routers.routes import manager as routes_manager
-from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 
 
 def add_cli_commands(click, command_group, great_success):
@@ -98,6 +98,20 @@ def add_cli_commands(click, command_group, great_success):
                     'frontend-hostname': routes_manager.get_frontend_hostname(route),
                 }
                 print(yaml.dump([data], default_flow_style=False))
+
+    @command_group.command('delete-routes')
+    @click.option('-p', '--datapusher-name', required=False)
+    @click.option('-d', '--deis-instance-id', required=False)
+    @click.option('-r', '--root-domain', required=False)
+    @click.option('-s', '--sub-domain', required=False)
+    def delete_routes(datapusher_name, deis_instance_id, root_domain, sub_domain):
+        routers_manager.delete_routes(
+            datapusher_name=datapusher_name,
+            deis_instance_id=deis_instance_id,
+            root_domain=root_domain,
+            sub_domain=sub_domain
+        )
+        logs.exit_great_success()
 
     @command_group.command('delete')
     @click.argument('ROUTER_NAME')

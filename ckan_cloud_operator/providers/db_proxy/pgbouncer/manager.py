@@ -104,7 +104,6 @@ def _apply_config_secret(deis_instance_id=None, wait_updated=False):
             line_user, line_password = [k.strip('"') for k in line.split(' ')]
             if line_user in update_users:
                 password = update_users.pop(line_user)
-                updated_line = f'"{line_user}" "{password}"'
                 users_txt.append(f'"{line_user}" "{password}"')
             else:
                 users_txt.append(line)

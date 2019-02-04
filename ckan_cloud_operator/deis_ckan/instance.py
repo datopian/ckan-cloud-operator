@@ -17,6 +17,7 @@ from ckan_cloud_operator.deis_ckan.solr import DeisCkanInstanceSolr
 from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
+from ckan_cloud_operator.routers import manager as routers_manager
 
 
 class DeisCkanInstance(object):
@@ -27,9 +28,10 @@ class DeisCkanInstance(object):
 
         @command_group.command('list')
         @click.option('-f', '--full', is_flag=True)
-        def deis_instance_list(full):
+        @click.option('-q', '--quick', is_flag=True)
+        def deis_instance_list(full, quick):
             """List the Deis instances"""
-            cls.list(full)
+            cls.list(full, quick)
 
         @command_group.command('get')
         @click.argument('INSTANCE_ID')
@@ -347,6 +349,7 @@ class DeisCkanInstance(object):
                 lambda: DeisCkanInstanceDb(self, 'db').delete(),
                 lambda: DeisCkanInstanceNamespace(self).delete(),
                 lambda: kubectl.check_call(f'delete --ignore-not-found secret/{self.id}-envvars'),
+                lambda: routers_manager.delete_routes(deis_instance_id=self.id)
             ]:
                 try:
                     delete_code()
@@ -354,6 +357,7 @@ class DeisCkanInstance(object):
                     print(f'delete exception: {e}')
                     num_exceptions += 1
         else:
+            routers_manager.delete_routes(deis_instance_id=self.id)
             num_exceptions = 1
         if num_exceptions != 0 and not force:
             raise Exception('instance was not deleted, run with --force to force deletion with risk of remaining infra')
@@ -367,7 +371,7 @@ class DeisCkanInstance(object):
     def kubectl(self, cmd):
         subprocess.check_call(f'kubectl -n {self.id} {cmd}', shell=True)
 
-    def get(self, attr=None):
+    def get(self, attr=None, exclude_attr=None):
         """Get detailed information about the instance and related components"""
         gets = {
             'annotations': lambda: DeisCkanInstanceAnnotations(self).get(),
@@ -380,6 +384,8 @@ class DeisCkanInstance(object):
             'solr': lambda: DeisCkanInstanceSolr(self).get(),
             'storage': lambda: DeisCkanInstanceStorage(self).get(),
         }
+        if exclude_attr:
+            gets = {k: v for k, v in gets.items() if k not in exclude_attr}
         if attr:
             return gets[attr]()
         else:
@@ -419,15 +425,21 @@ class DeisCkanInstance(object):
             subprocess.run('kubectl create -f -', input=yaml.dump(crd).encode(), shell=True, check=True)
 
     @classmethod
-    def list(cls, full=False):
+    def list(cls, full=False, quick=False):
         for item in kubectl.get('DeisCkanInstance')['items']:
-            try:
-                instance = DeisCkanInstance(item['metadata']['name'], values=item)
-                data = instance.get()
-                if not full:
-                    data = {'id': instance.id, 'ready': data['ready']}
-            except Exception:
-                data = {'id': item['metadata']['name'], 'ready': False, 'error': traceback.format_exc()}
+            if quick:
+                data = {
+                    'id': item['metadata']['name'],
+                    'ready': None
+                }
+            else:
+                try:
+                    instance = DeisCkanInstance(item['metadata']['name'], values=item)
+                    data = instance.get()
+                    if not full:
+                        data = {'id': instance.id, 'ready': data['ready']}
+                except Exception:
+                    data = {'id': item['metadata']['name'], 'ready': False, 'error': traceback.format_exc()}
             print(yaml.dump([data], default_flow_style=False))
 
     @classmethod
