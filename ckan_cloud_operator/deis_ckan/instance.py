@@ -534,9 +534,8 @@ class DeisCkanInstance(object):
             },
             'spec': spec
         }
-        instance = cls(instance_id, values=instance)
         subprocess.run('kubectl create -f -', input=yaml.dump(instance).encode(), shell=True, check=True)
-        return instance
+        return cls(instance_id, values=instance)
 
     def set_subdomain_route(self, router_type, router_name, route_type, router_annotations):
         assert router_type in ['traefik-subdomain']
