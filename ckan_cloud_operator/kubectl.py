@@ -41,9 +41,20 @@ def decode_secret(secret, attr=None, required=False):
         else:
             return {}
     elif attr:
-        return base64.b64decode(secret['data'][attr]).decode()
+        if required:
+            return base64.b64decode(secret['data'][attr]).decode()
+        else:
+            value = secret.get('data', {}).get(attr)
+            if value:
+                return base64.b64decode(value)
+            else:
+                return None
     else:
-        return {k: base64.b64decode(v).decode() for k, v in secret['data'].items()}
+        return {
+            k: base64.b64decode(v).decode() if v else None
+            for k, v
+            in secret.get('data', {}).items()
+        }
 
 
 def update_secret(name, values, namespace='ckan-cloud', labels=None):

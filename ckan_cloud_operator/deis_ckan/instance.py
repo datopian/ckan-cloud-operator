@@ -18,6 +18,8 @@ from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
 from ckan_cloud_operator.routers import manager as routers_manager
+from ckan_cloud_operator.db import manager as db_manager
+from ckan_cloud_operator import logs
 
 
 class DeisCkanInstance(object):
@@ -317,7 +319,7 @@ class DeisCkanInstance(object):
                     else:
                         print(yaml.dump(
                             {
-                                k: v for k, v in data if k not in ['ready'] and not v.get('ready')
+                                k: v for k, v in data.items() if k not in ['ready'] and type(v) == dict and not v.get('ready')
                             },
                             default_flow_style=False)
                         )
@@ -504,6 +506,24 @@ class DeisCkanInstance(object):
             return migrate_from_deis(old_site_id, new_instance_id, cls)
         else:
             raise NotImplementedError(f'invalid create type: {create_type}')
+        if db_manager.check_db_exists(spec['db']['name']):
+            logs.info('db already exists, incrementing suffix')
+            db_name = None
+            for i in range(1, 20):
+                db_name = spec['db']['name'] + '__' + str(i)
+                if not db_manager.check_db_exists(db_name): break
+            assert db_name
+            spec['db']['name'] = db_name
+            logs.info(f'db name: {db_name}')
+        if db_manager.check_db_exists(spec['datastore']['name']):
+            logs.info('datastore already exists, incrementing suffix')
+            datastore_name = None
+            for i in range(1, 20):
+                datastore_name = spec['datastore']['name'] + '__' + str(i)
+                if not db_manager.check_db_exists(datastore_name): break
+            assert datastore_name
+            spec['datastore']['name'] = datastore_name
+            logs.info(f'datastore name: {datastore_name}')
         instance = {
             'apiVersion': 'stable.viderum.com/v1',
             'kind': 'DeisCkanInstance',
@@ -514,8 +534,9 @@ class DeisCkanInstance(object):
             },
             'spec': spec
         }
+        instance = cls(instance_id, values=instance)
         subprocess.run('kubectl create -f -', input=yaml.dump(instance).encode(), shell=True, check=True)
-        return cls(instance_id, values=instance)
+        return instance
 
     def set_subdomain_route(self, router_type, router_name, route_type, router_annotations):
         assert router_type in ['traefik-subdomain']

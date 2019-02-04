@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 from ckan_cloud_operator import kubectl
 
@@ -148,3 +149,9 @@ def web_ui():
 def initialize_web_ui():
     set_provider(db_web_ui_submodule, adminer_provider_id)
     get_provider(db_web_ui_submodule).initialize()
+
+
+def check_db_exists(db_name):
+    admin_db_connection_string = get_external_admin_connection_string()
+    cmd = f"psql -d {admin_db_connection_string} -c \"select 1 from pg_database where datname='{db_name}';\" -t"
+    return subprocess.check_output(cmd, shell=True).decode().strip() == '1'
