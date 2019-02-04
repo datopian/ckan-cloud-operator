@@ -88,7 +88,7 @@ class CkanInfra(object):
             print("Keep this running in the background")
             print("Set the following environment variable to cause ckan-cloud-operator to connect via the proxy")
             print("export CKAN_CLOUD_OPERATOR_USE_PROXY=yes")
-            subprocess.check_call(f'kubectl -n ckan-cloud port-forward deployment/cloudsql-proxy 5432', shell=True)
+            subprocess.check_call(f'kubectl -n ckan-cloud port-forward deployment/ckan-cloud-db-proxy-pgbouncer 5432', shell=True)
 
         @command_group.command('deploy-solr-proxy')
         def deploy_ckan_infra_solr_proxy():

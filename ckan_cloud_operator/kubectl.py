@@ -10,6 +10,10 @@ def check_call(cmd, namespace='ckan-cloud'):
     subprocess.check_call(f'kubectl -n {namespace} {cmd}', shell=True)
 
 
+def check_output(cmd, namespace='ckan-cloud'):
+    return subprocess.check_output(f'kubectl -n {namespace} {cmd}', shell=True)
+
+
 def call(cmd, namespace='ckan-cloud'):
     return subprocess.call(f'kubectl -n {namespace} {cmd}', shell=True)
 

@@ -17,7 +17,6 @@ from ckan_cloud_operator.deis_ckan.solr import DeisCkanInstanceSolr
 from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
-from ckan_cloud_operator.db import manager as db_manager
 
 
 class DeisCkanInstance(object):
@@ -92,9 +91,10 @@ class DeisCkanInstance(object):
         @click.argument('OLD_SITE_ID')
         @click.argument('NEW_INSTANCE_ID')
         @click.argument('ROUTER_NAME')
-        def deis_instance_migrate(old_site_id, new_instance_id, router_name):
+        @click.option('--only-dbs', is_flag=True)
+        def deis_instance_migrate(old_site_id, new_instance_id, router_name, only_dbs):
             """Run a full end-to-end migration of an instasnce"""
-            migrate_from_deis(old_site_id, new_instance_id, router_name, cls)
+            migrate_from_deis(old_site_id, new_instance_id, router_name, cls, only_dbs=only_dbs)
             great_success()
 
         #### deis-instance create
@@ -267,56 +267,60 @@ class DeisCkanInstance(object):
             self._ckan = ckan = DeisCkanInstanceCKAN(self)
         return ckan
 
-    def update(self, wait_ready=False):
+    def update(self, wait_ready=False, only_dbs=False):
         """Ensure the instance is updated to latest spec"""
-        old_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
-        if old_deployment:
-            old_deployment_generation = old_deployment.get('metadata', {}).get('generation')
-        else:
+        if only_dbs:
             old_deployment_generation = None
-        if old_deployment_generation:
-            expected_new_deployment_generation = old_deployment_generation + 1
+            expected_new_deployment_generation = None
         else:
-            expected_new_deployment_generation = 1
-        print(f'old deployment generation = {old_deployment_generation}')
+            old_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
+            if old_deployment:
+                old_deployment_generation = old_deployment.get('metadata', {}).get('generation')
+            else:
+                old_deployment_generation = None
+            if old_deployment_generation:
+                expected_new_deployment_generation = old_deployment_generation + 1
+            else:
+                expected_new_deployment_generation = 1
+            print(f'old deployment generation = {old_deployment_generation}')
         DeisCkanInstanceNamespace(self).update()
         DeisCkanInstanceDb(self, 'db').update()
         DeisCkanInstanceDb(self, 'datastore').update()
-        db_manager.update()
-        DeisCkanInstanceSolr(self).update()
-        DeisCkanInstanceStorage(self).update()
-        DeisCkanInstanceRegistry(self).update()
-        DeisCkanInstanceEnvvars(self).update()
-        DeisCkanInstanceDeployment(self).update()
-        while True:
-            time.sleep(.2)
-            new_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
-            if not new_deployment: continue
-            new_deployment_generation = new_deployment.get('metadata', {}).get('generation')
-            if not new_deployment_generation: continue
-            if new_deployment_generation == old_deployment_generation: continue
-            if new_deployment_generation != expected_new_deployment_generation:
-                raise Exception(f'Invalid generation: {new_deployment_generation} '
-                                f'(expected: {expected_new_deployment_generation}')
-            print(f'new deployment generation: {new_deployment_generation}')
-            break
-        if wait_ready:
-            print('Waiting for ready status')
-            time.sleep(3)
+        if not only_dbs:
+            DeisCkanInstanceSolr(self).update()
+            DeisCkanInstanceStorage(self).update()
+            DeisCkanInstanceRegistry(self).update()
+            DeisCkanInstanceEnvvars(self).update()
+            DeisCkanInstanceDeployment(self).update()
             while True:
-                data = self.get()
-                if data.get('ready'):
-                    print(yaml.dump(data, default_flow_style=False))
-                    break
-                else:
-                    print(yaml.dump(
-                        {
-                            k: v for k, v in data if k not in ['ready'] and not v.get('ready')
-                        },
-                        default_flow_style=False)
-                    )
-                    time.sleep(2)
-        self.ckan.update()
+                time.sleep(.2)
+                new_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
+                if not new_deployment: continue
+                new_deployment_generation = new_deployment.get('metadata', {}).get('generation')
+                if not new_deployment_generation: continue
+                if new_deployment_generation == old_deployment_generation: continue
+                if new_deployment_generation != expected_new_deployment_generation:
+                    raise Exception(f'Invalid generation: {new_deployment_generation} '
+                                    f'(expected: {expected_new_deployment_generation}')
+                print(f'new deployment generation: {new_deployment_generation}')
+                break
+            if wait_ready:
+                print('Waiting for ready status')
+                time.sleep(3)
+                while True:
+                    data = self.get()
+                    if data.get('ready'):
+                        print(yaml.dump(data, default_flow_style=False))
+                        break
+                    else:
+                        print(yaml.dump(
+                            {
+                                k: v for k, v in data if k not in ['ready'] and not v.get('ready')
+                            },
+                            default_flow_style=False)
+                        )
+                        time.sleep(2)
+            self.ckan.update()
 
     def delete(self, force=False):
         """
