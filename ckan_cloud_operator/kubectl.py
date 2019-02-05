@@ -303,10 +303,10 @@ class BaseAnnotations(object):
             return True
 
     def set_flag(self, flag):
-        self._annotate(f'{flag}=true')
+        self._annotate(f'{flag}=true', overwrite=True)
 
     def set_flags(self, *flags):
-        self._annotate(*[f'{flag}=true' for flag in flags])
+        self._annotate(*[f'{flag}=true' for flag in flags], overwrite=True)
 
     def update_flag(self, flag, update_func, force_update=False):
         if self.get_flag(flag):

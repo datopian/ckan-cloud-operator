@@ -1,6 +1,7 @@
 from urllib.parse import urlparse
 
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 from ckan_cloud_operator.infra import CkanInfra
 
 
@@ -13,6 +14,7 @@ def get_datapusher_url(instance_datapusher_url):
         elif hostname.endswith('.ckan.io'):
             datapusher_name = hostname.replace('.ckan.io', '')
         else:
+            logs.warning(f'failed to parse datapusher url from instance datapusher url: {instance_datapusher_url}')
             datapusher_name = None
         if datapusher_name:
             routes = kubectl.get(
@@ -32,4 +34,8 @@ def get_datapusher_url(instance_datapusher_url):
                         assert default_root_domain, 'missing ckan-infra ROUTERS_DEFAULT_ROOT_DOMAIN'
                         root_domain = default_root_domain
                     return 'https://{}.{}/'.format(sub_domain, root_domain)
+                else:
+                    logs.warning(f'failed to find route for datapusher: {datapusher_name}')
+            else:
+                logs.warning(f'failed to find route for datapusher: {datapusher_name}')
     return None

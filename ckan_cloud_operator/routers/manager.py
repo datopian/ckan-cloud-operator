@@ -140,7 +140,7 @@ def create_subdomain_route(router_name, route_spec):
     elif target_type == 'backend-url':
         spec['backend-url'] = route_spec['backend-url']
     route = kubectl.get_resource('stable.viderum.com/v1', 'CkanCloudRoute', route_name, labels, spec=spec)
-    kubectl.create(route)
+    kubectl.apply(route)
 
 
 def install_crds():

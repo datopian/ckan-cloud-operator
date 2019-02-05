@@ -14,7 +14,7 @@ def create(router):
     assert all([cloudflare_email, cloudflare_api_key, default_root_domain]), f'invalid traefik router spec: {router_spec}'
     # cloudflare credentials are stored in a secret, not in the spec
     del router_spec['cloudflare']
-    kubectl.create(router)
+    kubectl.apply(router)
     annotations = CkanRoutersAnnotations(router_name, router)
     annotations.update_flag('letsencryptCloudflareEnabled', lambda: annotations.set_secrets({
         'LETSENCRYPT_CLOUDFLARE_EMAIL': cloudflare_email,

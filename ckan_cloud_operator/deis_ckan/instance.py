@@ -78,17 +78,18 @@ class DeisCkanInstance(object):
         @click.option('--force', is_flag=True)
         def deis_instance_delete(instance_id, force):
             """Permanently delete the instances and all related infrastructure"""
-            failed = None
+            failed_instance_ids = []
             for id in instance_id:
                 try:
                     cls(id).delete(force)
                 except Exception:
                     traceback.print_exc()
-                    failed = True
-            if failed and not force:
-                raise Exception('Instance deletion failed')
+                    failed_instance_ids.append(id)
+            if len(failed_instance_ids) > 0:
+                logs.critical(f'Instance deletion failed for the following instance ids: {failed_instance_ids}')
+                if not force:
+                    logs.exit_catastrophic_failure()
             great_success()
-
 
 
         @command_group.command('migrate')
@@ -341,22 +342,22 @@ class DeisCkanInstance(object):
         subprocess.call(f'kubectl -n ckan-cloud delete DeisCkanInstance {self.id}', shell=True)
         if has_spec:
             num_exceptions = 0
-            for delete_code in [
-                lambda: DeisCkanInstanceDeployment(self).delete(),
-                lambda: DeisCkanInstanceEnvvars(self).delete(),
-                lambda: DeisCkanInstanceRegistry(self).delete(),
-                lambda: DeisCkanInstanceSolr(self).delete(),
-                lambda: DeisCkanInstanceStorage(self).delete(),
-                lambda: DeisCkanInstanceDb(self, 'datastore').delete(),
-                lambda: DeisCkanInstanceDb(self, 'db').delete(),
-                lambda: DeisCkanInstanceNamespace(self).delete(),
-                lambda: kubectl.check_call(f'delete --ignore-not-found secret/{self.id}-envvars'),
-                lambda: routers_manager.delete_routes(deis_instance_id=self.id)
-            ]:
+            for delete_id, delete_code in {
+                'deployment': lambda: DeisCkanInstanceDeployment(self).delete(),
+                'envvars': lambda: DeisCkanInstanceEnvvars(self).delete(),
+                'registry': lambda: DeisCkanInstanceRegistry(self).delete(),
+                'solr': lambda: DeisCkanInstanceSolr(self).delete(),
+                'storage': lambda: DeisCkanInstanceStorage(self).delete(),
+                'datastore': lambda: DeisCkanInstanceDb(self, 'datastore').delete(),
+                'db': lambda: DeisCkanInstanceDb(self, 'db').delete(),
+                'namespace': lambda: DeisCkanInstanceNamespace(self).delete(),
+                'envvars-secret': lambda: kubectl.check_call(f'delete --ignore-not-found secret/{self.id}-envvars'),
+                'routes': lambda: routers_manager.delete_routes(deis_instance_id=self.id)
+            }.items():
                 try:
                     delete_code()
                 except Exception as e:
-                    print(f'delete exception: {e}')
+                    logs.critical(f'deletion failed for instance {self.id}, submodule: {delete_id}')
                     num_exceptions += 1
         else:
             routers_manager.delete_routes(deis_instance_id=self.id)

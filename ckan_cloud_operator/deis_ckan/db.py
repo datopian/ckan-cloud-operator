@@ -135,6 +135,7 @@ class DeisCkanInstanceDb(object):
             f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{ro_user}\";",
             f"ALTER DEFAULT PRIVILEGES FOR USER \"{db_name}\" IN SCHEMA public GRANT SELECT ON TABLES TO \"{ro_user}\";",
             f"GRANT \"{site_user}\" to \"{db_name}\";",
+            f"REASSIGN OWNED BY \"{postgres_user}\" TO \"{db_name}\";",
         ]:
             self._psql(line, '-d', db_name)
         datastore_permissions = DATASTORE_PERMISSIONS_SQL_TEMPLATE.replace('{{SITE_USER}}', site_user).replace('{{DS_RO_USER}}', ro_user)
