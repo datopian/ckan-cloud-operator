@@ -138,8 +138,12 @@ class DeisCkanInstanceDb(object):
             f"REASSIGN OWNED BY \"{postgres_user}\" TO \"{db_name}\";",
         ]:
             self._psql(line, '-d', db_name)
-        datastore_permissions = DATASTORE_PERMISSIONS_SQL_TEMPLATE.replace('{{SITE_USER}}', site_user).replace('{{DS_RO_USER}}', ro_user)
-        self._psql(datastore_permissions, "-d", db_name)
+        for line in DATASTORE_PERMISSIONS_SQL_TEMPLATE:
+            datastore_permissions = line.replace('{{SITE_USER}}', site_user).replace('{{DS_RO_USER}}', ro_user)
+            try:
+                self._psql(datastore_permissions, "-d", db_name)
+            except Exception as e:
+                print('Failed to exectue:',  datastore_permissions)
 
     def _create_datastore_ro_user(self):
         db_name = self.db_spec['name']

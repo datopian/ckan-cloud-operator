@@ -1,4 +1,4 @@
-DATASTORE_PERMISSIONS_SQL_TEMPLATE = """
+DATASTORE_PERMISSIONS_SQL_TEMPLATE = ["""
 CREATE OR REPLACE VIEW "_table_metadata" AS
     SELECT DISTINCT
         substr(md5(dependee.relname || COALESCE(dependent.relname, '')), 0, 17) AS "_id",
@@ -18,9 +18,14 @@ CREATE OR REPLACE VIEW "_table_metadata" AS
         AND dependee.relnamespace = (
             SELECT oid FROM pg_namespace WHERE nspname='public')
     ORDER BY dependee.oid DESC;
+""",
+"""
 ALTER VIEW "_table_metadata" OWNER TO "{{SITE_USER}}";
+""",
+"""
 GRANT SELECT ON "_table_metadata" TO "{{DS_RO_USER}}";
-
+""",
+"""
 CREATE OR REPLACE FUNCTION populate_full_text_trigger() RETURNS trigger
 AS $body$
     BEGIN
@@ -34,8 +39,11 @@ AS $body$
         RETURN NEW;
     END;
 $body$ LANGUAGE plpgsql;
+""",
+"""
 ALTER FUNCTION populate_full_text_trigger() OWNER TO "{{SITE_USER}}";
-
+""",
+"""
 DO $body$
     BEGIN
         EXECUTE coalesce(
@@ -53,3 +61,4 @@ DO $body$
     END;
 $body$;
 """
+]
