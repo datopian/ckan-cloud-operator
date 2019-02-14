@@ -73,20 +73,11 @@ ckan-cloud-operator-env activate <ENVIRONMENT_NAME>
 
 ## Initializing a cluster for ckan-cloud-operator
 
-Kubernetes custom resource definitions are used for management of the CKAN Cloud resources
-
-Run the following command to ensure the crds are installed on the cluster
+Runs an interactive initialization of the currently connected cluster
 
 ```
-ckan-cloud-operator install-crds
+ckan-cloud-operator cluster initialize
 ```
-
-ckan-cloud-operator using a secret named `ckan-infra` under namespace `ckan-cloud` to get infrastrutcute secrets.
-
-See the list of values in [ckan_cloud_operator/infra.py](ckan_cloud_operator/infra.py)
-
-You can clone an infrastructure secret using `ckan-infra clone` command
-and some infrastructure secrets can be set using `ckan-infra set` command
 
 ## Run ckan-cloud-operator locally
 

@@ -6,6 +6,22 @@ import datetime
 import json
 
 
+datetime_format = '%Y-%m-%dT%H:%M:%SZ'
+
+
+def datetime_representer(dumper, data):
+    return dumper.represent_data(data.strftime(datetime_format))
+
+
+def datetime_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return datetime.datetime.strptime(value, datetime_format)
+
+
+yaml.add_representer(datetime.datetime, datetime_representer)
+yaml.add_constructor(u'!datetime', datetime_constructor)
+
+
 def check_call(cmd, namespace='ckan-cloud'):
     subprocess.check_call(f'kubectl -n {namespace} {cmd}', shell=True)
 
@@ -18,9 +34,15 @@ def call(cmd, namespace='ckan-cloud'):
     return subprocess.call(f'kubectl -n {namespace} {cmd}', shell=True)
 
 
-def get(what, required=True, namespace='ckan-cloud'):
+def get(what, *args, required=True, namespace='ckan-cloud', get_cmd='get', **kwargs):
+    extra_args = ' '.join(args)
+    extra_kwargs = ' '.join([f'{k} {v}' for k, v in kwargs.items()])
     try:
-        return yaml.load(subprocess.check_output(f'kubectl -n {namespace} get {what} -o yaml', shell=True))
+        return yaml.load(
+            subprocess.check_output(
+                f'kubectl -n {namespace} {get_cmd} {what} {extra_args} -o yaml {extra_kwargs}', shell=True
+            )
+        )
     except subprocess.CalledProcessError:
         if required:
             raise
@@ -32,6 +54,12 @@ def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cl
     label_selector = ','.join([f'{k}={v}' for k,v in labels.items()])
     res = get(f'{resource_kind} -l {label_selector}', required=required, namespace=namespace)
     return res['items'] if res else None
+
+
+def delete_items_by_labels(resource_kinds, labels, namespace='ckan-cloud'):
+    label_selector = ','.join([f'{k}={v}' for k,v in labels.items()])
+    resource_kinds = ','.join(resource_kinds)
+    check_call(f'delete --ignore-not-found  -l {label_selector} {resource_kinds}', namespace=namespace)
 
 
 def decode_secret(secret, attr=None, required=False):
@@ -58,13 +86,15 @@ def decode_secret(secret, attr=None, required=False):
 
 
 def update_secret(name, values, namespace='ckan-cloud', labels=None):
+    for k, v in values.items():
+        v_type = type(v)
+        assert v_type == str, f'Invalid type ({v_type}) for {k}: {v}'
     if not labels:
         labels = {}
     secret = get(f'secret {name}', required=False, namespace=namespace)
     labels = dict(secret.get('metadata', {}).get('labels', {}), **labels) if secret else labels
-    data = secret['data'] if secret else {}
-    for k, v in values.items():
-        data[k] = base64.b64encode(v.encode()).decode()
+    data = decode_secret(secret, required=False)
+    data.update(**values)
     apply({
         'apiVersion': 'v1',
         'kind': 'Secret',
@@ -74,8 +104,20 @@ def update_secret(name, values, namespace='ckan-cloud', labels=None):
             'labels': labels,
         },
         'type': 'Opaque',
-        'data': data
+        'data': {k: base64.b64encode(v.encode()).decode() for k, v in data.items() if v}
     })
+    return data
+
+
+def update_configmap(name, values, namespace='ckan-cloud', labels=None):
+    for k, v in values.items():
+        v_type = type(v)
+        assert v_type == str, f'Invalid type ({v_type}) for {k}: {v}'
+    configmap = get(f'configmap {name}', required=False, namespace=namespace)
+    data = configmap['data'] if configmap else {}
+    data.update(**values)
+    apply(get_configmap(name, labels, data, namespace=namespace))
+    return data
 
 
 def get_item_detailed_status(item):

@@ -17,14 +17,27 @@ class DeisCkanInstanceSolr(object):
     def delete(self):
         collection_name = self.solr_spec['name']
         print(f'Deleting solrcloud collection {collection_name}')
-        http_endpoint = self.instance.ckan_infra.SOLR_HTTP_ENDPOINT
+        from ckan_cloud_operator.providers.solr import manager as solr_manager
+        http_endpoint = solr_manager.get_http_endpoint()
         subprocess.check_call(
             f'curl -f "{http_endpoint}/admin/collections?action=DELETE&name={collection_name}"',
             shell=True
         )
 
+    def get_http_endpoint(self):
+        from ckan_cloud_operator.providers.solr import manager as solr_manager
+        return solr_manager.get_http_endpoint()
+
+    def get_replication_factor(self):
+        from ckan_cloud_operator.providers.solr import manager as solr_manager
+        return solr_manager.get_replication_factor()
+
+    def get_num_shards(self):
+        from ckan_cloud_operator.providers.solr import manager as solr_manager
+        return solr_manager.get_num_shards()
+
     def get(self):
-        solr_http_endpoint = self.instance.ckan_infra.SOLR_HTTP_ENDPOINT
+        solr_http_endpoint = self.get_http_endpoint()
         collection_name = self.instance.spec.solrCloudCollection['name']
         exitcode, output = subprocess.getstatusoutput(f'curl -s -f "{solr_http_endpoint}/{collection_name}/schema"')
         if exitcode == 0:
@@ -44,7 +57,7 @@ class DeisCkanInstanceSolr(object):
 
     def _update(self):
         collection_name = self.solr_spec['name']
-        http_endpoint = self.instance.ckan_infra.SOLR_HTTP_ENDPOINT
+        http_endpoint = self.get_http_endpoint()
         returncode, output = subprocess.getstatusoutput(f'curl -s -f "{http_endpoint}/{collection_name}/schema"')
         schema_name_version = None
         if returncode == 0:
@@ -56,8 +69,8 @@ class DeisCkanInstanceSolr(object):
             if 'configName' in self.solr_spec:
                 config_name = self.solr_spec['configName']
                 print(f'creating solrcloud collection {collection_name} using config {config_name}')
-                replication_factor = self.instance.ckan_infra.SOLR_REPLICATION_FACTOR
-                num_shards = self.instance.ckan_infra.SOLR_NUM_SHARDS
+                replication_factor = self.get_replication_factor()
+                num_shards = self.get_num_shards()
                 subprocess.check_call(
                     f'curl -f "{http_endpoint}/admin/collections?action=CREATE&name={collection_name}&collection.configName={config_name}&replicationFactor={replication_factor}&numShards={num_shards}"',
                     shell=True

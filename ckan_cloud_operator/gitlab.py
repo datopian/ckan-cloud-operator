@@ -6,10 +6,10 @@ import traceback
 import requests
 
 
-class CkanGitlab(object):
+from ckan_cloud_operator.providers.ckan import manager as ckan_manager
 
-    def __init__(self, ckan_infra):
-        self.ckan_infra = ckan_infra
+
+class CkanGitlab(object):
 
     def initialize(self, project):
         project_id = self._get_project_id(project)
@@ -100,7 +100,7 @@ class CkanGitlab(object):
                 return None
 
     def _curl(self, urlpart, postjson=None, method='POST'):
-        gitlab_token = self.ckan_infra.GITLAB_TOKEN_PASSWORD
+        gitlab_token = ckan_manager.gitlab_token()
         if postjson:
             r = requests.request(
                 method,

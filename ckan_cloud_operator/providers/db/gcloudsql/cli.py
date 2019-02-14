@@ -1,19 +1,18 @@
 import click
 
 from ckan_cloud_operator import logs
+from ckan_cloud_operator.providers.db.gcloudsql import manager
 
-from ckan_cloud_operator.providers.db.gcloudsql import manager as gcloudsql_manager
 
-
-@click.group()
+@click.group('gcloudsql')
 def gcloudsql_group():
     """Manage Google Cloud SQL instances for centralized DB services"""
     pass
 
 
 @gcloudsql_group.command()
-def initialize():
+@click.option('--interactive', is_flag=True)
+def initialize(interactive):
     """Enable Google Cloud SQL as the main DB provider"""
-    gcloudsql_manager.initialize()
-    gcloudsql_manager.set_as_main_db()
+    manager.initialize(interactive=interactive)
     logs.exit_great_success()

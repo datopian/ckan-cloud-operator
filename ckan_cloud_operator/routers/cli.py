@@ -8,6 +8,13 @@ from ckan_cloud_operator import logs
 
 def add_cli_commands(click, command_group, great_success):
 
+    @command_group.command('initialize')
+    @click.option('--interactive', is_flag=True)
+    def initialize(interactive):
+        from ckan_cloud_operator.providers.routers.manager import initialize as manager_initialize
+        manager_initialize(interactive)
+        great_success()
+
     @command_group.command('create-traefik-router')
     @click.argument('TRAEFIK_ROUTER_NAME')
     @click.argument('DEFAULT_ROOT_DOMAIN', required=False, default='default')
@@ -82,22 +89,38 @@ def add_cli_commands(click, command_group, great_success):
     @command_group.command('get-routes')
     @click.option('-p', '--datapusher-name', required=False)
     @click.option('-d', '--deis-instance-id', required=False)
-    def get_routes(datapusher_name, deis_instance_id):
+    @click.option('-b', '--backend-url-target-id', required=False)
+    @click.option('-o', '--one', is_flag=True)
+    @click.option('-e', '--external-domain', is_flag=True)
+    def get_routes(datapusher_name, deis_instance_id, backend_url_target_id, one, external_domain):
         if datapusher_name:
             assert not deis_instance_id
             routes = routers_manager.get_datapusher_routes(datapusher_name)
         elif deis_instance_id:
             routes = routers_manager.get_deis_instance_routes(deis_instance_id)
+        elif backend_url_target_id:
+            routes = routers_manager.get_backend_url_routes(backend_url_target_id)
         else:
             raise Exception(f'invalid arguments')
         if routes:
+            if one: assert len(routes) == 1, 'too many routes!'
             for route in routes:
-                data = {
-                    'name': route['metadata']['name'],
-                    'backend-url': routes_manager.get_backend_url(route),
-                    'frontend-hostname': routes_manager.get_frontend_hostname(route),
-                }
-                print(yaml.dump([data], default_flow_style=False))
+                if external_domain:
+                    data = routers_manager.get_route_frontend_hostname(route)
+                    if one:
+                        print(data)
+                    else:
+                        print(yaml.dump([data], default_flow_style=False))
+                else:
+                    data = {
+                        'name': route['metadata']['name'],
+                        'backend-url': routes_manager.get_backend_url(route),
+                        'frontend-hostname': routes_manager.get_frontend_hostname(route),
+                    }
+                    if one:
+                        print(yaml.dump(data, default_flow_style=False))
+                    else:
+                        print(yaml.dump([data], default_flow_style=False))
 
     @command_group.command('delete-routes')
     @click.option('-p', '--datapusher-name', required=False)

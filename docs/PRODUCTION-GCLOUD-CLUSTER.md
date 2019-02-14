@@ -6,7 +6,7 @@ Use the Google Kubernetes Engine web-ui to create a Kubernetes cluster
 
 The following configuration was tested:
 
-* Master Version: 1.10
+* Master Version: 1.11
 * Number of nodes: 3
 * Machine type: 4vCpu, 15GB RAM
 * Auto-upgrade: on
@@ -43,22 +43,34 @@ Click on the cluster and then on kubeconfig file.
 
 Download the file locally.
 
+## Create multi-user storage class
+
+This is used for small volume storage for shared configurations / infrastructure
+
+Deploy nfs-server-provisioner helm chart (can use Rancher catalog app) with the following values:
+
+```
+persistence.enabled = true
+persistence.size = 5Gi
+storageClass.name = cca-ckan
+```
+
 ## Initialize a new ckan-cloud-operator environment
 
 Follow the ckan-cloud-operator installation and usage guide in the [README.md](/README.md) to configure ckan-cloud-operator to use this kubeconfig file.
 
 Make sure to install the custom resource definitions and initialize the cluster as guided in the README.
 
-Create an admin user for yourself:
+Create an admin user:
 
 ```
-ckan-cloud-operator users create your.name admin
+ckan-cloud-operator users create your.name --role=admin
 ```
 
 Get the kubeconfig file for your admin user:
 
 ```
-ckan-cloud-operator users get your.name > /path/to/your.kube-config
+ckan-cloud-operator users get-kubeconfig your.name > /path/to/your.kube-config
 ```
 
 Replace the kube-config file for your environment with the newly created kube-config.

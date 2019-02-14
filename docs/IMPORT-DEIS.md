@@ -1,31 +1,5 @@
 # Importing deis instances to ckan-cloud on GKE
 
-## Prepare Gcloud SQL for import via Google Store bucket
-
-Authenticate to gcloud using ckan-cloud-operator
-
-```
-ckan-cloud-operator activate-gcloud-auth
-```
-
-Get the service account email for the cloud sql instance (you should be authorized to the relevant Google account)
-
-```
-GCLOUD_SQL_INSTANCE_ID=`ckan-cloud-operator ckan-infra get GCLOUD_SQL_INSTANCE_NAME`
-
-GCLOUD_SQL_SERVICE_ACCOUNT=`gcloud sql instances describe $GCLOUD_SQL_INSTANCE_ID \
-    | python -c "import sys,yaml; print(yaml.load(sys.stdin)['serviceAccountEmailAddress'])" | tee /dev/stderr`
-```
-
-Give permissions to the bucket used for importing:
-
-```
-GCLOUD_SQL_DEIS_IMPORT_BUCKET=`ckan-cloud-operator ckan-infra get GCLOUD_SQL_DEIS_IMPORT_BUCKET`
-
-gsutil acl ch -u ${GCLOUD_SQL_SERVICE_ACCOUNT}:W gs://${GCLOUD_SQL_DEIS_IMPORT_BUCKET}/ &&\
-gsutil acl ch -R -u ${GCLOUD_SQL_SERVICE_ACCOUNT}:R gs://${GCLOUD_SQL_DEIS_IMPORT_BUCKET}/
-```
-
 ## Import DBs from Deis
 
 Connect to the Deis cluster
@@ -110,88 +84,72 @@ Run the output script on the db-operations pod
 
 ## Get the instance's solrcloud config name
 
-Get the instance solr config name
-
-```
-# you can get the collection name from the instance env vars solr connection url
-COLLECTION_NAME=
-
-KUBECONFIG=$DEIS_KUBECONFIG kubectl -n solr exec zk-0 zkCli.sh get /collections/$COLLECTION_NAME
-```
-
-The output should contain a config name like `ckan_27_default`
-
 see ckan-cloud-dataflows for importing the configs to searchstax - all configs should be imported already
 
-## Sync storage from minio
-
-Start a bash terminal with gcloud on the deis minio pod
+## Deploy the Minio server
 
 ```
-KUBECONFIG=$DEIS_KUBECONFIG kubectl -n deis exec -it deis-minio-6ddd8f5d85-wphhb bash
+ckan-cloud-operator storage initialize --interactive
 ```
 
-Use gcloud CLI to sync data, following command syncs all the data
+Get the credentials
 
 ```
-cd /export &&\
-gsutil -m rsync -R ./ gs://ckan-cloud-staging-storage/
+ckan-cloud-operator storage credentials
 ```
 
-Sync a single instance
+Get the Deis cluster credentials (on edge cluster):
 
 ```
-cd /export &&\
-gsutil -m rsync -R ./ckan/<INSTANCE_ID>/ gs://ckan-cloud-staging-storage/ckan/<INSTANCE_ID>/
+ckan-cloud-operator config get --secret-name deis-minio-credentials
 ```
 
-**Use With Caution!** Sync all data, including file deletions
-
-```
-cd /export &&\
-gsutil -m rsync -d -R ./ gs://ckan-cloud-staging-storage/
-```
-
-## Initialize the Minio storage proxy
-
-```
-ckan-cloud-operator initialize-storage
-```
-
-To debug minio and perform operations - start minio client shell:
-
-```
-docker run -it --entrypoint=/bin/sh minio/mc
-```
+Using Rancher, deploy a minio client image (`docker image = minio/mc`) and execute a shell on it
 
 Run the following inside the minio client shell to setup the relevant hosts
 
 ```
-mc config host add prod https://cc-p-minio.ckan.io MINIO_ACCESS_KEY MINIO_SECRET_KEY
+mc config host add edge https://cc-e-minio.ckan.io MINIO_ACCESS_KEY MINIO_SECRET_KEY
 mc config host add deis https://minio.l3.ckan.io MINIO_ACCESS_KEY MINIO_SECRET_KEY
 ```
 
+Create the bucket and mirror the data
+
+```
+mc mirror --overwrite --watch -a deis/ckan edge/ckan
+```
+
+* `-a` = keep storage policies
 
 
-## Initialize the DataPusher
-
-all datapushers were migrated, this step is probably not needed anymore, unless we find a new datapusher being used somewhere
-
-Get the relevant DataPusher image from Rancher
-
-ssh to one of the old cluster servers, tag and push the image to `registry.gitlab.com/viderum/docker-datapusher:cloud-<DATAPUSHER_IMAGE_TAG>`
-
-Use the image to create the DataPusher using ckan-cloud-operator datapushers create command
-
-## migrate the instance
+## migrate an instance
 
 Assuming:
 
 * you used previous stesp to prepare the import data for all instances
 * ckan-cloud-operator is configured with required secrets to support the migration
 
-you can run the following to migrate an instance:
+Start the DB proxy (keep running in the background)
 
 ```
-ckan-cloud-operator deis-instance create from-deis OLD_SITE_ID NEW_INSTANCE_ID
+ckan-cloud-operator db proxy port-forward
 ```
+
+Migrate an instance:
+
+```
+ckan-cloud-operator ckan migrate-deis-instance OLD_SITE_ID
+```
+
+If migration fails or when making changes, you can rerun with following flags:
+
+* `--recreate` - delete instance and DBs and recreate from scratch
+* `--rerun` - re-run the migration, but doesn't re-migrate DBs and skips some components if already exist
+* `--recreate-instance` - delete and re-create the instance (but not the DBs)
+
+Skip specific parts of the migration:
+
+* `--skip-gitlab`
+* `--skip-routes`
+* `--skip-solr`
+* `--skip-deployment`

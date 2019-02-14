@@ -1,0 +1,5 @@
+PROVIDER_SUBMODULE='users'
+
+CRD_SINGULAR = 'user'
+CRD_PLURAL = 'users'
+CRD_KIND = 'User'

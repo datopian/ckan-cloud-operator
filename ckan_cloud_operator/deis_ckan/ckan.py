@@ -24,18 +24,19 @@ class DeisCkanInstanceCKAN(object):
         self.exec(cmd)
 
     def _get_ckan_pod_name(self):
-        ckan_pod_name = None
-        for pod in self.instance.get('deployment').get('pods', []):
-            if pod.get('name') and len(pod.get('error', [])) == 0:
-                ckan_pod_name = pod['name']
-                break
-        return ckan_pod_name
+        deployment_data = self.instance.get('deployment')
+        latest_pod_name = deployment_data['latest_pod_name']
+        if latest_pod_name:
+            latest_pods = [pod for pod in deployment_data.get('pods', []) if pod['name'] == latest_pod_name]
+            if len(latest_pods) == 1 and len(latest_pods[0].get('errors', [])) == 0:
+                return latest_pod_name
+        return None
 
-    def exec(self, *args):
+    def exec(self, *args, check_output=False):
         """Execute shell scripts on the first CKAN pod"""
         pod_name = self._get_ckan_pod_name()
         assert pod_name
-        self.instance.kubectl(f'exec {pod_name} ' + " ".join(args))
+        return self.instance.kubectl(f'exec {pod_name} ' + " ".join(args), check_output=check_output)
 
     def logs(self, *args):
         """Run kubectl logs on the first CKAN pod"""

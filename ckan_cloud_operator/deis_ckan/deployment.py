@@ -27,8 +27,13 @@ class DeisCkanInstanceDeployment(object):
             status['pods'] = []
             pods = kubectl.get('pods -l app=ckan', namespace=self.instance.id, required=False)
             image = None
+            latest_operator_timestamp, latest_pod_name, latest_pod_status = None, None, None
             if pods:
                 for pod in pods['items']:
+                    pod_operator_timestamp = pod['metadata']['annotations']['ckan-cloud/operator-timestamp']
+                    if not latest_operator_timestamp or latest_operator_timestamp < pod_operator_timestamp:
+                        latest_operator_timestamp = pod_operator_timestamp
+                        latest_pod_name = pod['metadata']['name']
                     pod_status = kubectl.get_item_detailed_status(pod)
                     status_code, output = subprocess.getstatusoutput(
                         f'kubectl -n {self.instance.id} logs {pod["metadata"]["name"]} -c ckan --tail 5',
@@ -36,8 +41,7 @@ class DeisCkanInstanceDeployment(object):
                     if status_code == 0:
                         pod_status['logs'] = output
                     else:
-                        ready = False
-                        pod_status['logs'] = ''
+                        pod_status['logs'] = None
                     if not image:
                         image = pod["spec"]["containers"][0]["image"]
                     else:
@@ -45,7 +49,13 @@ class DeisCkanInstanceDeployment(object):
                             ready = False
                             image = pod["spec"]["containers"][0]["image"]
                     status['pods'].append(pod_status)
-            return dict(status, ready=ready, image=image)
+                    if latest_pod_name == pod_status['name']:
+                        latest_pod_status = pod_status
+                if not latest_pod_status or len(latest_pod_status.get('errors', [])) > 0 or latest_pod_status['logs'] is None:
+                    ready = False
+            else:
+                ready = False
+            return dict(status, ready=ready, image=image, latest_pod_name=latest_pod_name, latest_operator_timestamp=latest_operator_timestamp)
         else:
             return {'ready': False, 'error': output}
 

@@ -138,8 +138,8 @@ class CkanInfra(object):
             }
             kubectl.apply(service)
 
-    def __init__(self):
-        values = kubectl.decode_secret(kubectl.get('secret ckan-infra'))
+    def __init__(self, required=True):
+        values = kubectl.decode_secret(kubectl.get('secret ckan-infra', required=required), required=required)
 
         # Database
 

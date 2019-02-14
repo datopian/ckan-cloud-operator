@@ -2,33 +2,17 @@ import subprocess
 import yaml
 import os
 import json
-import datetime
 
-from ckan_cloud_operator.infra import CkanInfra
-from ckan_cloud_operator import gcloud
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.gitlab import CkanGitlab
 from ckan_cloud_operator.routers import manager as routers_manager
 from ckan_cloud_operator import logs
+from ckan_cloud_operator.providers.routers import manager as routers_provider
+from ckan_cloud_operator.providers.ckan import manager as ckan_manager
 
 
-def get_path_to_old_cluster_kubeconfig(ckan_infra):
-    path_to_kubeconfig = '/etc/ckan-cloud/viderum-omc/.kube-config'
-    if not os.path.exists(path_to_kubeconfig):
-        deis_kubeconfig = yaml.load(ckan_infra.DEIS_KUBECONFIG)
-        for filename, content in deis_kubeconfig['__files'].items():
-            if not os.path.exists(filename):
-                print(f'creating file required for deis kubeconfig: {filename}')
-                os.makedirs(os.path.dirname(filename), exist_ok=True)
-                with open(filename, 'w') as f:
-                    f.write(content)
-                print('file created successfully')
-        print(f'creating deis kubeconfig: {path_to_kubeconfig}')
-        os.makedirs(os.path.dirname(path_to_kubeconfig), exist_ok=True)
-        with open(path_to_kubeconfig, 'w') as f:
-            f.write(yaml.dump(deis_kubeconfig))
-        print('created deis kubeconfig')
-    return path_to_kubeconfig
+def get_path_to_old_cluster_kubeconfig():
+    return ckan_manager.get_path_to_old_cluster_kubeconfig()
 
 
 def get_solr_config(old_site_id, path_to_old_cluster_kubeconfig):
@@ -36,39 +20,12 @@ def get_solr_config(old_site_id, path_to_old_cluster_kubeconfig):
     output = subprocess.check_output(f'KUBECONFIG={path_to_old_cluster_kubeconfig} '
                                      f'kubectl -n solr exec zk-0 zkCli.sh '
                                      f'get /collections/{solr_collection_name} 2>&1', shell=True)
+    print(output)
     solr_config = None
     for line in output.decode().splitlines():
         if line.startswith('{"configName":'):
             solr_config = json.loads(line)["configName"]
     return solr_config
-
-
-def get_db_import_urls(old_site_id, ckan_infra):
-    import_backup = ckan_infra.GCLOUD_SQL_DEIS_IMPORT_BUCKET
-    instance_latest_datestring = None
-    instance_latest_dt = None
-    instance_latest_datastore_datestring = None
-    instance_latest_datastore_dt = None
-    for line in gcloud.check_output(f"ls 'gs://{import_backup}/postgres/????????/*.sql'",
-                                    gsutil=True).decode().splitlines():
-        # gs://viderum-deis-backups/postgres/20190122/nav.20190122.dump.sql
-        datestring, filename = line.split('/')[4:]
-        file_instance = '.'.join(filename.split('.')[:-3])
-        is_datastore = file_instance.endswith('-datastore')
-        file_instance = file_instance.replace('-datastore', '')
-        dt = datetime.datetime.strptime(datestring, '%Y%M%d')
-        if file_instance == old_site_id:
-            if is_datastore:
-                if instance_latest_datastore_dt is None or instance_latest_datastore_dt < dt:
-                    instance_latest_datastore_datestring = datestring
-                    instance_latest_datastore_dt = dt
-            elif instance_latest_dt is None or instance_latest_dt < dt:
-                instance_latest_datestring = datestring
-                instance_latest_dt = dt
-    return (
-        f'gs://{import_backup}/postgres/{instance_latest_datestring}/{old_site_id}.{instance_latest_datestring}.dump.sql',
-        f'gs://{import_backup}/postgres/{instance_latest_datastore_datestring}/{old_site_id}-datastore.{instance_latest_datastore_datestring}.dump.sql'
-    )
 
 
 def get_instance_env(old_site_id, path_to_old_cluster_kubeconfig):
@@ -104,46 +61,53 @@ def get_instance_env(old_site_id, path_to_old_cluster_kubeconfig):
 
 
 def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_class,
-                      only_dbs=False):
+                      skip_gitlab=False, db_migration_name=None, recreate=False,
+                      skip_routes=False, skip_solr=False, skip_deployment=False):
+    assert db_migration_name, 'migration without a db migration is not supported yet'
     log_labels = {'instance': new_instance_id}
+    if recreate:
+        from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
+        DeisCkanInstance(new_instance_id).delete(force=True, wait_deleted=not db_migration_name)
     logs.info(f'Migrating from old site id {old_site_id} to new instance id {new_instance_id}', **log_labels)
-    values = kubectl.get(f'DeisCkanInstance {new_instance_id}', required=False)
-    ckan_infra = CkanInfra()
+    instance_kind = ckan_manager.instance_kind()
+    values = kubectl.get(f'{instance_kind} {new_instance_id}', required=False)
     if values:
         logs.info('instance already exists', **log_labels)
     else:
         logs.info('creating instance', **log_labels)
-        path_to_old_cluster_kubeconfig = get_path_to_old_cluster_kubeconfig(ckan_infra)
+        path_to_old_cluster_kubeconfig = get_path_to_old_cluster_kubeconfig()
         solr_config = get_solr_config(old_site_id, path_to_old_cluster_kubeconfig)
         assert solr_config, 'failed to get solr config name'
-        db_import_url, datastore_import_url = get_db_import_urls(old_site_id, ckan_infra)
         instance_env = get_instance_env(old_site_id, path_to_old_cluster_kubeconfig)
         gitlab_repo = f'viderum/cloud-{old_site_id}'
-        CkanGitlab(CkanInfra()).initialize(gitlab_repo)
+        if not skip_gitlab:
+            CkanGitlab().initialize(gitlab_repo)
         gitlab_registry = f'registry.gitlab.com/{gitlab_repo}'
         storage_path = f'/ckan/{old_site_id}'
         deis_instance_class.create('from-gcloud-envvars', instance_env, gitlab_registry, solr_config,
-                                   db_import_url, datastore_import_url, storage_path, new_instance_id)
-    routers_env_id = ckan_infra.ROUTERS_ENV_ID
-    assert routers_env_id
-    ckan_site_url = f'https://cc-{routers_env_id}-{new_instance_id}.{ckan_infra.ROUTERS_DEFAULT_ROOT_DOMAIN}'
+                                   storage_path, new_instance_id, db_migration_name=db_migration_name)
+    routers_env_id = routers_provider.get_env_id()
+    default_root_domain = routers_provider.get_default_root_domain()
+    assert routers_env_id and default_root_domain
+    ckan_site_url = f'https://cc-{routers_env_id}-{new_instance_id}.{default_root_domain}'
     logs.info(f'updating instance and setting ckan site url to {ckan_site_url}', **log_labels)
     deis_instance_class(
-        new_instance_id, values,
+        new_instance_id,
         override_spec={'envvars': {'CKAN_SITE_URL': ckan_site_url}},
         persist_overrides=True
-    ).update(wait_ready=True, only_dbs=only_dbs)
-    if not only_dbs:
-        if routers_manager.get_deis_instance_routes(new_instance_id):
-            logs.info('default instance route already exists', **log_labels)
-        else:
-            logs.info('creating instance route', **log_labels)
-            routers_manager.create_subdomain_route(router_name, {
-                'target-type': 'deis-instance',
-                'deis-instance-id': new_instance_id,
-                'root-domain': 'default',
-                'sub-domain': 'default'
-            })
+    ).update(wait_ready=True, skip_solr=skip_solr, skip_deployment=skip_deployment)
+    if routers_manager.get_deis_instance_routes(new_instance_id):
+        logs.info('default instance route already exists', **log_labels)
+    else:
+        logs.info('creating instance route', **log_labels)
+        routers_manager.create_subdomain_route(router_name, {
+            'target-type': 'deis-instance',
+            'deis-instance-id': new_instance_id,
+            'root-domain': 'default',
+            'sub-domain': 'default'
+        })
+    if not skip_routes:
         routers_manager.update(router_name, wait_ready=True)
+    if not skip_solr:
         logs.info('Rebuilding solr search index', **log_labels)
         deis_instance_class(new_instance_id).ckan.paster('search-index rebuild --force')

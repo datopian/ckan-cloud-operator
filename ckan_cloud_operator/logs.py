@@ -1,5 +1,8 @@
 from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG, getLevelName
 import datetime
+from distutils.util import strtobool
+import os
+import yaml
 
 
 def info(*args, **kwargs):
@@ -22,6 +25,7 @@ def critical(*args, **kwargs):
 
 
 def log(level, *args, **kwargs):
+    if level == DEBUG and not strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG', 'n')): return
     msg = datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + ' ' + getLevelName(level) + ' '
     if len(kwargs) > 0:
         msg += '(' + ','.join([f'{k}="{v}"' for k, v in kwargs.items()]) + ') '
@@ -29,10 +33,19 @@ def log(level, *args, **kwargs):
     print(msg)
 
 
-def exit_great_success():
-    info('Great Success!')
+def exit_great_success(quiet=False):
+    if not quiet:
+        info('Great Success!')
     exit(0)
 
-def exit_catastrophic_failure(exitcode=1):
-    critical('Catastrophic Failure!')
+def exit_catastrophic_failure(exitcode=1, quiet=False):
+    if not quiet:
+        critical('Catastrophic Failure!')
     exit(exitcode)
+
+
+def debug_yaml_dump(*args, **kwargs):
+    if len(args) == 1:
+        debug(yaml.dump(args[0], default_flow_style=False), **kwargs)
+    else:
+        debug(yaml.dump(args, default_flow_style=False), **kwargs)

@@ -18,8 +18,8 @@ from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
 from ckan_cloud_operator.routers import manager as routers_manager
-from ckan_cloud_operator.db import manager as db_manager
 from ckan_cloud_operator import logs
+from ckan_cloud_operator.providers.ckan import manager as ckan_manager
 
 
 class DeisCkanInstance(object):
@@ -50,7 +50,8 @@ class DeisCkanInstance(object):
         @click.argument('EDITOR', default='nano')
         def deis_instance_edit(instance_id, editor):
             """Launch an editor to modify and update an instance"""
-            subprocess.call(f'EDITOR={editor} kubectl -n ckan-cloud edit DeisCkanInstance/{instance_id}', shell=True)
+            instance_kind = ckan_manager.instance_kind()
+            subprocess.call(f'EDITOR={editor} kubectl -n ckan-cloud edit {instance_kind}/{instance_id}', shell=True)
             cls(instance_id).update()
             great_success()
 
@@ -89,17 +90,6 @@ class DeisCkanInstance(object):
                 logs.critical(f'Instance deletion failed for the following instance ids: {failed_instance_ids}')
                 if not force:
                     logs.exit_catastrophic_failure()
-            great_success()
-
-
-        @command_group.command('migrate')
-        @click.argument('OLD_SITE_ID')
-        @click.argument('NEW_INSTANCE_ID')
-        @click.argument('ROUTER_NAME')
-        @click.option('--only-dbs', is_flag=True)
-        def deis_instance_migrate(old_site_id, new_instance_id, router_name, only_dbs):
-            """Run a full end-to-end migration of an instasnce"""
-            migrate_from_deis(old_site_id, new_instance_id, router_name, cls, only_dbs=only_dbs)
             great_success()
 
         #### deis-instance create
@@ -221,8 +211,12 @@ class DeisCkanInstance(object):
         """Initialize the raw Kubernetes resource object dict"""
         values = getattr(self, '_values', None)
         if not values:
-            self._values = values = kubectl.get(f'DeisCkanInstance {self.id}')
+            self._values = values = kubectl.get(f'{self.kind} {self.id}')
         return values
+
+    @property
+    def kind(self):
+        return ckan_manager.instance_kind()
 
     @property
     def spec(self):
@@ -230,14 +224,16 @@ class DeisCkanInstance(object):
 
         :return: DeisCkanInstanceSpec
         """
-        spec = getattr(self, '_spec', None)
-        if not spec:
-            self._spec = spec = DeisCkanInstanceSpec(self.values['spec'], self._override_spec)
-            if self._persist_overrides and spec.num_applied_overrides > 0:
-                instance = kubectl.get(f'DeisCkanInstance {self.id}')
-                instance['spec'] = spec.spec
-                subprocess.run('kubectl apply -f -', input=yaml.dump(instance).encode(), shell=True, check=True)
-        return spec
+        if not getattr(self, '_spec', None):
+            self._spec = DeisCkanInstanceSpec(self.values['spec'], self._override_spec)
+            if self._persist_overrides and self._spec.num_applied_overrides > 0:
+                logs.info('persisting overrides')
+                logs.debug(f'saving spec for instance id {self.id}: {self._spec.spec}')
+                instance = kubectl.get(f'{self.kind} {self.id}')
+                instance['spec'] = self._spec.spec
+                logs.debug_yaml_dump(instance)
+                kubectl.apply(instance)
+        return self._spec
 
     @property
     def ckan_infra(self):
@@ -247,7 +243,7 @@ class DeisCkanInstance(object):
         """
         ckan_infra = getattr(self, '_ckan_infra', None)
         if not ckan_infra:
-            self._ckan_infra = ckan_infra = CkanInfra()
+            self._ckan_infra = ckan_infra = CkanInfra(required=False)
         return ckan_infra
 
     @property
@@ -272,30 +268,27 @@ class DeisCkanInstance(object):
             self._ckan = ckan = DeisCkanInstanceCKAN(self)
         return ckan
 
-    def update(self, wait_ready=False, only_dbs=False):
+    def update(self, wait_ready=False, skip_solr=False, skip_deployment=False):
         """Ensure the instance is updated to latest spec"""
-        if only_dbs:
-            old_deployment_generation = None
-            expected_new_deployment_generation = None
+        old_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
+        if old_deployment:
+            old_deployment_generation = old_deployment.get('metadata', {}).get('generation')
         else:
-            old_deployment = kubectl.get(f'deployment {self.id}', required=False, namespace=self.id)
-            if old_deployment:
-                old_deployment_generation = old_deployment.get('metadata', {}).get('generation')
-            else:
-                old_deployment_generation = None
-            if old_deployment_generation:
-                expected_new_deployment_generation = old_deployment_generation + 1
-            else:
-                expected_new_deployment_generation = 1
-            print(f'old deployment generation = {old_deployment_generation}')
+            old_deployment_generation = None
+        if old_deployment_generation:
+            expected_new_deployment_generation = old_deployment_generation + 1
+        else:
+            expected_new_deployment_generation = 1
+        print(f'old deployment generation = {old_deployment_generation}')
         DeisCkanInstanceNamespace(self).update()
         DeisCkanInstanceDb(self, 'db').update()
         DeisCkanInstanceDb(self, 'datastore').update()
-        if not only_dbs:
+        if not skip_solr:
             DeisCkanInstanceSolr(self).update()
-            DeisCkanInstanceStorage(self).update()
-            DeisCkanInstanceRegistry(self).update()
-            DeisCkanInstanceEnvvars(self).update()
+        DeisCkanInstanceStorage(self).update()
+        DeisCkanInstanceRegistry(self).update()
+        DeisCkanInstanceEnvvars(self).update()
+        if not skip_deployment:
             DeisCkanInstanceDeployment(self).update()
             while True:
                 time.sleep(.2)
@@ -325,31 +318,30 @@ class DeisCkanInstance(object):
                             default_flow_style=False)
                         )
                         time.sleep(2)
-            self.ckan.update()
+        self.ckan.update()
+        DeisCkanInstanceDb(self, 'datastore').set_datastore_readonly_permissions()
 
-    def delete(self, force=False):
+    def delete(self, force=False, wait_deleted=False):
         """
         Can run delete multiple time until successful deletion of all components.
         Uses Kubernetes finalizers to ensure deletion is complete before applying the deletion.
         """
-        print(f'Deleting DeisCkanInstance {self.id}')
+        print(f'Deleting {self.kind} {self.id}')
         try:
             assert self.spec
             has_spec = True
         except Exception:
             has_spec = False
         # this updates deletion timestamp but doesn't delete the object until all finalizers are removed
-        subprocess.call(f'kubectl -n ckan-cloud delete DeisCkanInstance {self.id}', shell=True)
+        subprocess.call(f'kubectl -n ckan-cloud delete {self.kind} {self.id}', shell=True)
+        num_exceptions = 0
         if has_spec:
-            num_exceptions = 0
             for delete_id, delete_code in {
                 'deployment': lambda: DeisCkanInstanceDeployment(self).delete(),
                 'envvars': lambda: DeisCkanInstanceEnvvars(self).delete(),
                 'registry': lambda: DeisCkanInstanceRegistry(self).delete(),
                 'solr': lambda: DeisCkanInstanceSolr(self).delete(),
                 'storage': lambda: DeisCkanInstanceStorage(self).delete(),
-                'datastore': lambda: DeisCkanInstanceDb(self, 'datastore').delete(),
-                'db': lambda: DeisCkanInstanceDb(self, 'db').delete(),
                 'namespace': lambda: DeisCkanInstanceNamespace(self).delete(),
                 'envvars-secret': lambda: kubectl.check_call(f'delete --ignore-not-found secret/{self.id}-envvars'),
                 'routes': lambda: routers_manager.delete_routes(deis_instance_id=self.id)
@@ -360,19 +352,35 @@ class DeisCkanInstance(object):
                     logs.critical(f'deletion failed for instance {self.id}, submodule: {delete_id}')
                     num_exceptions += 1
         else:
-            routers_manager.delete_routes(deis_instance_id=self.id)
-            num_exceptions = 1
+            try:
+                routers_manager.delete_routes(deis_instance_id=self.id)
+            except Exception as e:
+                logs.critical(f'deletion failed for instance {self.id}, submodule: routes')
+                num_exceptions += 1
+            num_exceptions += 1
         if num_exceptions != 0 and not force:
             raise Exception('instance was not deleted, run with --force to force deletion with risk of remaining infra')
         else:
-            print(f'Removing finalizers from DeisCkanInstance {self.id}')
-            subprocess.check_call(
-                f'kubectl -n ckan-cloud patch DeisCkanInstance {self.id} -p \'{{"metadata":{{"finalizers":[]}}}}\' --type=merge',
-                shell=True
-            )
+            print(f'Removing finalizers from {self.kind} {self.id}')
+            try:
+                subprocess.check_call(
+                    f'kubectl -n ckan-cloud patch {self.kind} {self.id} -p \'{{"metadata":{{"finalizers":[]}}}}\' --type=merge',
+                    shell=True
+                )
+            except Exception:
+                logs.critical(f'failed to remove finalizers: {self.id}')
+                num_exceptions += 1
+                if not force:
+                    raise
+        if wait_deleted and has_spec:
+            logs.info('Waiting 30 seconds for instance to be deleted...')
+            time.sleep(30)
 
-    def kubectl(self, cmd):
-        subprocess.check_call(f'kubectl -n {self.id} {cmd}', shell=True)
+    def kubectl(self, cmd, check_output=False):
+        if check_output:
+            return subprocess.check_output(f'kubectl -n {self.id} {cmd}', shell=True)
+        else:
+            subprocess.check_call(f'kubectl -n {self.id} {cmd}', shell=True)
 
     def get(self, attr=None, exclude_attr=None):
         """Get detailed information about the instance and related components"""
@@ -401,40 +409,16 @@ class DeisCkanInstance(object):
             return ret
 
     @classmethod
-    def install_crd(cls):
-        """Ensures installaion of the Deis CKAN custom resource definitions on the cluster"""
-        crd = kubectl.get('crd deisckaninstances.stable.viderum.com', required=False)
-        version = 'v1'
-        if crd:
-            assert crd['spec']['version'] == version
-            print('DeisCkanInstance custom resource definitions are up-to-date')
-        else:
-            print('Creating DeisCkanInstance v1 custom resource definition')
-            crd = {'apiVersion': 'apiextensions.k8s.io/v1beta1',
-                   'kind': 'CustomResourceDefinition',
-                   'metadata': {
-                       'name': 'deisckaninstances.stable.viderum.com'
-                   },
-                   'spec': {
-                       'version': 'v1',
-                       'group': 'stable.viderum.com',
-                       'scope': 'Namespaced',
-                       'names': {
-                           'plural': 'deisckaninstances',
-                           'singular': 'deisckaninstance',
-                           'kind': 'DeisCkanInstance'
-                       }
-                   }}
-            subprocess.run('kubectl create -f -', input=yaml.dump(crd).encode(), shell=True, check=True)
-
-    @classmethod
-    def list(cls, full=False, quick=False):
-        for item in kubectl.get('DeisCkanInstance')['items']:
+    def list(cls, full=False, quick=False, return_list=False):
+        res = []
+        for item in kubectl.get(ckan_manager.instance_kind())['items']:
             if quick:
                 data = {
                     'id': item['metadata']['name'],
                     'ready': None
                 }
+                if full:
+                    data['item'] = item
             else:
                 try:
                     instance = DeisCkanInstance(item['metadata']['name'], values=item)
@@ -443,10 +427,16 @@ class DeisCkanInstance(object):
                         data = {'id': instance.id, 'ready': data['ready']}
                 except Exception:
                     data = {'id': item['metadata']['name'], 'ready': False, 'error': traceback.format_exc()}
-            print(yaml.dump([data], default_flow_style=False))
+            if return_list:
+                res.append(data)
+            else:
+                print(yaml.dump([data], default_flow_style=False))
+        if return_list:
+            return res
+
 
     @classmethod
-    def create(cls, *args):
+    def create(cls, *args, **kwargs):
         create_type = args[0]
         instance_id = args[-1]
         if create_type == 'from-gitlab':
@@ -474,13 +464,17 @@ class DeisCkanInstance(object):
             }
         elif create_type == 'from-gcloud-envvars':
             print(f'Creating Deis CKAN instance {instance_id} from gcloud envvars import')
-            instance_env_yaml, image, solr_config, gcloud_db_url, gcloud_datastore_url, storage_path, instance_id = args[1:]
+            instance_env_yaml, image, solr_config, storage_path, instance_id = args[1:]
+            db_migration_name = kwargs.get('db_migration_name')
+            assert db_migration_name, 'creating from gcloud envvars without a db migration is not supported yet'
             if type(instance_env_yaml) == str:
+                logs.info(f'Creating {instance_id}-envvars secret from file: {instance_env_yaml}')
                 subprocess.check_call(
                     f'kubectl -n ckan-cloud create secret generic {instance_id}-envvars --from-file=envvars.yaml={instance_env_yaml}',
                     shell=True
                 )
             else:
+                logs.info(f'Creating {instance_id}-envvars secret from inline string')
                 kubectl.update_secret(f'{instance_id}-envvars', {'envvars.yaml': yaml.dump(instance_env_yaml, default_flow_style=False)})
             spec = {
                 'ckanPodSpec': {},
@@ -492,11 +486,11 @@ class DeisCkanInstance(object):
                 },
                 'db': {
                     'name': instance_id,
-                    'importGcloudSqlDumpUrl': gcloud_db_url
+                    'fromDbMigration':db_migration_name
                 },
                 'datastore': {
                     'name': f'{instance_id}-datastore',
-                    'importGcloudSqlDumpUrl': gcloud_datastore_url
+                    'fromDbMigration': db_migration_name
                 },
                 'storage': {
                     'path': storage_path
@@ -507,27 +501,10 @@ class DeisCkanInstance(object):
             return migrate_from_deis(old_site_id, new_instance_id, cls)
         else:
             raise NotImplementedError(f'invalid create type: {create_type}')
-        if db_manager.check_db_exists(spec['db']['name']):
-            logs.info('db already exists, incrementing suffix')
-            db_name = None
-            for i in range(1, 20):
-                db_name = spec['db']['name'] + '__' + str(i)
-                if not db_manager.check_db_exists(db_name): break
-            assert db_name
-            spec['db']['name'] = db_name
-            logs.info(f'db name: {db_name}')
-        if db_manager.check_db_exists(spec['datastore']['name']):
-            logs.info('datastore already exists, incrementing suffix')
-            datastore_name = None
-            for i in range(1, 20):
-                datastore_name = spec['datastore']['name'] + '__' + str(i)
-                if not db_manager.check_db_exists(datastore_name): break
-            assert datastore_name
-            spec['datastore']['name'] = datastore_name
-            logs.info(f'datastore name: {datastore_name}')
+        instance_kind = ckan_manager.instance_kind()
         instance = {
-            'apiVersion': 'stable.viderum.com/v1',
-            'kind': 'DeisCkanInstance',
+            'apiVersion': f'stable.viderum.com/v1',
+            'kind': instance_kind,
             'metadata': {
                 'name': instance_id,
                 'namespace': 'ckan-cloud',
@@ -535,7 +512,7 @@ class DeisCkanInstance(object):
             },
             'spec': spec
         }
-        subprocess.run('kubectl create -f -', input=yaml.dump(instance).encode(), shell=True, check=True)
+        subprocess.run('kubectl apply -f -', input=yaml.dump(instance).encode(), shell=True, check=True)
         return cls(instance_id, values=instance)
 
     def set_subdomain_route(self, router_type, router_name, route_type, router_annotations):

@@ -7,7 +7,7 @@ from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator import gcloud
 from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
 import ckan_cloud_operator.routers.manager as routers_manager
-import ckan_cloud_operator.users
+import ckan_cloud_operator.providers.users
 import ckan_cloud_operator.datapushers
 import ckan_cloud_operator.storage
 
@@ -15,7 +15,7 @@ import ckan_cloud_operator.storage
 def install_crds():
     DeisCkanInstance.install_crd()
     routers_manager.install_crds()
-    ckan_cloud_operator.users.install_crds()
+    ckan_cloud_operator.providers.users.install_crds()
     ckan_cloud_operator.datapushers.install_crds()
 
 
