@@ -203,6 +203,10 @@ class CkanInfra(object):
         self.ROUTERS_DEFAULT_CLOUDFLARE_EMAIL = values.get('ROUTERS_DEFAULT_CLOUDFLARE_EMAIL')
         self.ROUTERS_DEFAULT_CLOUDFLARE_AUTH_KEY = values.get('ROUTERS_DEFAULT_CLOUDFLARE_AUTH_KEY')
 
+        # Monitoring
+        self.CKAN_STATUSCAKE_API_KEY = values.get('CKAN_STATUSCAKE_API_KEY')
+        self.CKAN_STATUSCAKE_API_USER = values.get('CKAN_STATUSCAKE_API_USER')
+        self.CKAN_STATUSCAKE_GROUP = values.get('CKAN_STATUSCAKE_GROUP')
 
     @classmethod
     def set(cls, set_type, *args):

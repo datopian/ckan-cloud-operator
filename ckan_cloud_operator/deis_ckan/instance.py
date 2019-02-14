@@ -17,6 +17,7 @@ from ckan_cloud_operator.deis_ckan.solr import DeisCkanInstanceSolr
 from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
+from ckan_cloud_operator.monitoring.uptime import DeisCkanInstanceUptime
 from ckan_cloud_operator.routers import manager as routers_manager
 from ckan_cloud_operator.db import manager as db_manager
 from ckan_cloud_operator import logs
@@ -326,6 +327,8 @@ class DeisCkanInstance(object):
                         )
                         time.sleep(2)
             self.ckan.update()
+            # Create/Update uptime monitoring after everything else is ready
+            DeisCkanInstanceUptime(self).update()
 
     def delete(self, force=False):
         """
@@ -352,7 +355,8 @@ class DeisCkanInstance(object):
                 'db': lambda: DeisCkanInstanceDb(self, 'db').delete(),
                 'namespace': lambda: DeisCkanInstanceNamespace(self).delete(),
                 'envvars-secret': lambda: kubectl.check_call(f'delete --ignore-not-found secret/{self.id}-envvars'),
-                'routes': lambda: routers_manager.delete_routes(deis_instance_id=self.id)
+                'routes': lambda: routers_manager.delete_routes(deis_instance_id=self.id),
+                'uptime-monitoring': lambda: DeisCkanInstanceUptime(self).delete(self.id)
             }.items():
                 try:
                     delete_code()
