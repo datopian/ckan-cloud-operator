@@ -17,6 +17,7 @@ def config():
 @click.option('--configmap-name')
 @click.option('--namespace')
 @click.option('--raw', is_flag=True)
+@click.option('--template')
 def get(**kwargs):
     """Get configuration values
 
@@ -28,7 +29,7 @@ def get(**kwargs):
     """
     raw = kwargs.pop('raw', False)
     data = manager.get(**kwargs)
-    if raw:
+    if raw or kwargs.get('template'):
         print(data)
     else:
         print(yaml.dump(data, default_flow_style=False))

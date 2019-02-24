@@ -22,6 +22,7 @@ def _config_get_volume_spec(volume_name, is_secret=False, suffix=None): return p
 import time
 import os
 import subprocess
+import traceback
 
 from distutils.util import strtobool
 
@@ -33,7 +34,7 @@ from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 
 def initialize():
-    _apply_config_secret()
+    _apply_config_secret(force=True)
     _apply_service()
     _apply_deployment()
     _set_provider()
@@ -84,10 +85,17 @@ def start_port_forward():
                           shell=True)
 
 
-def _apply_config_secret():
+def _apply_config_secret(force=False):
     update_dbs = {}
     update_users = {}
-    dbs, users = db_manager.get_all_dbs_users()
+    try:
+        dbs, users = db_manager.get_all_dbs_users()
+    except Exception:
+        if force:
+            traceback.print_exc()
+            dbs, users = [], []
+        else:
+            raise
     for db_name, db_host, db_port in dbs:
         assert db_name not in update_dbs
         update_dbs[db_name] = f'{db_name} = host={db_host} port={db_port} dbname={db_name}'
@@ -109,7 +117,7 @@ def _apply_config_secret():
         "logfile = /var/log/pgbouncer/pgbouncer.log",
         "pidfile = /var/run/pgbouncer/pgbouncer.pid",
         "pool_mode = transaction",
-        "default_pool_size = 2",
+        "default_pool_size = 4",
         "reserve_pool_size = 2",
         "max_client_conn = 5000",
         "server_round_robin = 1",
@@ -133,7 +141,7 @@ def _apply_deployment():
         _get_resource_name(),
         _get_resource_labels(for_deployment=True),
         {
-            'replicas': 2,
+            'replicas': 1,
             'revisionHistoryLimit': 10,
             'strategy': {'type': 'RollingUpdate', },
             'template': {
@@ -153,7 +161,17 @@ def _apply_deployment():
                                     'mountPath': '/var/local/pgbouncer',
                                     'readOnly': True
                                 },
-                            ]
+                            ],
+                            'readinessProbe': {
+                                'failureThreshold': 1,
+                                'initialDelaySeconds': 5,
+                                'periodSeconds': 5,
+                                'successThreshold': 1,
+                                'tcpSocket': {
+                                    'port': 5432
+                                },
+                                'timeoutSeconds': 5
+                            }
                         }
                     ],
                     'volumes': [

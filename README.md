@@ -31,12 +31,12 @@ sudo ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE>
 Verify you are connected to the correct cluster
 
 ```
-ckan-cloud-operator cluster-info
+ckan-cloud-operator cluster info
 ```
 
 ## Usage
 
-Use the CLI help messages or the [CLI source code](ckan_cloud_operator/cli.py) for the reference documentation and usage examples.
+Use the CLI help messages for the reference documentation and usage examples.
 
 ```
 ckan-cloud-operator --help
@@ -69,14 +69,6 @@ Activating an environment sets the `ckan-cloud-operator` executable to use to th
 
 ```
 ckan-cloud-operator-env activate <ENVIRONMENT_NAME>
-```
-
-## Initializing a cluster for ckan-cloud-operator
-
-Runs an interactive initialization of the currently connected cluster
-
-```
-ckan-cloud-operator cluster initialize
 ```
 
 ## Run ckan-cloud-operator locally

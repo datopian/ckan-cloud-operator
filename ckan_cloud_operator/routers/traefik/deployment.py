@@ -1,5 +1,6 @@
 import toml
 import time
+import hashlib
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.routers.traefik import config as traefik_router_config
@@ -9,7 +10,7 @@ from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 
 
-def _get_deployment_spec(router_name, router_type, annotations):
+def _get_deployment_spec(router_name, router_type, annotations, image=None):
     volume_spec = cluster_manager.get_or_create_multi_user_volume_claim(get_label_suffixes(router_name, router_type))
     deployment_spec = {
         'replicas': 1,
@@ -22,7 +23,7 @@ def _get_deployment_spec(router_name, router_type, annotations):
                 'containers': [
                     {
                         'name': 'traefik',
-                        'image': 'traefik:1.6-alpine',
+                        'image': image or 'traefik:1.6-alpine',
                         'ports': [{'containerPort': 80}],
                         'volumeMounts': [
                             {'name': 'etc-traefik', 'mountPath': '/etc-traefik'},
@@ -51,13 +52,22 @@ def _get_deployment_spec(router_name, router_type, annotations):
     return deployment_spec
 
 
+def _get_resource_name(router_name):
+    return f'router-traefik-{router_name}'
+
+
 def _update(router_name, spec, annotations, routes):
-    resource_name = f'router-traefik-{router_name}'
+    resource_name = _get_resource_name(router_name)
     router_type = spec['type']
     cloudflare_email, cloudflare_auth_key = get_cloudflare_credentials()
+    external_domains = spec.get('external-domains')
     kubectl.apply(kubectl.get_configmap(
         resource_name, get_labels(router_name, router_type),
-        {'traefik.toml': toml.dumps(traefik_router_config.get(routes, cloudflare_email))}
+        {'traefik.toml': toml.dumps(traefik_router_config.get(
+            routes, cloudflare_email,
+            wildcard_ssl_domain=spec.get('wildcard-ssl-domain'),
+            external_domains=external_domains
+        ))}
     ))
     domains = {}
     for route in routes:
@@ -79,6 +89,29 @@ def _update(router_name, spec, annotations, routes):
         'type': 'LoadBalancer'
     }
     kubectl.apply(load_balancer)
+    load_balancer_ip = get_load_balancer_ip(router_name)
+    print(f'load balancer ip: {load_balancer_ip}')
+    if external_domains:
+        from ckan_cloud_operator.providers.routers import manager as routers_manager
+        external_domains_router_root_domain = routers_manager.get_default_root_domain()
+        env_id = routers_manager.get_env_id()
+        assert router_name in ['prod-1'], f'invalid external domains router name: {router_name}'
+        external_domains_router_sub_domain = f'cc-{env_id}-{router_name}'
+        cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, external_domains_router_root_domain,
+                                   f'{external_domains_router_sub_domain}.{external_domains_router_root_domain}', load_balancer_ip)
+    else:
+        for root_domain, sub_domains in domains.items():
+            for sub_domain in sub_domains:
+                cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, root_domain,
+                                           f'{sub_domain}.{root_domain}', load_balancer_ip)
+    kubectl.apply(kubectl.get_deployment(
+        resource_name, get_labels(router_name, router_type, for_deployment=True),
+        _get_deployment_spec(router_name, router_type, annotations, image='traefik:1.7' if external_domains else None)
+    ))
+
+
+def get_load_balancer_ip(router_name):
+    resource_name = _get_resource_name(router_name)
     while True:
         time.sleep(.2)
         load_balancer = kubectl.get(f'service loadbalancer-{resource_name}', required=False)
@@ -88,16 +121,7 @@ def _update(router_name, spec, annotations, routes):
         assert len(ingresses) == 1
         load_balancer_ip = ingresses[0].get('ip')
         if load_balancer_ip:
-            break
-    print(f'load balancer ip: {load_balancer_ip}')
-    for root_domain, sub_domains in domains.items():
-        for sub_domain in sub_domains:
-            cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, root_domain,
-                                       f'{sub_domain}.{root_domain}', load_balancer_ip)
-    kubectl.apply(kubectl.get_deployment(
-        resource_name, get_labels(router_name, router_type, for_deployment=True),
-        _get_deployment_spec(router_name, router_type, annotations)
-    ))
+            return load_balancer_ip
 
 
 def get_cloudflare_credentials():
@@ -146,6 +170,21 @@ def get(router_name):
         )
     else:
         return {'ready': False}
+
+
+def get_dns_data(router_name, router):
+    external_domains = router['spec'].get('external-domains')
+    data = {
+        'load-balancer-ip': get_load_balancer_ip(router_name),
+    }
+    if external_domains:
+        from ckan_cloud_operator.providers.routers import manager as routers_manager
+        external_domains_router_root_domain = routers_manager.get_default_root_domain()
+        env_id = routers_manager.get_env_id()
+        assert router_name in ['prod-1'], f'invalid external domains router name: {router_name}'
+        external_domains_router_sub_domain = f'cc-{env_id}-{router_name}'
+        data['external-domain'] = f'{external_domains_router_sub_domain}.{external_domains_router_root_domain}'
+    return data
 
 
 def get_label_suffixes(router_name, router_type):

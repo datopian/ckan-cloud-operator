@@ -23,8 +23,9 @@ def initialize(interactive):
 
 @cluster.command()
 @click.option('--debug', is_flag=True)
-def info(debug):
-    manager.print_info(debug=debug)
+@click.option('--full', is_flag=True)
+def info(debug, full):
+    manager.print_info(debug=debug, minimal=not full)
 
 
 @cluster.command()

@@ -22,8 +22,20 @@ yaml.add_representer(datetime.datetime, datetime_representer)
 yaml.add_constructor(u'!datetime', datetime_constructor)
 
 
-def check_call(cmd, namespace='ckan-cloud'):
+def check_call(cmd, namespace='ckan-cloud', use_first_pod=False):
+    cmd = _parse_call_cmd(cmd, namespace, use_first_pod)
     subprocess.check_call(f'kubectl -n {namespace} {cmd}', shell=True)
+
+
+def get_deployment_pod_name(deployment_name, namespace='ckan-cloud', use_first_pod=False):
+    deployment = get(f'deployment {deployment_name}', namespace=namespace, required=True)
+    match_labels = deployment['spec']['selector']['matchLabels']
+    pods = get_items_by_labels('pod', match_labels, required=True, namespace=namespace)
+    if use_first_pod:
+        assert len(pods) > 0
+    else:
+        assert len(pods) == 1
+    return pods[0]['metadata']['name']
 
 
 def check_output(cmd, namespace='ckan-cloud'):
@@ -32,6 +44,11 @@ def check_output(cmd, namespace='ckan-cloud'):
 
 def call(cmd, namespace='ckan-cloud'):
     return subprocess.call(f'kubectl -n {namespace} {cmd}', shell=True)
+
+
+def getstatusoutput(cmd, namespace='ckan-cloud', use_first_pod=False):
+    cmd = _parse_call_cmd(cmd, namespace, use_first_pod)
+    return subprocess.getstatusoutput(f'kubectl -n {namespace} {cmd}')
 
 
 def get(what, *args, required=True, namespace='ckan-cloud', get_cmd='get', **kwargs):
@@ -50,10 +67,26 @@ def get(what, *args, required=True, namespace='ckan-cloud', get_cmd='get', **kwa
             return None
 
 
+def edit(what, *edit_args, namespace='ckan-cloud', **edit_kwargs):
+    extra_edit_args = ' '.join(edit_args)
+    extra_edit_kwargs = ' '.join([f'{k} {v}' for k, v in edit_kwargs.items()])
+    items = get(what, namespace=namespace, required=True)['items']
+    assert len(items) > 0, f'no items found to edit for: {what}'
+    for item in items:
+        name = item['metadata']['name']
+        kind = item['kind']
+        subprocess.check_call(f'kubectl -n {namespace} edit {kind}/{name} {extra_edit_args} {extra_edit_kwargs}', shell=True)
+
+
 def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cloud'):
     label_selector = ','.join([f'{k}={v}' for k,v in labels.items()])
     res = get(f'{resource_kind} -l {label_selector}', required=required, namespace=namespace)
     return res['items'] if res else None
+
+
+def edit_items_by_labels(resource_kind, labels, namespace='ckan-cloud'):
+    label_selector = ','.join([f'{k}={v}' for k,v in labels.items()])
+    edit(f'{resource_kind} -l {label_selector}', namespace=namespace)
 
 
 def delete_items_by_labels(resource_kinds, labels, namespace='ckan-cloud'):
@@ -233,10 +266,11 @@ def get_persistent_volume_claim(name, labels, spec, namespace='ckan-cloud'):
     return dict(pvc, spec=spec)
 
 
-def get_deployment(name, labels, spec, namespace='ckan-cloud'):
+def get_deployment(name, labels, spec, namespace='ckan-cloud', with_timestamp=True):
     deployment = get_resource('apps/v1beta1', 'Deployment', name, labels, namespace)
     deployment = dict(deployment, spec=spec)
-    add_operator_timestamp_annotation(deployment['spec']['template']['metadata'])
+    if with_timestamp:
+        add_operator_timestamp_annotation(deployment['spec']['template']['metadata'])
     return deployment
 
 
@@ -458,3 +492,12 @@ class BaseAnnotations(object):
 
     def _get_annotation(self, annotation, default=None):
         return self.resource_values['metadata'].get('annotations', {}).get(f'ckan-cloud/{annotation}', default)
+
+
+def _parse_call_cmd(cmd, namespace, use_first_pod):
+    args = []
+    for arg in cmd.split(' '):
+        if arg.startswith('deployment-pod::'):
+            arg = get_deployment_pod_name(arg.replace('deployment-pod::', ''), namespace=namespace, use_first_pod=use_first_pod)
+        args.append(arg)
+    return ' '.join(args)

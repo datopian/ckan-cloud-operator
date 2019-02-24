@@ -9,9 +9,10 @@ The following configuration was tested:
 * Master Version: 1.11
 * Number of nodes: 3
 * Machine type: 4vCpu, 15GB RAM
-* Auto-upgrade: on
+* Auto Upgrade: off
+* Auto Repair: off
 * Enable VPC-native (using alias IP)
-* Enable logging and monitoring
+* Enable logging and monitoring using Stackdriver Kubernetes monitoring
 
 ## Create the DB
 
@@ -59,7 +60,12 @@ storageClass.name = cca-ckan
 
 Follow the ckan-cloud-operator installation and usage guide in the [README.md](/README.md) to configure ckan-cloud-operator to use this kubeconfig file.
 
-Make sure to install the custom resource definitions and initialize the cluster as guided in the README.
+Run interactive initialization of the currently connected cluster
+
+```
+ckan-cloud-operator cluster initialize --interactive
+```
+
 
 Create an admin user:
 

@@ -29,13 +29,9 @@ def initialize(log_kwargs=None, interactive=False):
     if interactive:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)
-        logs.info('Cluster nodes:')
-        subprocess.check_call('kubectl get nodes', shell=True)
         input('Verify your are connected to the right cluster and press <RETURN> to continue')
     logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
     subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
-    logs.info(f'Initializing cluster provider')
-    providers_manager.get_provider('cluster', default='gcloud').initialize(interactive=interactive)
 
     from ckan_cloud_operator.labels import manager as labels_manager
     from ckan_cloud_operator.crds import manager as crds_manager
@@ -47,6 +43,7 @@ def initialize(log_kwargs=None, interactive=False):
 
     for component, func in (
             ('labels', lambda lk: labels_manager.initialize(log_kwargs=lk)),
+            ('cluster', lambda lk: providers_manager.get_provider('cluster', default='gcloud').initialize(interactive=interactive)),
             ('crds', lambda lk: crds_manager.initialize(log_kwargs=lk)),
             ('db', lambda lk: db_manager.initialize(log_kwargs=lk, interactive=interactive)),
             ('routers', lambda lk: routers_manager.initialize(interactive=interactive)),

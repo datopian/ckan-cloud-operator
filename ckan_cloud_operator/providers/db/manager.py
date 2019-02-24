@@ -21,7 +21,7 @@ def initialize(log_kwargs=None, interactive=False):
     db_provider.initialize(interactive=interactive)
     if db_provider.is_private_ip():
         logs.info('DB Uses a private ip, initializing the DB proxy')
-        db_proxy_manager.get_provider().initialize()
+        db_proxy_manager.initialize()
 
 
 def update():

@@ -15,5 +15,5 @@ def deploy():
     get_provider().deploy()
 
 
-def print_credentials():
-    return get_provider().print_credentials()
+def print_credentials(raw=False):
+    return get_provider().print_credentials(raw=raw)

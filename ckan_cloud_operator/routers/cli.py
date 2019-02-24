@@ -20,11 +20,15 @@ def add_cli_commands(click, command_group, great_success):
     @click.argument('DEFAULT_ROOT_DOMAIN', required=False, default='default')
     @click.argument('CLOUDFLARE_EMAIL', required=False, default='default')
     @click.argument('CLOUDFLARE_API_KEY', required=False, default='default')
-    def routers_create(traefik_router_name, default_root_domain, cloudflare_email, cloudflare_api_key):
+    @click.option('--external-domains', is_flag=True)
+    def routers_create(traefik_router_name, default_root_domain, cloudflare_email, cloudflare_api_key, external_domains):
         """Create a Traefik router, with domain registration and let's encrypt based on Cloudflare"""
         routers_manager.create(
             traefik_router_name,
-            routers_manager.get_traefik_router_spec(default_root_domain, cloudflare_email, cloudflare_api_key)
+            routers_manager.get_traefik_router_spec(
+                default_root_domain, cloudflare_email, cloudflare_api_key,
+                external_domains=external_domains
+            )
         )
         routers_manager.update(traefik_router_name)
         great_success()
@@ -92,14 +96,15 @@ def add_cli_commands(click, command_group, great_success):
     @click.option('-b', '--backend-url-target-id', required=False)
     @click.option('-o', '--one', is_flag=True)
     @click.option('-e', '--external-domain', is_flag=True)
-    def get_routes(datapusher_name, deis_instance_id, backend_url_target_id, one, external_domain):
+    @click.option('--edit', is_flag=True)
+    def get_routes(datapusher_name, deis_instance_id, backend_url_target_id, one, external_domain, edit):
         if datapusher_name:
             assert not deis_instance_id
-            routes = routers_manager.get_datapusher_routes(datapusher_name)
+            routes = routers_manager.get_datapusher_routes(datapusher_name, edit=edit)
         elif deis_instance_id:
-            routes = routers_manager.get_deis_instance_routes(deis_instance_id)
+            routes = routers_manager.get_deis_instance_routes(deis_instance_id, edit=edit)
         elif backend_url_target_id:
-            routes = routers_manager.get_backend_url_routes(backend_url_target_id)
+            routes = routers_manager.get_backend_url_routes(backend_url_target_id, edit=edit)
         else:
             raise Exception(f'invalid arguments')
         if routes:
@@ -145,5 +150,11 @@ def add_cli_commands(click, command_group, great_success):
 
     @command_group.command('get')
     @click.argument('ROUTER_NAME')
-    def get(router_name):
-        print(yaml.dump(routers_manager.get(router_name), default_flow_style=False))
+    @click.option('--dns', is_flag=True)
+    def get(router_name, dns):
+        print(yaml.dump(routers_manager.get(router_name, only_dns=dns), default_flow_style=False))
+
+    @command_group.command('cloudflare-rate-limits')
+    @click.argument('ROOT_DOMAIN')
+    def cloudflare_rate_limits(root_domain):
+        logs.print_yaml_dump(routers_manager.get_cloudflare_rate_limits(root_domain))

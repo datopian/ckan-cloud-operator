@@ -1,4 +1,6 @@
 import click
+import datetime
+import traceback
 
 from ckan_cloud_operator import logs
 
@@ -13,7 +15,18 @@ def proxy():
 
 @proxy.command()
 def port_forward():
-    manager.start_port_forward()
+    while True:
+        start_time = datetime.datetime.now()
+        try:
+            manager.start_port_forward()
+        except Exception:
+            traceback.print_exc()
+        end_time = datetime.datetime.now()
+        if (end_time - start_time).total_seconds() < 10:
+            logs.critical('DB Proxy failure')
+            logs.exit_catastrophic_failure()
+        else:
+            logs.warning('Restarting the DB proxy')
 
 
 @proxy.command()

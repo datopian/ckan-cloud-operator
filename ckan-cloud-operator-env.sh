@@ -14,7 +14,7 @@ help() {
     echo "    Build a ckan-cloud-operator image from current working directory and tag as latest image which"
     echo "    used by the installed environments"
     echo
-    echo "  add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE> [--build] [DOCKER_RUN_ARGS..]"
+    echo "  add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE> [--build | --dev] [DOCKER_RUN_ARGS..]"
     echo "    Add a ckan-cloud-operator executable at /usr/local/bin/ckan-cloud-operator-<ENVIRONMENT_NAME>"
     echo "    which runs using the ckan-cloud-operator Docker image"
     echo "    To use with Minikube set PATH_TO_KUBECONFIG_FILE to 'minikube'"
@@ -41,15 +41,19 @@ elif [ "${1}" == "add" ]; then
     RUN_ARGS="${@:5}"
     echo "#!/usr/bin/env bash" > "/usr/local/bin/ckan-cloud-operator-${ENVIRONMENT_NAME}"
     [ "$?" != "0" ] && echo Failed to create executable, try running with sudo >/dev/stderr && exit 1
-    if [ "${BUILD}" == "--build" ]; then
-        CMD="docker build -t viderum/ckan-cloud-operator:latest $(pwd) >/dev/stderr && "
+    if [ "${BUILD}" == "--dev" ]; then
+        CMD="KUBECONFIG=\"${KUBECONFIG_FILE}\" ~/miniconda3/envs/ckan-cloud-operator/bin/ckan-cloud-operator \""'$@'"\""
     else
-        CMD=""
-    fi
-    if [ "${KUBECONFIG_FILE}" == "minikube" ]; then
-        CMD="${CMD}docker run -v ${HOME}/.kube/config:/etc/ckan-cloud/.kube-config -v ${HOME}/.minikube:${HOME}/.minikube -e KUBE_CONTEXT=minikube ${RUN_ARGS} -it viderum/ckan-cloud-operator:latest "'"$@"'
-    else
-        CMD="${CMD}docker run -v ${KUBECONFIG_FILE}:/etc/ckan-cloud/.kube-config ${RUN_ARGS} -it viderum/ckan-cloud-operator:latest "'"$@"'
+        if [ "${BUILD}" == "--build" ]; then
+            CMD="docker build -t viderum/ckan-cloud-operator:latest $(pwd) >/dev/stderr && "
+        else
+            CMD=""
+        fi
+        if [ "${KUBECONFIG_FILE}" == "minikube" ]; then
+            CMD="${CMD}docker run -v ${HOME}/.kube/config:/etc/ckan-cloud/.kube-config -v ${HOME}/.minikube:${HOME}/.minikube -e KUBE_CONTEXT=minikube ${RUN_ARGS} -it viderum/ckan-cloud-operator:latest "'"$@"'
+        else
+            CMD="${CMD}docker run -v ${KUBECONFIG_FILE}:/etc/ckan-cloud/.kube-config ${RUN_ARGS} -it viderum/ckan-cloud-operator:latest "'"$@"'
+        fi
     fi
     echo "${CMD}" >> "/usr/local/bin/ckan-cloud-operator-${ENVIRONMENT_NAME}" &&\
     chmod o+x "/usr/local/bin/ckan-cloud-operator-${ENVIRONMENT_NAME}" &&\

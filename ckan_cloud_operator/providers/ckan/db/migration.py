@@ -211,12 +211,43 @@ def get_datastore_raedonly_user_name(migration_name, required=False):
                                    key='datastore-readonly-user-name', is_secret=True, required=required)
 
 
+def get_db_import_urls(old_site_id):
+    import_backup = providers_manager.config_get(PROVIDER_SUBMODULE, key='gcloud-storage-import-bucket', suffix='deis-migration', required=True)
+    instance_latest_datestring = None
+    instance_latest_dt = None
+    instance_latest_datastore_datestring = None
+    instance_latest_datastore_dt = None
+    for line in _gcloud().check_output(f"ls 'gs://{import_backup}/postgres/????????/*.sql'",
+                                       gsutil=True).decode().splitlines():
+        # gs://viderum-deis-backups/postgres/20190122/nav.20190122.dump.sql
+        datestring, filename = line.split('/')[4:]
+        file_instance = '.'.join(filename.split('.')[:-3])
+        is_datastore = file_instance.endswith('-datastore')
+        file_instance = file_instance.replace('-datastore', '')
+        dt = datetime.datetime.strptime(datestring, '%Y%M%d')
+        if file_instance == old_site_id:
+            if is_datastore:
+                if instance_latest_datastore_dt is None or instance_latest_datastore_dt < dt:
+                    instance_latest_datastore_datestring = datestring
+                    instance_latest_datastore_dt = dt
+            elif instance_latest_dt is None or instance_latest_dt < dt:
+                instance_latest_datestring = datestring
+                instance_latest_dt = dt
+    return (
+        f'gs://{import_backup}/postgres/{instance_latest_datestring}/{old_site_id}.{instance_latest_datestring}.dump.sql' if instance_latest_datestring else None,
+        f'gs://{import_backup}/postgres/{instance_latest_datastore_datestring}/{old_site_id}-datastore.{instance_latest_datastore_datestring}.dump.sql' if instance_latest_datastore_datestring else None
+    )
+
+
 def _get_spec(name, spec):
     return dict(name=name, **spec)
 
 
 def _get_labels(name, spec):
-    return {'name': name}
+    labels = {'name': name}
+    if 'old-site-id' in spec:
+        labels['old-site-id'] = spec['old-site-id']
+    return labels
 
 
 def _get_or_create_migration_db_passwords(migration_name, create_if_not_exists=True):
@@ -329,7 +360,7 @@ def _delete_dbs(admin_conn, db_name, datastore_name, datastore_ro_name):
 
 
 def _import_data(old_site_id, db_name, datastore_name):
-    db_url, datastore_url = _get_db_import_urls(old_site_id)
+    db_url, datastore_url = get_db_import_urls(old_site_id)
     assert db_url and datastore_url, f'failed to find db import urls for old site id {old_site_id}'
     # admin_user = db_manager.get_admin_db_user()
     _gcloudsql().import_db(db_url, db_name, db_name)
@@ -339,34 +370,6 @@ def _import_data(old_site_id, db_name, datastore_name):
     #         cur.execute(f'REASSIGN OWNED BY "{admin_user}" TO "{db_name}";')
     _gcloudsql().import_db(datastore_url, datastore_name, datastore_name)
     yield {'step': 'import-datastore-data', 'msg': f'Imported Datastore: {datastore_name}'}
-
-
-def _get_db_import_urls(old_site_id):
-    import_backup = providers_manager.config_get(PROVIDER_SUBMODULE, key='gcloud-storage-import-bucket', suffix='deis-migration', required=True)
-    instance_latest_datestring = None
-    instance_latest_dt = None
-    instance_latest_datastore_datestring = None
-    instance_latest_datastore_dt = None
-    for line in _gcloud().check_output(f"ls 'gs://{import_backup}/postgres/????????/*.sql'",
-                                       gsutil=True).decode().splitlines():
-        # gs://viderum-deis-backups/postgres/20190122/nav.20190122.dump.sql
-        datestring, filename = line.split('/')[4:]
-        file_instance = '.'.join(filename.split('.')[:-3])
-        is_datastore = file_instance.endswith('-datastore')
-        file_instance = file_instance.replace('-datastore', '')
-        dt = datetime.datetime.strptime(datestring, '%Y%M%d')
-        if file_instance == old_site_id:
-            if is_datastore:
-                if instance_latest_datastore_dt is None or instance_latest_datastore_dt < dt:
-                    instance_latest_datastore_datestring = datestring
-                    instance_latest_datastore_dt = dt
-            elif instance_latest_dt is None or instance_latest_dt < dt:
-                instance_latest_datestring = datestring
-                instance_latest_dt = dt
-    return (
-        f'gs://{import_backup}/postgres/{instance_latest_datestring}/{old_site_id}.{instance_latest_datestring}.dump.sql' if instance_latest_datestring else None,
-        f'gs://{import_backup}/postgres/{instance_latest_datastore_datestring}/{old_site_id}-datastore.{instance_latest_datastore_datestring}.dump.sql' if instance_latest_datastore_datestring else None
-    )
 
 
 def _gcloud():

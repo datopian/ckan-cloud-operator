@@ -17,3 +17,9 @@ def storage():
 def initialize(interactive):
     manager.initialize(interactive=interactive)
     logs.exit_great_success()
+
+
+@storage.command()
+def deis_minio_bucket_policy():
+    print(manager.get_deis_minio_bucket_policy())
+    logs.exit_great_success(quiet=True)

@@ -23,6 +23,13 @@ class DeisCkanInstanceCKAN(object):
             cmd += f' {paster_command} -c /srv/app/production.ini ' + " ".join(paster_args)
         self.exec(cmd)
 
+    def admin_credentials(self):
+        data = kubectl.decode_secret(kubectl.get('secret', 'ckan-envvars', namespace=self.instance.id))
+        return {
+            'sysadmin-name': data['CKAN_SYSADMIN_NAME'],
+            'sysadmin-password': data['CKAN_SYSADMIN_PASSWORD'],
+        }
+
     def _get_ckan_pod_name(self):
         deployment_data = self.instance.get('deployment')
         latest_pod_name = deployment_data['latest_pod_name']

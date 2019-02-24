@@ -102,7 +102,7 @@ def config_get_volume_spec(submodule, provider_id, volume_name, is_secret=False,
 
 
 def config_interactive_set(submodule, provider_id=None, default_values=None, namespace=None,
-                           is_secret=False, suffix=None, from_file=False, interactive=False):
+                           is_secret=False, suffix=None, from_file=False, interactive=True):
     resource_name = get_resource_name(submodule, provider_id=provider_id, suffix=suffix)
     config_manager.interactive_set(
         default_values,
@@ -127,23 +127,25 @@ def get_resource_suffix(submodule, provider_id=None, suffix=None):
     return '-'.join(parts)
 
 
-def get_resource_labels(submodule, provider_id, extra_label_suffixes=None, for_deployment=False):
+def get_resource_labels(submodule, provider_id, extra_label_suffixes=None, for_deployment=False, suffix=None):
     label_suffixes = {
         'provider-submodule': submodule,
         'provider-id': provider_id,
     }
+    if suffix:
+        label_suffixes['provider-submodule-suffix'] = suffix
     if extra_label_suffixes:
         label_suffixes.update(**extra_label_suffixes)
-    extra_labels = {'app': get_deployment_app_label(submodule, provider_id)} if for_deployment else {}
+    extra_labels = {'app': get_deployment_app_label(submodule, provider_id, suffix=suffix)} if for_deployment else {}
     return labels_manager.get_resource_labels(label_suffixes, extra_labels=extra_labels)
 
 
-def get_deployment_app_label(submodule, provider_id):
-    return get_resource_suffix(submodule, provider_id=provider_id)
+def get_deployment_app_label(submodule, provider_id, suffix=None):
+    return get_resource_suffix(submodule, provider_id=provider_id, suffix=suffix)
 
 
-def get_resource_annotations(submodule, provider_id=None, suffix=None):
-    return annotations_manager.get_global_annotations()
+def get_resource_annotations(submodule, provider_id=None, suffix=None, with_timestamp=True):
+    return annotations_manager.get_global_annotations(with_timestamp=with_timestamp)
 
 
 def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None):
@@ -153,6 +155,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     from ckan_cloud_operator.providers.users.constants import PROVIDER_SUBMODULE as users_provider_submodule
     from ckan_cloud_operator.providers.cluster.constants import PROVIDER_SUBMODULE as cluster_provider_submodule
     from ckan_cloud_operator.providers.storage.constants import PROVIDER_SUBMODULE as storage_provider_submodule
+    from ckan_cloud_operator.providers.solr.constants import PROVIDER_SUBMODULE as solr_provider_submodule
 
     if not submodule:
         return [
@@ -161,7 +164,8 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             db_web_ui_submodule,
             users_provider_submodule,
             cluster_provider_submodule,
-            storage_provider_submodule
+            storage_provider_submodule,
+            solr_provider_submodule
         ]
 
     ## db-proxy
@@ -253,6 +257,21 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.storage.minio import manager as storage_minio_manager
 
             return storage_minio_manager
+
+    ## solr
+
+    elif submodule == solr_provider_submodule:
+        from ckan_cloud_operator.providers.solr.solrcloud.constants import PROVIDER_ID as solr_solrcloud_provider_id
+
+        if not provider_id:
+            return [solr_solrcloud_provider_id]
+
+        ## minio
+
+        elif provider_id == solr_solrcloud_provider_id:
+            from ckan_cloud_operator.providers.solr.solrcloud import manager as solr_solrcloud_manager
+
+            return solr_solrcloud_manager
 
     if not provider_id:
         return []

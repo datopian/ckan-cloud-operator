@@ -1,6 +1,8 @@
 import subprocess
 import yaml
 
+from ckan_cloud_operator import logs
+
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.infra import CkanInfra
 
@@ -14,18 +16,16 @@ def initialize(interactive=False):
         secret_name='ckan-storage-config',
         interactive=interactive
     )
-    set_minio_bucket_policy()
+    logs.warning('Minio bucket policy was not applied!')
 
 
-def set_minio_bucket_policy():
+def get_deis_minio_bucket_policy():
     from ckan_cloud_operator.providers.ckan import manager as ckan_manager
     path_to_old_cluster_kubeconfig = ckan_manager.get_path_to_old_cluster_kubeconfig()
-    policy = subprocess.check_output(f'KUBECONFIG={path_to_old_cluster_kubeconfig} '
-                                     f'kubectl -n deis exec -it deis-minio-6ddd8f5d85-wphhb '
-                                     f'-- cat /export/.minio.sys/buckets/ckan/policy.json',
-                                     shell=True).decode()
-    print(policy)
-    exit(1)
+    return subprocess.check_output(f'KUBECONFIG={path_to_old_cluster_kubeconfig} '
+                                   f'kubectl -n deis exec -it deis-minio-6ddd8f5d85-wphhb '
+                                   f'-- cat /export/.minio.sys/buckets/ckan/policy.json',
+                                   shell=True).decode()
 
 
 def get_default_storage_bucket():

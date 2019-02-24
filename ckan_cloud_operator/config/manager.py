@@ -8,7 +8,7 @@ from ckan_cloud_operator.labels import manager as labels_manager
 __CACHED_VALUES = {}
 
 
-def get(key=None, default=None, secret_name=None, configmap_name=None, namespace=None, required=False):
+def get(key=None, default=None, secret_name=None, configmap_name=None, namespace=None, required=False, template=None):
     cache_key = _get_cache_key(secret_name, configmap_name, namespace)
     if cache_key not in __CACHED_VALUES:
         __CACHED_VALUES[cache_key] = _fetch(cache_key)
@@ -17,7 +17,13 @@ def get(key=None, default=None, secret_name=None, configmap_name=None, namespace
     else:
         value = __CACHED_VALUES[cache_key]
     assert value or not required, f'config value is required for {cache_key}:{key}'
-    return value
+    if template:
+        if key:
+            return template.format(**{key: value})
+        else:
+            return template.format(**value)
+    else:
+        return value
 
 
 def set(key=None, value=None, values=None, secret_name=None, configmap_name=None, namespace=None, extra_operator_labels=None, from_file=False):
@@ -43,7 +49,7 @@ def set(key=None, value=None, values=None, secret_name=None, configmap_name=None
         assert key and value and not values, 'Invalid arguments: must specify both key and value args and not specify values arg'
         values = {key: value}
     assert values, 'Invalid arguments: no values to save'
-    _save(cache_key, values, extra_operator_labels)
+    return _save(cache_key, values, extra_operator_labels)
 
 
 def delete(secret_name=None, configmap_name=None, namespace=None, exists_ok=False):
@@ -112,7 +118,7 @@ def interactive_set(default_values, secret_name=None, configmap_name=None, names
                 else:
                     raise Exception('file path is required')
             else:
-                if default_value is True or default_value is False:
+                if default_value in [True, False]:
                     print(f'Enter a boolean value for {key}{msg}')
                     entered_value = input(f'{key} [y/n]: ')
                     bool_value = default_value if entered_value == '' else (entered_value == 'y')
@@ -124,7 +130,7 @@ def interactive_set(default_values, secret_name=None, configmap_name=None, names
         else:
             set_values[key] = saved_value if saved_value is not None else default_value
     logs.debug('set', **log_kwargs)
-    set(values=set_values, secret_name=secret_name, configmap_name=configmap_name, namespace=namespace, extra_operator_labels=extra_operator_labels)
+    return set(values=set_values, secret_name=secret_name, configmap_name=configmap_name, namespace=namespace, extra_operator_labels=extra_operator_labels)
 
 
 def _fetch(cache_key):
@@ -154,7 +160,8 @@ def _save(cache_key, values, extra_operator_labels):
         'configmap': lambda: _save_configmap(values, config_name, namespace, extra_operator_labels),
     }.get(config_type)
     assert save_func, f'Invalid config type: {config_type}'
-    __CACHED_VALUES[cache_key] = save_func()
+    __CACHED_VALUES[cache_key] = res = save_func()
+    return res
 
 
 def _save_secret(values, secret_name, namespace, extra_operator_labels):

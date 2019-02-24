@@ -10,7 +10,7 @@ from .. import manager as solr_manager
 def deploy():
     """Deploys a proxy inside the cluster which allows to access the centralized solr without authentication"""
     labels = {'app': 'ckan-cloud-solrcloud-proxy'}
-    solr_url = parse_url(solr_manager.get_http_endpoint())
+    solr_url = parse_url(solr_manager.get_internal_http_endpoint())
 
     scheme = solr_url.scheme
     hostname = solr_url.hostname

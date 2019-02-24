@@ -10,7 +10,6 @@ from ckan_cloud_operator.infra import CkanInfra
 
 import ckan_cloud_operator.routers.cli
 import ckan_cloud_operator.datapushers
-import ckan_cloud_operator.manager
 from ckan_cloud_operator.gitlab import CkanGitlab
 from ckan_cloud_operator import gcloud
 import ckan_cloud_operator.storage
@@ -65,18 +64,11 @@ drivers.add_command(driver_postgres_cli.postgres)
 drivers.add_command(driver_kubectl_cli.kubectl)
 
 
-@main.command('cluster-info')
-@click.option('-f', '--full', is_flag=True)
-def __cluster_info(full):
-    """Get information about the cluster"""
-    ckan_cloud_operator.manager.print_cluster_info(full)
-
-
-@main.command('install-crds')
-def __install_crds():
-    """Install ckan-cloud-operator custom resource definitions"""
-    ckan_cloud_operator.manager.install_crds()
-    great_success()
+@main.command('kubectl')
+@click.argument('ARG', nargs=-1)
+def kubectl_command(arg):
+    from ckan_cloud_operator import kubectl
+    kubectl.check_call(' '.join(arg))
 
 
 @main.command()
@@ -89,7 +81,7 @@ def initialize_gitlab(gitlab_project_name, wait_ready):
 
         ckan-cloud-operator initialize-gitlab repo/project
     """
-    ckan_gitlab = CkanGitlab(CkanInfra())
+    ckan_gitlab = CkanGitlab()
     ckan_gitlab.initialize(gitlab_project_name)
     if wait_ready and not ckan_gitlab.is_ready(gitlab_project_name):
         logs.info(f'Waiting for GitLab project {gitlab_project_name} to be ready...')

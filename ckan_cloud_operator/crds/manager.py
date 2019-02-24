@@ -44,13 +44,13 @@ def delete(singular, name):
 
 def install_crd(singular, plural_suffix, kind_suffix, hash_names=False):
     logs.info(f'Installing operator crd: {singular}, {plural_suffix}, {kind_suffix}')
+    _set_plural_kind_suffix(singular, plural_suffix, kind_suffix, hash_names=hash_names)
     label_prefix = labels_manager.get_label_prefix().replace('-', '')
     kubectl.install_crd(
         f'{label_prefix}{plural_suffix}',
         f'{label_prefix}{singular}',
         get_resource_kind(singular)
     )
-    _set_plural_kind_suffix(singular, plural_suffix, kind_suffix, hash_names=hash_names)
 
 
 def list_crds(full=False, debug=False):

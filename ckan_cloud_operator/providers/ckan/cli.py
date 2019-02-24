@@ -98,3 +98,15 @@ def get_all_dbs_users():
 def post_create_checks(instance_id):
     manager.post_create_checks(instance_id)
     logs.exit_great_success()
+
+
+@ckan.command()
+@click.argument('INSTANCE_ID')
+def admin_credentials(instance_id):
+    logs.print_yaml_dump(manager.ckan_admin_credentials(instance_id))
+
+
+@ckan.command()
+@click.argument('OLD_SITE_ID')
+def db_migration_import_urls(old_site_id):
+    logs.print_yaml_dump(db_migration_manager.get_db_import_urls(old_site_id))

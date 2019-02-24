@@ -19,5 +19,6 @@ def initialize(interactive):
     logs.exit_great_success()
 
 @storage.command()
-def credentials():
-    manager.print_credentials()
+@click.option('--raw', is_flag=True)
+def credentials(raw):
+    manager.print_credentials(raw)

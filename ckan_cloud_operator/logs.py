@@ -8,8 +8,14 @@ import yaml
 def info(*args, **kwargs):
     log(INFO, *args, **kwargs)
 
+
 def debug(*args, **kwargs):
     log(DEBUG, *args, **kwargs)
+
+
+def debug_verbose(*args, **kwargs):
+    if strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE', 'n')):
+        debug(yaml.dump([args, kwargs], default_flow_style=False))
 
 
 def warning(*args, **kwargs):
@@ -49,3 +55,7 @@ def debug_yaml_dump(*args, **kwargs):
         debug(yaml.dump(args[0], default_flow_style=False), **kwargs)
     else:
         debug(yaml.dump(args, default_flow_style=False), **kwargs)
+
+
+def print_yaml_dump(data):
+    print(yaml.dump(data, default_flow_style=False))

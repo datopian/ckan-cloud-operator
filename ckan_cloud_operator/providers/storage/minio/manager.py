@@ -38,14 +38,18 @@ def initialize(interactive=False):
     _set_provider()
 
 
-def print_credentials():
-    print('Minio admin credentials:')
+def print_credentials(raw=False):
     hostname, access_key, secret_key = get_credentials()
-    print('External Domain: ' + hostname)
-    print('Access Key: ' + access_key)
-    print('Secret Key: ' + secret_key)
-    print('\nto use with minio-client, run the following command:')
-    print(f'mc config host add ckan-edge https://{hostname} {access_key} {secret_key}')
+    if raw:
+        print(f'https://{hostname} {access_key} {secret_key}')
+    else:
+        print('Minio admin credentials:')
+        print('External Domain: ' + hostname)
+        print('Access Key: ' + access_key)
+        print('Secret Key: ' + secret_key)
+        print('\nto use with minio-client, run the following command:')
+        print(f'mc config host add ckan-edge https://{hostname} {access_key} {secret_key}')
+
 
 
 def get_credentials():

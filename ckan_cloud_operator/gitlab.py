@@ -7,6 +7,7 @@ import requests
 
 
 from ckan_cloud_operator.providers.ckan import manager as ckan_manager
+from ckan_cloud_operator import logs
 
 
 class CkanGitlab(object):
@@ -70,21 +71,26 @@ class CkanGitlab(object):
             if 'pip install --upgrade pip' in line:
                 got_upgraded = True
             elif not got_upgraded and line.startswith('RUN pip install '):
-                needs_update = True
-                line = 'RUN pip install --upgrade pip==18.1 && pip install {}'.format(line[15:])
+                logs.warning('please add pip install --upgrade pip manually to the Dockerfile (if needed)')
+                # needs_update = True
+                # line = 'RUN pip install --upgrade pip==18.1 && pip install {}'.format(line[15:])
             lines.append(line)
-        if needs_update:
-            return '{}\n'.format('\n'.join(lines))
+        search_replace_needs_update, lines = ckan_manager.gitlab_search_replace(lines)
+        if needs_update or search_replace_needs_update:
+            return needs_update, search_replace_needs_update, '{}\n'.format('\n'.join(lines))
         else:
-            return None
+            return False, False, None
 
     def _update_dockerfile(self, project_id, data):
-        updated_data = self._get_updated_dockerfile(data)
+        pip_update, gitlab_search_replace_update, updated_data = self._get_updated_dockerfile(data)
         if updated_data:
+            commit_messages = []
+            if pip_update: commit_messages.append('Add pip install --upgrade pip to Dockerfile')
+            if gitlab_search_replace_update: commit_messages.append('replace values for migration')
             self._curl(f'projects/{project_id}/repository/files/Dockerfile', postjson={
                 'branch': 'master', 'author_email': 'admin@ckan-cloud-operator',
                 'author_name': 'ckan-cloud-operator',
-                'content': updated_data, 'commit_message': 'Add pip install --upgrade pip to Dockerfile'
+                'content': updated_data, 'commit_message': ', '.join(commit_messages)
             }, method='PUT')
 
     def _get_file(self, project, file, ref='master', required=True):

@@ -5,11 +5,11 @@ from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.labels import manager as labels_manager
 
 
-def get_global_annotations():
+def get_global_annotations(with_timestamp=True):
     label_prefix = labels_manager.get_label_prefix()
     return {
         f'{label_prefix}/operator-timestamp': str(datetime.datetime.now())
-    }
+    } if with_timestamp else {}
 
 
 def set_status(resource, prefix, status):

@@ -38,18 +38,24 @@ def get_instance_env(old_site_id, path_to_old_cluster_kubeconfig):
     container = containers[0]
     fetch_secret_name = None
     envvar_secrets = {}
+    extra_values = {}
     for e in container['env']:
         name = e.pop('name')
-        value_from = e.pop('valueFrom')
-        assert len(e) == 0
-        secret_key_ref = value_from.pop('secretKeyRef')
-        assert len(value_from) == 0
-        secret_key = secret_key_ref.pop('key')
-        secret_name = secret_key_ref.pop('name')
-        assert len(secret_key_ref) == 0
-        assert not fetch_secret_name or fetch_secret_name == secret_name
-        fetch_secret_name = secret_name
-        envvar_secrets[name] = secret_key
+        if 'valueFrom' in e:
+            value_from = e.pop('valueFrom')
+            assert len(e) == 0
+            secret_key_ref = value_from.pop('secretKeyRef')
+            assert len(value_from) == 0
+            secret_key = secret_key_ref.pop('key')
+            secret_name = secret_key_ref.pop('name')
+            assert len(secret_key_ref) == 0
+            assert not fetch_secret_name or fetch_secret_name == secret_name
+            fetch_secret_name = secret_name
+            envvar_secrets[name] = secret_key
+        else:
+            value = e.pop('value')
+            assert len(e) == 0
+            extra_values[name] = value
     output = subprocess.check_output(f'KUBECONFIG={path_to_old_cluster_kubeconfig} '
                                      f'kubectl -n {old_site_id} get secret {fetch_secret_name} -o yaml',
                                      shell=True)
@@ -57,7 +63,7 @@ def get_instance_env(old_site_id, path_to_old_cluster_kubeconfig):
     instance_env = {}
     for key, secret_key in envvar_secrets.items():
         instance_env[key] = secret[secret_key]
-    return instance_env
+    return dict(instance_env, **extra_values)
 
 
 def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_class,
@@ -83,7 +89,11 @@ def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_c
         if not skip_gitlab:
             CkanGitlab().initialize(gitlab_repo)
         gitlab_registry = f'registry.gitlab.com/{gitlab_repo}'
-        storage_path = f'/ckan/{old_site_id}'
+        old_bucket_name = instance_env.get('CKANEXT__S3FILESTORE__AWS_BUCKET_NAME')
+        old_storage_path = instance_env.get('CKANEXT__S3FILESTORE__AWS_STORAGE_PATH')
+        assert old_bucket_name == 'ckan'
+        assert old_storage_path and len(old_storage_path) > 1
+        storage_path = f'/ckan/{old_storage_path}'
         deis_instance_class.create('from-gcloud-envvars', instance_env, gitlab_registry, solr_config,
                                    storage_path, new_instance_id, db_migration_name=db_migration_name)
     routers_env_id = routers_provider.get_env_id()

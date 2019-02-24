@@ -322,7 +322,7 @@ class DeisCkanInstance(object):
         self.ckan.update()
         DeisCkanInstanceDb(self, 'datastore').set_datastore_readonly_permissions()
         # Create/Update uptime monitoring after everything else is ready
-        DeisCkanInstanceUptime(self).update()
+        # DeisCkanInstanceUptime(self).update()
 
     def delete(self, force=False, wait_deleted=False):
         """

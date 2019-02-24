@@ -2,10 +2,10 @@ import yaml
 import hashlib
 
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 from ckan_cloud_operator.routers.annotations import CkanRoutersAnnotations
 from ckan_cloud_operator.routers.traefik import manager as traefik_manager
 from ckan_cloud_operator.routers.routes import manager as routes_manager
-from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator.providers.routers.manager import get_env_id, get_default_root_domain
 
 
@@ -34,7 +34,8 @@ def create(router_name, router_spec):
     annotations.json_annotate('default-root-domain', default_root_domain)
 
 
-def get_traefik_router_spec(default_root_domain=None, cloudflare_email=None, cloudflare_api_key=None):
+def get_traefik_router_spec(default_root_domain=None, cloudflare_email=None, cloudflare_api_key=None,
+                            wildcard_ssl_domain=None, external_domains=False):
     if not default_root_domain: default_root_domain = 'default'
     if not cloudflare_email: cloudflare_email = 'default'
     if not cloudflare_api_key: cloudflare_api_key = 'default'
@@ -46,7 +47,9 @@ def get_traefik_router_spec(default_root_domain=None, cloudflare_email=None, clo
         'cloudflare': {
             'email': cloudflare_email,
             'api-key': cloudflare_api_key
-        }
+        },
+        'wildcard-ssl-domain': wildcard_ssl_domain,
+        'external-domains': bool(external_domains)
     }
 
 
@@ -77,7 +80,7 @@ def list(full=False, values_only=False, async_print=True):
         return res
 
 
-def get(router_name_or_values, required=False):
+def get(router_name_or_values, required=False, only_dns=False):
     if type(router_name_or_values) == str:
         router_name = router_name_or_values
         router_values = kubectl.get(f'CkanCloudRouter {router_name}', required=required)
@@ -86,14 +89,24 @@ def get(router_name_or_values, required=False):
         router_values = router_name_or_values
     router, spec, router_type, annotations, labels, router_type_config = _init_router(router_name, router_values, required=required)
     if router:
-        deployment_data = router_type_config['manager'].get(router_name, 'deployment')
-        routes = routes_manager.list(_get_labels(router_name, router_type))
-        return {'name': router_name,
-                'annotations': router_values['metadata']['annotations'],
-                'routes': [route.get('spec') for route in routes] if routes else [],
-                'type': router_type,
-                'deployment': deployment_data,
-                'ready': deployment_data.get('ready', False)}
+        dns_data = router_type_config['manager'].get(router_name, 'dns', router)
+        if not only_dns:
+            deployment_data = router_type_config['manager'].get(router_name, 'deployment')
+            routes = routes_manager.list(_get_labels(router_name, router_type))
+        else:
+            deployment_data = None
+            routes = None
+        if only_dns:
+            return {'name': router_name,
+                    'dns': dns_data}
+        else:
+            return {'name': router_name,
+                    'annotations': router_values['metadata']['annotations'],
+                    'routes': [route.get('spec') for route in routes] if routes else [],
+                    'type': router_type,
+                    'deployment': deployment_data,
+                    'ready': deployment_data.get('ready', False),
+                    'dns': dns_data}
     else:
         return None
 
@@ -154,19 +167,22 @@ def delete(router_name, router_type=None):
     router_type_config['manager'].delete(router_name)
 
 
-def get_datapusher_routes(datapusher_name):
+def get_datapusher_routes(datapusher_name, edit=False):
     labels = {'ckan-cloud/route-datapusher-name': datapusher_name}
-    return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
+    if edit: kubectl.edit_items_by_labels('CkanCloudRoute', labels)
+    else: return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
 
 
-def get_backend_url_routes(target_resorce_id):
+def get_backend_url_routes(target_resorce_id, edit=False):
     labels = {'ckan-cloud/route-target-resource-id': target_resorce_id}
-    return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
+    if edit: kubectl.edit_items_by_labels('CkanCloudRoute', labels)
+    else: return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
 
 
-def get_deis_instance_routes(deis_instance_id):
+def get_deis_instance_routes(deis_instance_id, edit=False):
     labels = {'ckan-cloud/route-deis-instance-id': deis_instance_id}
-    return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
+    if edit: kubectl.edit_items_by_labels('CkanCloudRoute', labels)
+    else: return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
 
 
 def get_domain_routes(root_domain=None, sub_domain=None):
@@ -218,6 +234,12 @@ def get_route_frontend_hostname(route):
         return frontend_hostname
 
 
+def get_cloudflare_rate_limits(root_domain):
+    from ckan_cloud_operator.providers.routers import manager as routers_manager
+    from ckan_cloud_operator import cloudflare
+    return cloudflare.get_zone_rate_limits(*routers_manager.get_cloudflare_credentials(), root_domain)
+
+
 def _get_labels(router_name, router_type):
     return {'ckan-cloud/router-name': router_name, 'ckan-cloud/router-type': router_type}
 
@@ -231,8 +253,10 @@ def _init_router(router_name, router_values=None, required=False):
         router_type_config = ROUTER_TYPES[router_type]
         annotations = CkanRoutersAnnotations(router_name, router)
         labels = _get_labels(router_name, router_type)
+        logs.debug_verbose('_init_router', router=router, router_type_config=router_type_config, labels=labels)
         return router, spec, router_type, annotations, labels, router_type_config
     else:
+        logs.debug_verbose('_init_router', router=router, router_type_config=None, labels=None)
         return None, None, None, None, None, None
 
 
@@ -248,7 +272,7 @@ def _get_default_sub_root_domain(sub_domain, root_domain, default_sub_domain_suf
 
 
 def _validate_sub_root_domain(sub_domain, root_domain):
-    assert root_domain == 'default', 'non-default root domain is not allowed'
     env_id = get_env_id()
     assert env_id, 'missing env id value'
-    assert sub_domain.startswith(f'cc-{env_id}-')
+    assert env_id == 'p' or root_domain == 'default', 'non-default root domain is not allowed for non production environmnets'
+    assert env_id == 'p' or sub_domain.startswith(f'cc-{env_id}-'), 'non-default sub-domains are not allowed for non production environments'

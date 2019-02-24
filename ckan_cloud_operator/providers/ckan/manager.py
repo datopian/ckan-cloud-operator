@@ -3,6 +3,7 @@ import os
 import yaml
 import traceback
 import time
+import json
 
 from ckan_cloud_operator import logs
 
@@ -17,7 +18,7 @@ from .db import migration as ckan_db_migration_manager
 from .constants import INSTANCE_CRD_SINGULAR, INSTANCE_CRD_PLURAL_SUFFIX, INSTANCE_CRD_KIND_SUFFIX
 
 def initialize(interactive=False):
-    ckan_db_migration_manager.initialize()
+    ckan_db_migration_manager.initialize(interactive=interactive)
     ckan_infra = CkanInfra(required=False)
     config_manager.interactive_set(
         {
@@ -51,11 +52,24 @@ def initialize(interactive=False):
 
     from ckan_cloud_operator.routers import manager as routers_manager
     router_name = get_default_instances_router_name()
-    if not routers_manager.get(router_name, required=False):
-        routers_manager.create(router_name, routers_manager.get_traefik_router_spec())
+    wildcard_ssl_domain = 'ckan.io'
+    allow_wildcard_ssl = (routers_manager.get_env_id() == 'p'
+                          and routers_manager.get_default_root_domain() == wildcard_ssl_domain)
+    router = routers_manager.get(router_name, required=False)
+    if router:
+        assert (
+            (allow_wildcard_ssl and router.get('wildcard-ssl-domain') == wildcard_ssl_domain)
+            or
+            (not allow_wildcard_ssl and not router.get('wildcard-ssl-domain'))
+        ), f'invalid router wildcard ssl config: {router}'
+    else:
+        routers_manager.create(
+            router_name,
+            routers_manager.get_traefik_router_spec(wildcard_ssl_domain=wildcard_ssl_domain)
+        )
 
     from .storage.manager import initialize as ckan_storage_initialize
-    ckan_storage_initialize()
+    ckan_storage_initialize(interactive=interactive)
 
 
 def get_docker_credentials():
@@ -118,6 +132,22 @@ def deis_kubeconfig():
 
 def gitlab_token():
     return config_manager.get('gitlab-token', secret_name='ckan-migration-secrets', required=True)
+
+
+def gitlab_search_replace(lines):
+    values = config_manager.get('gitlab-search-replace', secret_name='ckan-migration-secrets', required=False)
+    if values: values = json.loads(values)
+    needs_update = False
+    _lines = []
+    for line in lines:
+        if values:
+            for k, v in values.items():
+                if k in line:
+                    logs.info(f'Search-replace gitlab line: {line} / {k} = {v}')
+                    line = line.replace(k, v)
+                    needs_update = True
+        _lines.append(line)
+    return needs_update, _lines
 
 
 def instance_kind():
@@ -222,14 +252,18 @@ def check_envvars(envvars, deis_instance):
             db_manager.check_connection_string(
                 url.replace('ckan-cloud-provider-db-proxy-pgbouncer.ckan-cloud', 'localhost'))
         elif url_type == 'solr':
-            assert url.startswith('http://solrcloud-proxy.ckan-cloud:8983/solr/')
+            from ckan_cloud_operator.providers.solr import manager as solr_manager
+            assert url.startswith(solr_manager.get_internal_http_endpoint())
         else:
             raise Exception(f'unknown url type: {url_type}')
 
 
 def check_cluster_url(url, verify_site_url=False, deis_instance=None):
     from ckan_cloud_operator.deis_ckan.ckan import DeisCkanInstanceCKAN
-    assert url.startswith('https://cc-e-') and url.rstrip('/').endswith('ckan.io'), f'invalid cluster url: {url}'
+    from ckan_cloud_operator.providers.routers import manager as routers_manager
+    env_id = routers_manager.get_env_id()
+    root_domain = routers_manager.get_default_root_domain()
+    assert url.startswith(f'https://cc-{env_id}-') and url.rstrip('/').endswith(root_domain), f'invalid cluster url: {url}'
     if verify_site_url:
         logs.info('checking site url in running instance...')
         site_url = None
@@ -249,6 +283,12 @@ def verify_instance_dbs(verify_instance_id):
     logs.info(f'{verify_instance_id}: Checking DataStore ReadOnly..')
     db_manager.check_connection_string(db_manager.get_deis_instsance_external_connection_string(verify_instance_id,
                                                                                                 is_datastore_readonly=True))
+
+
+def ckan_admin_credentials(instance_id):
+    from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
+    from ckan_cloud_operator.deis_ckan.ckan import DeisCkanInstanceCKAN
+    return DeisCkanInstanceCKAN(DeisCkanInstance(instance_id)).admin_credentials()
 
 
 def _generate_db_password(purpose):
