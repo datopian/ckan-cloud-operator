@@ -1,26 +1,29 @@
 import toml
 import time
+import hashlib
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.routers.traefik import config as traefik_router_config
 from ckan_cloud_operator.routers.routes import manager as routes_manager
 from ckan_cloud_operator import cloudflare
-from ckan_cloud_operator.infra import CkanInfra
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
+from ckan_cloud_operator.labels import manager as labels_manager
 
 
-def _get_deployment_spec(router_name, labels, annotations):
+def _get_deployment_spec(router_name, router_type, annotations, image=None):
+    volume_spec = cluster_manager.get_or_create_multi_user_volume_claim(get_label_suffixes(router_name, router_type))
     deployment_spec = {
         'replicas': 1,
         'revisionHistoryLimit': 5,
         'template': {
             'metadata': {
-                'labels': labels
+                'labels': get_labels(router_name, router_type, for_deployment=True)
             },
             'spec': {
                 'containers': [
                     {
                         'name': 'traefik',
-                        'image': 'traefik:1.6-alpine',
+                        'image': image or 'traefik:1.6-alpine',
                         'ports': [{'containerPort': 80}],
                         'volumeMounts': [
                             {'name': 'etc-traefik', 'mountPath': '/etc-traefik'},
@@ -31,7 +34,7 @@ def _get_deployment_spec(router_name, labels, annotations):
                 ],
                 'volumes': [
                     {'name': 'etc-traefik', 'configMap': {'name': f'router-traefik-{router_name}'}},
-                    {'name': 'traefik-acme', 'persistentVolumeClaim': {'claimName': f'router-traefik-{router_name}'}}
+                    dict(volume_spec, name='traefik-acme')
                 ]
             }
         }
@@ -39,52 +42,76 @@ def _get_deployment_spec(router_name, labels, annotations):
     if annotations.get_flag('letsencryptCloudflareEnabled'):
         container = deployment_spec['template']['spec']['containers'][0]
         container['ports'].append({'containerPort': 443})
-        cloudflare_api_key, cloudflare_email = get_cloudflare_credentials(annotations, CkanInfra())
+        cloudflare_email, cloudflare_api_key = get_cloudflare_credentials()
         secret_name = f'ckancloudrouter-{router_name}-cloudflare'
         kubectl.update_secret(secret_name, {
             'CLOUDFLARE_EMAIL': cloudflare_email,
             'CLOUDFLARE_API_KEY': cloudflare_api_key,
-        }, labels=labels)
+        }, labels=get_labels(router_name, router_type))
         container['envFrom'] = [{'secretRef': {'name': secret_name}}]
     return deployment_spec
 
 
-def _update(router_name, ckan_infra, spec, annotations, routes):
-    resource_name = f'router-traefik-{router_name}'
+def _get_resource_name(router_name):
+    return f'router-traefik-{router_name}'
+
+
+def _update(router_name, spec, annotations, routes):
+    resource_name = _get_resource_name(router_name)
     router_type = spec['type']
-    storage_class_name = ckan_infra.MULTI_USER_STORAGE_CLASS_NAME
-    labels = {
-        'ckan-cloud/router-name': router_name,
-        'ckan-cloud/router-type': router_type,
-    }
-    cloudflare_auth_key, cloudflare_email = get_cloudflare_credentials(annotations, ckan_infra)
-    kubectl.apply(kubectl.get_configmap(resource_name, labels, {
-        'traefik.toml': toml.dumps(traefik_router_config.get(routes, cloudflare_email))
-    }))
-    kubectl.apply(kubectl.get_persistent_volume_claim(resource_name, labels, {
-        'storageClassName': storage_class_name,
-        'accessModes': ['ReadWriteMany'],
-        'resources': {
-            'requests': {
-                'storage': '1Mi'
-            }
-        }
-    }))
+    cloudflare_email, cloudflare_auth_key = get_cloudflare_credentials()
+    external_domains = spec.get('external-domains')
+    kubectl.apply(kubectl.get_configmap(
+        resource_name, get_labels(router_name, router_type),
+        {'traefik.toml': toml.dumps(traefik_router_config.get(
+            routes, cloudflare_email,
+            wildcard_ssl_domain=spec.get('wildcard-ssl-domain'),
+            external_domains=external_domains
+        ))}
+    ))
     domains = {}
     for route in routes:
         root_domain, sub_domain = routes_manager.get_domain_parts(route)
         domains.setdefault(root_domain, []).append(sub_domain)
-        routes_manager.pre_deployment_hook(route, labels)
-    load_balancer = kubectl.get_resource('v1', 'Service', f'loadbalancer-{resource_name}', labels)
+        routes_manager.pre_deployment_hook(route, get_labels(router_name, router_type))
+    load_balancer = kubectl.get_resource(
+        'v1', 'Service', f'loadbalancer-{resource_name}',
+        get_labels(router_name, router_type)
+    )
     load_balancer['spec'] = {
         'ports': [
             {'name': '80', 'port': 80},
             {'name': '443', 'port': 443},
         ],
-        'selector': labels,
+        'selector': {
+            'app': get_labels(router_name, router_type, for_deployment=True)['app']
+        },
         'type': 'LoadBalancer'
     }
     kubectl.apply(load_balancer)
+    load_balancer_ip = get_load_balancer_ip(router_name)
+    print(f'load balancer ip: {load_balancer_ip}')
+    if external_domains:
+        from ckan_cloud_operator.providers.routers import manager as routers_manager
+        external_domains_router_root_domain = routers_manager.get_default_root_domain()
+        env_id = routers_manager.get_env_id()
+        assert router_name in ['prod-1'], f'invalid external domains router name: {router_name}'
+        external_domains_router_sub_domain = f'cc-{env_id}-{router_name}'
+        cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, external_domains_router_root_domain,
+                                   f'{external_domains_router_sub_domain}.{external_domains_router_root_domain}', load_balancer_ip)
+    else:
+        for root_domain, sub_domains in domains.items():
+            for sub_domain in sub_domains:
+                cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, root_domain,
+                                           f'{sub_domain}.{root_domain}', load_balancer_ip)
+    kubectl.apply(kubectl.get_deployment(
+        resource_name, get_labels(router_name, router_type, for_deployment=True),
+        _get_deployment_spec(router_name, router_type, annotations, image='traefik:1.7' if external_domains else None)
+    ))
+
+
+def get_load_balancer_ip(router_name):
+    resource_name = _get_resource_name(router_name)
     while True:
         time.sleep(.2)
         load_balancer = kubectl.get(f'service loadbalancer-{resource_name}', required=False)
@@ -94,30 +121,16 @@ def _update(router_name, ckan_infra, spec, annotations, routes):
         assert len(ingresses) == 1
         load_balancer_ip = ingresses[0].get('ip')
         if load_balancer_ip:
-            break
-    print(f'load balancer ip: {load_balancer_ip}')
-    for root_domain, sub_domains in domains.items():
-        for sub_domain in sub_domains:
-            cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, root_domain,
-                                       f'{sub_domain}.{root_domain}', load_balancer_ip)
-    kubectl.apply(kubectl.get_deployment(resource_name, labels,
-                                         _get_deployment_spec(router_name, labels, annotations)))
+            return load_balancer_ip
 
 
-def get_cloudflare_credentials(annotations, ckan_infra):
-    cloudflare_auth_key = annotations.get_secret('LETSENCRYPT_CLOUDFLARE_API_KEY')
-    cloudflare_email = annotations.get_secret('LETSENCRYPT_CLOUDFLARE_EMAIL')
-    if not cloudflare_auth_key or cloudflare_auth_key == 'default':
-        cloudflare_auth_key = ckan_infra.ROUTERS_DEFAULT_CLOUDFLARE_AUTH_KEY
-        assert cloudflare_auth_key, 'missing ckan-infra value for ROUTERS_DEFAULT_CLOUDFLARE_AUTH_KEY'
-    if not cloudflare_email or cloudflare_email == 'default':
-        cloudflare_email = ckan_infra.ROUTERS_DEFAULT_CLOUDFLARE_EMAIL
-        assert cloudflare_email, 'missing ckan-infra value for ROUTERS_DEFAULT_CLOUDFLARE_EMAIL'
-    return cloudflare_auth_key, cloudflare_email
+def get_cloudflare_credentials():
+    from ckan_cloud_operator.providers.routers import manager as routers_manager
+    cloudflare_email, cloudflare_auth_key = routers_manager.get_cloudflare_credentials()
+    return cloudflare_email, cloudflare_auth_key
 
 
 def update(router_name, wait_ready, spec, annotations, routes):
-    ckan_infra = CkanInfra()
     old_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
     old_generation = old_deployment.get('metadata', {}).get('generation') if old_deployment else None
     expected_new_generation = old_generation + 1 if old_generation else None
@@ -127,7 +140,7 @@ def update(router_name, wait_ready, spec, annotations, routes):
         print('Creating new deployment')
     annotations.update_status(
         'router', 'created',
-        lambda: _update(router_name, ckan_infra, spec, annotations, routes),
+        lambda: _update(router_name, spec, annotations, routes),
         force_update=True
     )
     if expected_new_generation:
@@ -157,3 +170,34 @@ def get(router_name):
         )
     else:
         return {'ready': False}
+
+
+def get_dns_data(router_name, router):
+    external_domains = router['spec'].get('external-domains')
+    data = {
+        'load-balancer-ip': get_load_balancer_ip(router_name),
+    }
+    if external_domains:
+        from ckan_cloud_operator.providers.routers import manager as routers_manager
+        external_domains_router_root_domain = routers_manager.get_default_root_domain()
+        env_id = routers_manager.get_env_id()
+        assert router_name in ['prod-1'], f'invalid external domains router name: {router_name}'
+        external_domains_router_sub_domain = f'cc-{env_id}-{router_name}'
+        data['external-domain'] = f'{external_domains_router_sub_domain}.{external_domains_router_root_domain}'
+    return data
+
+
+def get_label_suffixes(router_name, router_type):
+    return {
+        'router-name': router_name,
+        'router-type': router_type
+    }
+
+
+def get_labels(router_name, router_type, for_deployment=False):
+    label_prefix = labels_manager.get_label_prefix()
+    extra_labels = {'app': f'{label_prefix}-router-{router_name}'} if for_deployment else {}
+    return labels_manager.get_resource_labels(
+        get_label_suffixes(router_name, router_type),
+        extra_labels=extra_labels
+    )

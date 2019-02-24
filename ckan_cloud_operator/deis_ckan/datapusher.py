@@ -2,8 +2,7 @@ from urllib.parse import urlparse
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
-from ckan_cloud_operator.infra import CkanInfra
-
+from ckan_cloud_operator.providers.routers import manager as routers_manager
 
 
 def get_datapusher_url(instance_datapusher_url):
@@ -30,8 +29,8 @@ def get_datapusher_url(instance_datapusher_url):
                     root_domain = route['spec']['root-domain']
                     assert sub_domain and sub_domain != 'default', f'invalid sub_domain: {sub_domain}'
                     if not root_domain or root_domain == 'default':
-                        default_root_domain = CkanInfra().ROUTERS_DEFAULT_ROOT_DOMAIN
-                        assert default_root_domain, 'missing ckan-infra ROUTERS_DEFAULT_ROOT_DOMAIN'
+                        default_root_domain = routers_manager.get_default_root_domain()
+                        assert default_root_domain, 'missing routers default root domain'
                         root_domain = default_root_domain
                     return 'https://{}.{}/'.format(sub_domain, root_domain)
                 else:

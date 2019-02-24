@@ -1,14 +1,15 @@
 import click
+import yaml
 
-from ckan_cloud_operator.providers.db_proxy import cli as db_proxy_cli
-from ckan_cloud_operator.providers.db import cli as db_cli
+from . import manager
 
 
-@click.group()
+@click.group('providers')
 def providers_group():
     """Manage configurable providers of centralized infrastructure services"""
     pass
 
 
-providers_group.add_command(db_proxy_cli.db_proxy_group, 'db-proxy')
-providers_group.add_command(db_cli.db_group, 'db')
+@providers_group.command()
+def list_providers():
+    print(yaml.dump(manager.list_providers(), default_flow_style=False))

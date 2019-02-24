@@ -24,12 +24,10 @@ class DeisCkanInstanceRegistry(object):
 
     def _create_instance_registry_secret(self):
         print('Creating instance registry secret')
-        docker_server = self.instance.ckan_infra.DOCKER_REGISTRY_SERVER
-        docker_username = self.instance.ckan_infra.DOCKER_REGISTRY_USERNAME
-        docker_password = self.instance.ckan_infra.DOCKER_REGISTRY_PASSWORD
-        docker_email = self.instance.ckan_infra.DOCKER_REGISTRY_EMAIL
+        from ckan_cloud_operator.providers.ckan import manager as ckan_manager
+        server, user, password, email = ckan_manager.get_docker_credentials()
         subprocess.check_call(f'kubectl -n {self.instance.id} create secret docker-registry {self.instance.id}-registry '
-                              f'--docker-password={docker_password} '
-                              f'--docker-server={docker_server} '
-                              f'--docker-username={docker_username} '
-                              f'--docker-email={docker_email}', shell=True)
+                              f'--docker-password={password} '
+                              f'--docker-server={server} '
+                              f'--docker-username={user} '
+                              f'--docker-email={email}', shell=True)

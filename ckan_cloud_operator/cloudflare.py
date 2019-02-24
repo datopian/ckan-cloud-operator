@@ -1,11 +1,18 @@
 import subprocess
 import json
 
+from ckan_cloud_operator import logs
+
 
 def get_zone_id(auth_email, auth_key, zone_name):
     data = curl(auth_email, auth_key, 'zones')
     zones = [zone['id'] for zone in data['result'] if zone['name'] == zone_name]
     return zones[0] if len(zones) > 0 else None
+
+
+def get_zone_rate_limits(auth_email, auth_key, zone_name):
+    zone_id = get_zone_id(auth_email, auth_key, zone_name)
+    return curl(auth_email, auth_key, f'zones/{zone_id}/rate_limits?page=1&per_page=1000')
 
 
 def get_record_id(auth_email, auth_key, zone_id, record_name):
@@ -31,6 +38,8 @@ def update_a_record(auth_email, auth_key, zone_name, record_name, target_ip):
 
 
 def curl(auth_email, auth_key, urlpart, data=None, method='GET'):
+    logs.info(f'Running Cloudflare curl: {urlpart} {data} {method}')
+    logs.debug(f'{auth_email} / {auth_key}')
     cmd = ['curl', '-s', '-X', method, f'https://api.cloudflare.com/client/v4/{urlpart}']
     cmd += [
         '-H', f'X-Auth-Email: {auth_email}',
@@ -39,6 +48,10 @@ def curl(auth_email, auth_key, urlpart, data=None, method='GET'):
     ]
     if data:
         cmd += ['--data', json.dumps(data)]
+    logs.debug(*cmd)
     output = subprocess.check_output(cmd)
-    return json.loads(output)
-
+    try:
+        return json.loads(output)
+    except Exception:
+        logs.critical(f'Got invalid data from cloudflare curl: {output}')
+        raise

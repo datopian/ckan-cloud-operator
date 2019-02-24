@@ -3,6 +3,7 @@ channels:
   - defaults
 dependencies:
   - python>=3.7
+  - psycopg2
   - pip:
     - pyyaml
     - kubernetes

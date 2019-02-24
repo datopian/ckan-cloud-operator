@@ -1,6 +1,7 @@
 import yaml
 import copy
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 
 
 class DeisCkanInstanceSpec(object):
@@ -11,7 +12,8 @@ class DeisCkanInstanceSpec(object):
         if override_spec:
             for k, v in override_spec.items():
                 if k == 'envvars':
-                    print('Applying overrides to instance spec envvars')
+                    logs.info('Applying overrides to instance spec envvars')
+                    logs.debug(f"spec['envvars']['overrides'] = {v}")
                     self.spec['envvars']['overrides'] = v
                     self.num_applied_overrides += 1
                 elif k in ['db', 'datastore', 'solrCloudCollection']:
@@ -29,11 +31,11 @@ class DeisCkanInstanceSpec(object):
                 else:
                     raise NotImplementedError(f'Unsupported instance spec override: {k}: {v}')
         self._validate()
-        self.envvars = spec['envvars']
-        self.db = spec['db']
-        self.datastore = spec['datastore']
-        self.solrCloudCollection = spec['solrCloudCollection']
-        self.storage = spec['storage']
+        self.envvars = self.spec['envvars']
+        self.db = self.spec['db']
+        self.datastore = self.spec['datastore']
+        self.solrCloudCollection = self.spec['solrCloudCollection']
+        self.storage = self.spec['storage']
 
     def _validate(self):
         spec = self.spec
@@ -55,9 +57,11 @@ class DeisCkanInstanceSpec(object):
                     if kk == 'name':
                         assert type(vv) == str
                     elif kk == 'importGcloudSqlDumpUrl':
-                        assert type(vv) == str and not v.get('fromDeisInstance')
+                        assert type(vv) == str
                     elif kk == 'fromDeisInstance':
-                        assert type(vv) == str and not v.get('importGcloudSqlDumpUrl')
+                        assert type(vv) == str
+                    elif kk == 'fromDbMigration':
+                        assert type(vv) == str
                     else:
                         raise ValueError(f'Invalid db spec attribute: {kk}={vv}')
             elif k == 'solrCloudCollection':

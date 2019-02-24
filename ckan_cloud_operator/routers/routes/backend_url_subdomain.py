@@ -1,6 +1,3 @@
-from ckan_cloud_operator.infra import CkanInfra
-
-
 def get_backend_url(route):
     name, spec = _init_route(route)
     return spec['backend-url']
@@ -23,7 +20,8 @@ def get_domain_parts(route):
 
 
 def get_default_root_domain():
-    default_root_domain = CkanInfra().ROUTERS_DEFAULT_ROOT_DOMAIN
+    from ckan_cloud_operator.providers.routers import manager as routers_manager
+    default_root_domain = routers_manager.get_default_root_domain()
     assert default_root_domain, 'missing ckan-infra ROUTERS_DEFAULT_ROOT_DOMAIN'
     return default_root_domain
 

@@ -1,9 +1,14 @@
 import yaml
 from ckan_cloud_operator import kubectl
-from ckan_cloud_operator.infra import CkanInfra
+from ckan_cloud_operator.routers import manager as routers_manager
 
 
 def add_cli_commands(click, command_group, great_success):
+
+    @command_group.command('initialize')
+    def datapushers_initialize():
+        initialize()
+        great_success()
 
     @command_group.command('create')
     @click.argument('DATAPUSHER_NAME')
@@ -43,19 +48,59 @@ def add_cli_commands(click, command_group, great_success):
         great_success()
 
 
+def initialize():
+    install_crds()
+    datapusher_envvars = {'PORT': '8000'}
+    router_name = 'datapushers'
+    if not routers_manager.get(router_name, required=False):
+        routers_manager.create(router_name, routers_manager.get_traefik_router_spec())
+    create(
+        'datapusher-1',
+        'registry.gitlab.com/viderum/docker-datapusher:cloud-datapusher-1-v9',
+        datapusher_envvars,
+        router_name
+    )
+    create(
+        'datapusher-de',
+        'registry.gitlab.com/viderum/docker-datapusher:cloud-de-git-943fc3e0',
+        datapusher_envvars,
+        router_name
+    )
+    create(
+        'datapusher-giga',
+        'registry.gitlab.com/viderum/docker-datapusher:cloud-giga-git-2b05b22d',
+        datapusher_envvars,
+        router_name
+    )
+    create(
+        'datapusher-increased-max-length',
+        'registry.gitlab.com/viderum/docker-datapusher:cloud-increased-max-length-git-84e86116',
+        datapusher_envvars,
+        router_name
+    )
+    update('datapusher-1')
+    update('datapusher-de')
+    update('datapusher-giga')
+    update('datapusher-increased-max-length')
+    routers_manager.update(router_name)
+
+
 def install_crds():
     """Ensures installaion of the datapusher custom resource definitions on the cluster"""
     kubectl.install_crd('ckanclouddatapushers', 'ckanclouddatapusher', 'CkanCloudDatapusher')
 
 
-def create(name, image, path_to_config_yaml):
-    with open(path_to_config_yaml) as f:
-        config = yaml.load(f)
+def create(name, image, config, router_name=None):
     labels =  _get_labels(name)
     datapusher = kubectl.get_resource('stable.viderum.com/v1', 'CkanCloudDatapusher', name, labels)
     datapusher['spec'] = {'image': image,
                           'config': config}
-    kubectl.create(datapusher)
+    kubectl.apply(datapusher)
+    if router_name:
+        routers_manager.create_subdomain_route(router_name, {
+            'target-type': 'datapusher',
+            'datapusher-name': name
+        })
 
 
 def update(name):
@@ -191,12 +236,9 @@ def _update_registry_secret():
     if secret:
         print('Secret already exists, delete to recreate: datapushers-registry-secret')
     else:
-        ckan_infra = CkanInfra()
         print('Creating datapushers registry secret')
-        docker_server = ckan_infra.DOCKER_REGISTRY_SERVER
-        docker_username = ckan_infra.DOCKER_REGISTRY_USERNAME
-        docker_password = ckan_infra.DOCKER_REGISTRY_PASSWORD
-        docker_email = ckan_infra.DOCKER_REGISTRY_EMAIL
+        from ckan_cloud_operator.providers.ckan import manager as ckan_manager
+        docker_server, docker_username, docker_password, docker_email = ckan_manager.get_docker_credentials()
         kubectl.check_call(f'create secret docker-registry datapushers-docker-registry '
                            f'--docker-password={docker_password} '
                            f'--docker-server={docker_server} '

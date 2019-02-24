@@ -31,12 +31,12 @@ sudo ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE>
 Verify you are connected to the correct cluster
 
 ```
-ckan-cloud-operator cluster-info
+ckan-cloud-operator cluster info
 ```
 
 ## Usage
 
-Use the CLI help messages or the [CLI source code](ckan_cloud_operator/cli.py) for the reference documentation and usage examples.
+Use the CLI help messages for the reference documentation and usage examples.
 
 ```
 ckan-cloud-operator --help
@@ -70,23 +70,6 @@ Activating an environment sets the `ckan-cloud-operator` executable to use to th
 ```
 ckan-cloud-operator-env activate <ENVIRONMENT_NAME>
 ```
-
-## Initializing a cluster for ckan-cloud-operator
-
-Kubernetes custom resource definitions are used for management of the CKAN Cloud resources
-
-Run the following command to ensure the crds are installed on the cluster
-
-```
-ckan-cloud-operator install-crds
-```
-
-ckan-cloud-operator using a secret named `ckan-infra` under namespace `ckan-cloud` to get infrastrutcute secrets.
-
-See the list of values in [ckan_cloud_operator/infra.py](ckan_cloud_operator/infra.py)
-
-You can clone an infrastructure secret using `ckan-infra clone` command
-and some infrastructure secrets can be set using `ckan-infra set` command
 
 ## Run ckan-cloud-operator locally
 

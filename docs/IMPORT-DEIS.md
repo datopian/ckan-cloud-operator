@@ -1,88 +1,100 @@
 # Importing deis instances to ckan-cloud on GKE
 
-## Prepare Gcloud SQL for import via Google Store bucket
 
-Authenticate to gcloud using ckan-cloud-operator
+## Prepare for migrations
 
-```
-ckan-cloud-operator activate-gcloud-auth
-```
 
-Get the service account email for the cloud sql instance (you should be authorized to the relevant Google account)
+### Get the Deis kubeconfig file
 
-```
-GCLOUD_SQL_INSTANCE_ID=`ckan-cloud-operator ckan-infra get GCLOUD_SQL_INSTANCE_NAME`
-
-GCLOUD_SQL_SERVICE_ACCOUNT=`gcloud sql instances describe $GCLOUD_SQL_INSTANCE_ID \
-    | python -c "import sys,yaml; print(yaml.load(sys.stdin)['serviceAccountEmailAddress'])" | tee /dev/stderr`
-```
-
-Give permissions to the bucket used for importing:
-
-```
-GCLOUD_SQL_DEIS_IMPORT_BUCKET=`ckan-cloud-operator ckan-infra get GCLOUD_SQL_DEIS_IMPORT_BUCKET`
-
-gsutil acl ch -u ${GCLOUD_SQL_SERVICE_ACCOUNT}:W gs://${GCLOUD_SQL_DEIS_IMPORT_BUCKET}/ &&\
-gsutil acl ch -R -u ${GCLOUD_SQL_SERVICE_ACCOUNT}:R gs://${GCLOUD_SQL_DEIS_IMPORT_BUCKET}/
-```
-
-## Import DBs from Deis
-
-Connect to the Deis cluster
+Set the path in the following envvar
 
 ```
 DEIS_KUBECONFIG=/path/to/deis/.kube-config
+```
 
+Verify
+
+```
 KUBECONFIG=$DEIS_KUBECONFIG kubectl get nodes
+```
+
+
+### Deploy personal db operations pod on old cluster
+
+Set name for the db operations pod, it should be a unique, personal name (it uses your personal gcloud credentials)
+
+```
+DB_OPERATIONS_POD="<YOUR_NAME>-db-operations"
 ```
 
 Download the db operations pod yaml: https://github.com/ViderumGlobal/ckan-cloud-dataflows/blob/master/db-operations/pod.yaml
 
 Use the following image for the cca-operator container: `orihoch/ckan-cloud-docker:cca-operator-db-import`
 
-Edit and modify the pod name to the a unique, personal name (it uses your personal gcloud credentials)
+Edit and modify the pod name to the name you set in DB_OPERATIONS_POD
 
-Deploy a db-operations pod
+Deploy the pod
 
 ```
 KUBECONFIG=$DEIS_KUBECONFIG kubectl apply -f /path/to/db_operations_pod.yaml
 ```
 
-Login to the pod:
+
+### Deploy the Minio client container
+
+This is a single pod which multiple users can use in parallel
+
+Using Rancher, deploy a minio client container:
+
+* name: `minio-mc`
+* namespace: `ckan-cloud`
+* image: `minio/mc`
+* command entrypoint: `/bin/sh -c 'while true; do sleep 86400; done'`
+
+Add a `deis` minio host:
 
 ```
-KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec -it <DB_OPERATIONS_POD_NAME> -c db -- bash -l
+ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc \
+    mc config host add `ckan-cloud-operator-edge config get \
+                        --secret-name deis-minio-credentials \
+                        --template 'deis https://{hostname} {access-key} {secret-key}'`
 ```
 
-Follow the interactive gcloud initialization
-
-Get the db urls from the instance .env file
-
-Set details of source instance and id for the dump files:
+Add `prod` minio host:
 
 ```
-# DB sqlalchemy url (from the .env file)
-DB_URL=
-
-# DataStore sqlalchemy url (from the .env file)
-DATASTORE_URL=
-
-# old deis instance id
-SITE_ID=
+ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
+    mc config host add prod `ckan-cloud-operator storage credentials --raw`
 ```
 
-Dump the DBs and upload to cloud storage using the current date and site id (may take a while):
+Create the prod ckan bucket
 
 ```
-source functions.sh
-dump_dbs $SITE_ID $DB_URL $DATASTORE_URL && upload_db_dumps_to_storage $SITE_ID
+ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
+    mc mb prod/ckan
 ```
 
-Copy the output containing the gs:// urls - you will need them to create the import configuration
+Copy the bucket policy from deis
 
-Dump files are stored locally in the container and will be removed when db-operations pod is deleted
+```
+ckan-cloud-operator ckan storage deis-minio-bucket-policy \
+    | ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
+        "sh -c 'cat > deis-minio-bucket-policy.json'"
+```
 
-Run the following to create a script that imports all db instances based on deis config yamls:
+Apply the policy to the bucket
+
+```
+ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
+    mc policy deis-minio-bucket-policy.json prod/ckan
+```
+
+
+### Bulk DB dumps
+
+Following should run on edge / testing environments to bulk dump DBs
+
+Run the following to create a script that dumps all db instances based on deis config yamls:
 
 ```
 INSTANCE_YAMLS_PATH="/path/to/instance/yamls/directory/"
@@ -106,92 +118,360 @@ done &&\
 echo '[ "$?" != "0" ] && echo Import failed'
 ```
 
-Run the output script on the db-operations pod
-
-## Get the instance's solrcloud config name
-
-Get the instance solr config name
+Login to the db operations pod, follow the intertactive gcloud initialization and paste the script:
 
 ```
-# you can get the collection name from the instance env vars solr connection url
-COLLECTION_NAME=
-
-KUBECONFIG=$DEIS_KUBECONFIG kubectl -n solr exec zk-0 zkCli.sh get /collections/$COLLECTION_NAME
-```
-
-The output should contain a config name like `ckan_27_default`
-
-see ckan-cloud-dataflows for importing the configs to searchstax - all configs should be imported already
-
-## Sync storage from minio
-
-Start a bash terminal with gcloud on the deis minio pod
-
-```
-KUBECONFIG=$DEIS_KUBECONFIG kubectl -n deis exec -it deis-minio-6ddd8f5d85-wphhb bash
-```
-
-Use gcloud CLI to sync data, following command syncs all the data
-
-```
-cd /export &&\
-gsutil -m rsync -R ./ gs://ckan-cloud-staging-storage/
-```
-
-Sync a single instance
-
-```
-cd /export &&\
-gsutil -m rsync -R ./ckan/<INSTANCE_ID>/ gs://ckan-cloud-staging-storage/ckan/<INSTANCE_ID>/
-```
-
-**Use With Caution!** Sync all data, including file deletions
-
-```
-cd /export &&\
-gsutil -m rsync -d -R ./ gs://ckan-cloud-staging-storage/
-```
-
-## Initialize the Minio storage proxy
-
-```
-ckan-cloud-operator initialize-storage
-```
-
-To debug minio and perform operations - start minio client shell:
-
-```
-docker run -it --entrypoint=/bin/sh minio/mc
-```
-
-Run the following inside the minio client shell to setup the relevant hosts
-
-```
-mc config host add prod https://cc-p-minio.ckan.io MINIO_ACCESS_KEY MINIO_SECRET_KEY
-mc config host add deis https://minio.l3.ckan.io MINIO_ACCESS_KEY MINIO_SECRET_KEY
+KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec -it $DB_OPERATIONS_POD -c db -- bash -l
 ```
 
 
+### Bulk storage sync
 
-## Initialize the DataPusher
-
-all datapushers were migrated, this step is probably not needed anymore, unless we find a new datapusher being used somewhere
-
-Get the relevant DataPusher image from Rancher
-
-ssh to one of the old cluster servers, tag and push the image to `registry.gitlab.com/viderum/docker-datapusher:cloud-<DATAPUSHER_IMAGE_TAG>`
-
-Use the image to create the DataPusher using ckan-cloud-operator datapushers create command
-
-## migrate the instance
-
-Assuming:
-
-* you used previous stesp to prepare the import data for all instances
-* ckan-cloud-operator is configured with required secrets to support the migration
-
-you can run the following to migrate an instance:
+Following should run on edge / testing environments to sync all storage buckets continuously
 
 ```
-ckan-cloud-operator deis-instance create from-deis OLD_SITE_ID NEW_INSTANCE_ID
+ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
+    mc mirror --overwrite --watch -a deis/ckan edge/ckan
+```
+
+
+## Instance migration
+
+
+### Preflight check
+
+Verify DEIS_KUBECONFIG is connected to the deis cluster:
+
+```
+KUBECONFIG=$DEIS_KUBECONFIG kubectl get nodes
+```
+
+Verify DB_OPERATIONS_POD is running
+
+```
+KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup get pod $DB_OPERATIONS_POD
+```
+
+Login to gcloud on db operations pod (usually, should only be done once):
+
+```
+KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec -it $DB_OPERATIONS_POD -c db -- bash -l
+```
+
+Verify ckan-cloud-operator is connected to the right cluster:
+
+```
+ckan-cloud-operator cluster info
+```
+
+
+### Get instance details
+
+Set the old site id (instance id from old cluster):
+
+```
+OLD_SITE_ID=
+```
+
+Get the currently running old pod name:
+
+```
+OLD_POD_NAME=`KUBECONFIG=$DEIS_KUBECONFIG kubectl -n $OLD_SITE_ID get pods -ocustom-columns=name:.metadata.name --no-headers`
+```
+
+Get some env vars from old pod:
+
+```
+OLD_DB_URL=$(KUBECONFIG=$DEIS_KUBECONFIG kubectl -n $OLD_SITE_ID exec $OLD_POD_NAME -- bash -c 'echo $CKAN_SQLALCHEMY_URL')
+OLD_DATASTORE_URL=$(KUBECONFIG=$DEIS_KUBECONFIG kubectl -n $OLD_SITE_ID exec $OLD_POD_NAME -- bash -c 'echo $CKAN__DATASTORE__WRITE_URL')
+OLD_STORAGE_PATH=$(KUBECONFIG=$DEIS_KUBECONFIG kubectl -n $OLD_SITE_ID exec $OLD_POD_NAME -- bash -c 'echo $CKANEXT__S3FILESTORE__AWS_STORAGE_PATH')
+```
+
+Save the env vars in a file
+
+```
+INSTANCE_MIGRATION_ENV=/path/to/instance-migration-envs/SITE_ID.env
+```
+
+```
+echo "
+DB_OPERATIONS_POD=$DB_OPERATIONS_POD
+DEIS_KUBECONFIG=$DEIS_KUBECONFIG
+OLD_POD_NAME=$OLD_POD_NAME
+OLD_SITE_ID=$OLD_SITE_ID
+OLD_DB_URL=$OLD_DB_URL
+OLD_DATASTORE_URL=$OLD_DATASTORE_URL
+OLD_STORAGE_PATH=$OLD_STORAGE_PATH
+" > $INSTANCE_MIGRATION_ENV
+```
+
+
+### Start the DB proxy
+
+DB Proxy allows to run commands on the DB which is only available on a private IP
+
+Start a new terminal and keep the db proxy running there:
+
+```
+ckan-cloud-operator db proxy port-forward
+```
+
+Check connection to the DB:
+
+```
+psql -d `ckan-cloud-operator db connection-string --admin` -c "select 1;"
+```
+
+The DB proxy should restart itslef in case of problems, but sometimes manual restart is needed
+
+To restart, press CTRL+C and re-run
+
+
+### Place old instance in maintenance mode
+
+**TODO**
+
+
+### Migrate
+
+Set the migration env vars path
+
+```
+INSTANCE_MIGRATION_ENV=/path/to/instance-migration-envs/SITE_ID.env
+```
+
+Verify
+
+```
+cat $INSTANCE_MIGRATION_ENV
+```
+
+Source the .env file
+
+```
+source `echo $INSTANCE_MIGRATION_ENV | tee /dev/stderr` && printf "\n\nMigrating from old site id: $OLD_SITE_ID\n\n"
+```
+
+Initialize the GitLab project for the instance:
+
+```
+ckan-cloud-operator initialize-gitlab viderum/cloud-${OLD_SITE_ID} --wait-ready
+```
+
+Make sure Docker image is built successfully, you might need to add `pip install --upgrade pip` to the Dockerfile
+
+Dump the DBs
+
+```
+KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec $DB_OPERATIONS_POD -c db -- bash -c \
+    "source /root/google-cloud-sdk/completion.bash.inc
+     source /root/google-cloud-sdk/path.bash.inc
+     source functions.sh
+     (
+     dump_dbs $OLD_SITE_ID $OLD_DB_URL $OLD_DATASTORE_URL &&\
+     upload_db_dumps_to_storage $OLD_SITE_ID &&\
+     rm ${OLD_SITE_ID}*.sql &&\
+     echo Successfully migrated $OLD_SITE_ID
+     ) 2>/dev/stdout | tee -a ${OLD_SITE_ID}.logs
+     "
+```
+
+Sometimes the exec session is dropped without completion, in that case you can continue to follow the logs:
+
+```
+KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec $DB_OPERATIONS_POD -c db -it -- tail -f ${OLD_SITE_ID}.logs
+```
+
+Once complete, the output should contain the Google Storage urls, you can verify backup size using `gsutil ls -l URL`
+
+check the import urls which will be used by the migration for the instance:
+
+```
+ckan-cloud-operator ckan db-migration-import-urls $OLD_SITE_ID
+```
+
+Continue with the migration - migrate the DBs, sync storage and create the instance:
+
+```
+ckan-cloud-operator ckan migrate-deis-dbs $OLD_SITE_ID &&\
+ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
+    mc mirror --overwrite -a deis/ckan/$OLD_STORAGE_PATH prod/ckan/$OLD_STORAGE_PATH &&\
+ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-routes --rerun &&\
+echo Great Success
+```
+
+
+### Troubleshooting migrations
+
+
+**General**
+
+You can run each part of above migration script separately, check the CLI help mesages for possible flags and options
+
+Enable debug / verbose debug output:
+
+`export CKAN_CLOUD_OPERATOR_DEBUG=y`
+`export CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE=y`
+
+
+**DB Dump**
+
+The DB dumps might throw some errors but that doesn't mean it didn't work properly.
+
+To debug these problems, execute bash on the db operations pod and run the relevant pg_dump commands manually (see functions.sh)
+
+
+**DB Migration**
+
+following might work for some failures to rerun from last successfull step:
+
+```
+ckan-cloud-operator ckan migrate-deis-dbs $OLD_SITE_ID --rerun
+```
+
+If that doesn't work, first, make sure there isn't a running instance for the site:
+
+```
+ckan-cloud-operator deis-instance delete $OLD_SITE_ID --force
+```
+
+Force full recreation of the migration and the DBs:
+
+```
+ckan-cloud-operator ckan migrate-deis-dbs $OLD_SITE_ID --force --recreate-dbs
+```
+
+If migration reported failure but you solved it manually and want to proceed anyway -
+
+Edit the migration and set spec.imported-data: true
+
+```
+ckan-cloud-operator kubectl edit \
+    `ckan-cloud-operator kubectl -- get ckanclouddbmigration -l ckan-cloud/old-site-id=$OLD_SITE_ID -oname`
+```
+
+Now you can continue with instance migration
+
+
+**Instance Migration**
+
+If instance migration fails or when making changes, you can rerun `ckan-cloud-operator ckan migrate-deis-instance` with following flags:
+
+* `--recreate` - delete instance and DBs and recreate from scratch
+* `--rerun` - re-run the migration, but doesn't re-migrate DBs and skips some components if already exist
+* `--recreate-instance` - delete and re-create the instance (but not the DBs)
+
+Skip specific parts of the migration:
+
+* `--skip-gitlab`
+* `--skip-routes`
+* `--skip-solr`
+* `--skip-deployment`
+
+
+**relation _foo does not exist**
+
+Sometimes migration fails with error `sqlalchemy.exc.ProgrammingError: (ProgrammingError) relation "_foo" does not exist`
+
+In this case the failure prevents solr reindex from running so first you should rerun the instance migration without solr:
+
+```
+ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-solr --rerun
+```
+
+Then you can run the solr reindex manually:
+
+```
+ckan-cloud-operator deis-instance ckan paster $OLD_SITE_ID search-index rebuild
+```
+
+
+### Set internal route and test
+
+Verify successful migration using port-forward
+
+```
+ckan-cloud-operator deis-instance ckan port-forward $OLD_SITE_ID
+```
+
+Check the site at http://localhost:5000 (some features won't work due to different site url)
+
+Once you verify basic site sanity, rerun the migration to set the internal route:
+
+```
+ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-gitlab --skip-solr --skip-deployment --rerun
+```
+
+Test the instance on the default instance route
+
+
+## Set routing
+
+Remove the instance site url override (or set to the desired external domain):
+
+```
+ckan-cloud-operator deis-instance edit $OLD_SITE_ID
+```
+
+Get the CKAN admin credentails:
+
+```
+ckan-cloud-operator ckan admin-credentials $OLD_SITE_ID
+```
+
+
+#### For domains under the default root domain
+
+For staging / testing instances, you can add additional subdomains under the default root domain.
+
+First, set a CNAME for the subdomain to point to the default instance domain
+
+Edit the relevant deis instance route and set extra-no-dns-subdomains to the default route:
+
+```
+ckan-cloud-operator routers get-routes --deis-instance-id $OLD_SITE_ID --edit
+```
+
+```
+spec:
+  extra-no-dns-subdomains:
+  - OLD_SITE_ID
+```
+
+Wait a minute for DNS to propogate
+
+Update the instances-default router for the change to take effect
+
+```
+ckan-cloud-operator routers update instances-default --wait-ready
+```
+
+
+#### For external domains
+
+External domains need to use a dedicated load balancer which authenticates SSL certificates using http.
+
+```
+EXTERNAL_SUB_DOMAIN=
+EXTERNAL_ROOT_DOMAIN=
+```
+
+Get the domain of the external domains router:
+
+```
+ckan-cloud-operator routers get prod-1 --dns
+```
+
+Set a CNAME or A record and wait a minute for DNS to propogate
+
+You can verify using:
+
+```
+nslookup "${EXTERNAL_SUB_DOMAIN}.${EXTERNAL_ROOT_DOMAIN}" 1.1.1.1
+```
+
+Create a subdomain route to the deis instance:
+
+```
+ckan-cloud-operator routers create-deis-instance-subdomain-route prod-1 $OLD_SITE_ID $EXTERNAL_SUB_DOMAIN $EXTERNAL_ROOT_DOMAIN --wait-ready
 ```

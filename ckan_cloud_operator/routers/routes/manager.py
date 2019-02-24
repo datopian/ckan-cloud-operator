@@ -2,6 +2,7 @@ from ckan_cloud_operator.routers.routes import deis_instance_subdomain
 from ckan_cloud_operator.routers.routes import datapusher_subdomain
 from ckan_cloud_operator.routers.routes import backend_url_subdomain
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 
 
 def get_module(route):
@@ -19,10 +20,13 @@ def get_module(route):
 
 def list(router_labels):
     routes = kubectl.get_items_by_labels('CkanCloudRoute', router_labels, required=False)
+    logs.debug_verbose(router_labels=router_labels, routes=routes)
     _routes = []
     if routes:
         for route in routes:
-            _routes.append(get_module(route).get_route(route))
+            route = get_module(route).get_route(route)
+            logs.debug_verbose(route=route)
+            _routes.append(route)
     return _routes
 
 

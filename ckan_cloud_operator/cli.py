@@ -4,24 +4,28 @@ import tempfile
 import traceback
 import os
 import subprocess
-import yaml
 
 from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
 from ckan_cloud_operator.infra import CkanInfra
 
 import ckan_cloud_operator.routers.cli
-import ckan_cloud_operator.users
 import ckan_cloud_operator.datapushers
-import ckan_cloud_operator.manager
 from ckan_cloud_operator.gitlab import CkanGitlab
 from ckan_cloud_operator import gcloud
 import ckan_cloud_operator.storage
-from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
 
 from ckan_cloud_operator.providers import cli as providers_cli
-from ckan_cloud_operator.db import cli as db_cli
-
+from ckan_cloud_operator.providers.db import cli as db_cli
+from ckan_cloud_operator.providers.cluster import cli as cluster_cli
+from ckan_cloud_operator.providers.users import cli as users_cli
+from ckan_cloud_operator.crds import cli as crds_cli
+from ckan_cloud_operator.config import cli as config_cli
+from ckan_cloud_operator.drivers.postgres import cli as driver_postgres_cli
+from ckan_cloud_operator.providers.ckan import cli as ckan_cli
+from ckan_cloud_operator.drivers.kubectl import cli as driver_kubectl_cli
+from ckan_cloud_operator.providers.storage import cli as storage_cli
+from ckan_cloud_operator.providers.solr import cli as solr_cli
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
 
@@ -32,27 +36,39 @@ def great_success(**kwargs):
 
 
 @click.group(context_settings={'max_content_width': CLICK_CLI_MAX_CONTENT_WIDTH})
-def main():
+@click.option('--debug', is_flag=True)
+def main(debug):
     """Manage, provision and configure CKAN Clouds and related infrastructure"""
+    if debug:
+        os.environ.setdefault('CKAN_CLOUD_OPERATOR_DEBUG', 'y')
     pass
 
 
 main.add_command(providers_cli.providers_group, 'providers')
 main.add_command(db_cli.db_group, 'db')
+main.add_command(cluster_cli.cluster)
+main.add_command(users_cli.users)
+main.add_command(crds_cli.crds)
+main.add_command(config_cli.config)
+main.add_command(ckan_cli.ckan)
+main.add_command(storage_cli.storage)
+main.add_command(solr_cli.solr)
 
 
-@main.command('cluster-info')
-@click.option('-f', '--full', is_flag=True)
-def __cluster_info(full):
-    """Get information about the cluster"""
-    ckan_cloud_operator.manager.print_cluster_info(full)
+@main.group()
+def drivers():
+    pass
 
 
-@main.command('install-crds')
-def __install_crds():
-    """Install ckan-cloud-operator custom resource definitions"""
-    ckan_cloud_operator.manager.install_crds()
-    great_success()
+drivers.add_command(driver_postgres_cli.postgres)
+drivers.add_command(driver_kubectl_cli.kubectl)
+
+
+@main.command('kubectl')
+@click.argument('ARG', nargs=-1)
+def kubectl_command(arg):
+    from ckan_cloud_operator import kubectl
+    kubectl.check_call(' '.join(arg))
 
 
 @main.command()
@@ -65,7 +81,7 @@ def initialize_gitlab(gitlab_project_name, wait_ready):
 
         ckan-cloud-operator initialize-gitlab repo/project
     """
-    ckan_gitlab = CkanGitlab(CkanInfra())
+    ckan_gitlab = CkanGitlab()
     ckan_gitlab.initialize(gitlab_project_name)
     if wait_ready and not ckan_gitlab.is_ready(gitlab_project_name):
         logs.info(f'Waiting for GitLab project {gitlab_project_name} to be ready...')
@@ -110,27 +126,12 @@ def bash_completion():
     print('# eval "$(ckan-cloud-operator bash-completion)"')
 
 
-@main.command()
-@click.argument('MINIO_ROUTER_NAME')
-@click.argument('DISK_SIZE_GB')
-def initialize_storage(minio_router_name, disk_size_gb):
-    """Initialize the centralized storage"""
-    # ckan_cloud_operator.storage.deploy_gcs_minio_proxy(gcs_minio_proxy_router_name)
-    # ckan_cloud_operator.storage.deploy_storage_permissions_function()
-    ckan_cloud_operator.storage.deploy_minio(minio_router_name, disk_size_gb)
-    great_success()
-
-
-@main.command()
-def get_storage_credentials():
-    print(yaml.dump(kubectl.decode_secret(kubectl.get('secret minio-credentials')), default_flow_style=False))
-
-@main.group()
-def users():
-    """Manage ckan-cloud-operator users"""
-    pass
-
-ckan_cloud_operator.users.add_cli_commands(click, users, great_success)
+# @main.group()
+# def users():
+#     """Manage ckan-cloud-operator users"""
+#     pass
+#
+# ckan_cloud_operator.providers.users.add_cli_commands(click, users, great_success)
 
 
 @main.group()
