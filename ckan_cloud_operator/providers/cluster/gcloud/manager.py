@@ -23,6 +23,7 @@ import yaml
 import binascii
 
 from ckan_cloud_operator import logs
+from ckan_cloud_operator import kubectl
 
 from ckan_cloud_operator.drivers.gcloud import driver as gcloud_driver
 
@@ -115,7 +116,28 @@ def create_volume(disk_size_gb, labels):
         '{}={}'.format(k.replace('/', '_'), v.replace('/', '_')) for k, v in labels.items()
     ])
     gcloud_driver.check_call(*get_project_zone(), f'compute disks create {disk_id} --size={disk_size_gb}GB --labels={labels}')
-    return {'gcePersistentDisk': {'pdName': disk_id}}
+    # return {'gcePersistentDisk': {'pdName': disk_id}}
+    kubectl.apply({
+        'apiVersion': 'v1', 'kind': 'PersistentVolume',
+        'metadata': {'name': disk_id, 'namespace': 'ckan-cloud'},
+        'spec': {
+            'storageClassName': '',
+            'capacity': {'storage': f'{disk_size_gb}G'},
+            'accessModes': ['ReadWriteOnce'],
+            'gcePersistentDisk': {'pdName': disk_id}
+        }
+    })
+    kubectl.apply({
+        'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim',
+        'metadata': {'name': disk_id, 'namespace': 'ckan-cloud'},
+        'spec': {
+            'storageClassName': '',
+            'volumeName': disk_id,
+            'accessModes': ['ReadWriteOnce'],
+            'resources': {'requests': {'storage': f'{disk_size_gb}G'}}
+        }
+    })
+    return {'persistentVolumeClaim': {'claimName': disk_id}}
 
 
 def _generate_password(l):

@@ -26,6 +26,10 @@ class DeisCkanInstanceSpec(object):
                             print(f'Overriding instance solr spec config name')
                             self.spec.setdefault(k)[kk] = vv
                             self.num_applied_overrides += 1
+                        elif k in ['db', 'datastore'] and kk == 'no-db-proxy':
+                            print(f'Overriding instance {k} spec {kk}={vv}')
+                            self.spec[k][kk] = vv
+                            self.num_applied_overrides += 1
                         else:
                             raise NotImplementedError(f'Unsupported {k} spec override: {kk}={vv}')
                 else:
@@ -62,6 +66,8 @@ class DeisCkanInstanceSpec(object):
                         assert type(vv) == str
                     elif kk == 'fromDbMigration':
                         assert type(vv) == str
+                    elif kk == 'no-db-proxy':
+                        assert vv in ['yes', 'no', ''], 'only valid values for no-db-proxy are: "yes", "no", ""'
                     else:
                         raise ValueError(f'Invalid db spec attribute: {kk}={vv}')
             elif k == 'solrCloudCollection':

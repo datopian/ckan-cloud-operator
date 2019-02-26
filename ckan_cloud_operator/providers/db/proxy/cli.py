@@ -31,8 +31,10 @@ def port_forward():
 
 @proxy.command()
 @click.option('--verify-instance-id')
-def proxy_update(verify_instance_id):
-    manager.update(wait_updated=not verify_instance_id)
+@click.option('--set-pool-mode')
+@click.option('--reload', is_flag=True)
+def proxy_update(verify_instance_id, set_pool_mode, reload):
+    manager.update(wait_updated=reload, set_pool_mode=set_pool_mode)
     if verify_instance_id:
         from ckan_cloud_operator.providers.db import manager as db_manager
         logs.info(f'{verify_instance_id}: Checking DB..')

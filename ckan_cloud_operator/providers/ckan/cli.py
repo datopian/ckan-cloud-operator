@@ -37,11 +37,12 @@ def initialize(interactive):
 @click.option('--skip-routes', is_flag=True)
 @click.option('--skip-solr', is_flag=True)
 @click.option('--skip-deployment', is_flag=True)
+@click.option('--no-db-proxy', is_flag=True)
 def migrate_deis_instance(old_site_id, new_instance_id, router_name, skip_gitlab, force, rerun, recreate_dbs, recreate,
-                          recreate_instance, skip_routes, skip_solr, skip_deployment):
+                          recreate_instance, skip_routes, skip_solr, skip_deployment, no_db_proxy):
     """Run a full end-to-end migration of an instasnce"""
     manager.migrate_deis_instance(old_site_id, new_instance_id, router_name, skip_gitlab, force, rerun, recreate_dbs,
-                                  recreate, recreate_instance, skip_routes, skip_solr, skip_deployment)
+                                  recreate, recreate_instance, skip_routes, skip_solr, skip_deployment, no_db_proxy)
     logs.exit_great_success()
 
 
@@ -54,10 +55,12 @@ def migrate_deis_instance(old_site_id, new_instance_id, router_name, skip_gitlab
 @click.option('--recreate-dbs', is_flag=True)
 @click.option('--dbs-suffix')
 @click.option('--skip-create-dbs', is_flag=True)
-def migrate_deis_dbs(old_site_id, db_name, datastore_name, force, rerun, recreate_dbs, dbs_suffix, skip_create_dbs):
+@click.option('--skip-datastore-import', is_flag=True)
+def migrate_deis_dbs(old_site_id, db_name, datastore_name, force, rerun, recreate_dbs, dbs_suffix, skip_create_dbs,
+                     skip_datastore_import):
     migration_generator = db_migration_manager.migrate_deis_dbs(
         old_site_id, db_name, datastore_name, force=force, rerun=rerun, recreate_dbs=recreate_dbs, dbs_suffix=dbs_suffix,
-        skip_create_dbs=skip_create_dbs
+        skip_create_dbs=skip_create_dbs, skip_datastore_import=skip_datastore_import
     )
     for event in migration_generator:
         db_migration_manager.print_event_exit_on_complete(

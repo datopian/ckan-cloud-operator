@@ -300,6 +300,12 @@ ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-routes --reru
 echo Great Success
 ```
 
+some newer CKAN 2.8 instances require a direct connection to the DB, run the migrate-deis-instance command with following flags:
+
+```
+ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-routes --rerun --no-db-proxy
+```
+
 
 ### Troubleshooting migrations
 
@@ -369,23 +375,6 @@ Skip specific parts of the migration:
 * `--skip-deployment`
 
 
-**relation _foo does not exist**
-
-Sometimes migration fails with error `sqlalchemy.exc.ProgrammingError: (ProgrammingError) relation "_foo" does not exist`
-
-In this case the failure prevents solr reindex from running so first you should rerun the instance migration without solr:
-
-```
-ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-solr --rerun
-```
-
-Then you can run the solr reindex manually:
-
-```
-ckan-cloud-operator deis-instance ckan paster $OLD_SITE_ID search-index rebuild
-```
-
-
 ### Set internal route and test
 
 Verify successful migration using port-forward
@@ -396,10 +385,16 @@ ckan-cloud-operator deis-instance ckan port-forward $OLD_SITE_ID
 
 Check the site at http://localhost:5000 (some features won't work due to different site url)
 
-Once you verify basic site sanity, rerun the migration to set the internal route:
+Once you verify basic site sanity, rerun the migration to set the internal route (remember to add --no-db-proxy if needed):
 
 ```
 ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-gitlab --skip-solr --skip-deployment --rerun
+```
+
+Get the CKAN admin credentails:
+
+```
+ckan-cloud-operator ckan admin-credentials $OLD_SITE_ID
 ```
 
 Test the instance on the default instance route
@@ -411,12 +406,6 @@ Remove the instance site url override (or set to the desired external domain):
 
 ```
 ckan-cloud-operator deis-instance edit $OLD_SITE_ID
-```
-
-Get the CKAN admin credentails:
-
-```
-ckan-cloud-operator ckan admin-credentials $OLD_SITE_ID
 ```
 
 

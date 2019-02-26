@@ -89,11 +89,13 @@ def delete(name, delete_dbs=False):
 
 
 def migrate_deis_dbs(old_site_id, db_name=None, datastore_name=None, force=False, rerun=False, recreate_dbs=False, dbs_suffix=None,
-                     skip_create_dbs=False):
+                     skip_create_dbs=False, skip_datastore_import=False):
     if not dbs_suffix: dbs_suffix = ''
     if not db_name: db_name = f'{old_site_id}{dbs_suffix}'
     if not datastore_name: datastore_name = f'{db_name}{dbs_suffix}-datastore'
     logs.info(f'Starting migration ({old_site_id} -> {db_name}, {datastore_name})')
+    if skip_datastore_import:
+        logs.warning('skipping datastore DB import')
     migration_name = f'deis-dbs-{old_site_id}-to-{db_name}--{datastore_name}'
     if len(migration_name) > 55:
         migration_name = f'dd-{old_site_id}-{db_name}'
@@ -104,6 +106,7 @@ def migrate_deis_dbs(old_site_id, db_name=None, datastore_name=None, force=False
             'old-site-id': old_site_id,
             'db-name': db_name,
             'datastore-name': datastore_name,
+            'skip-datastore-import': skip_datastore_import
         },
         force=force,
         exists_ok=rerun and not force
@@ -128,7 +131,8 @@ def update(migration, recreate_dbs=False, skip_create_dbs=False):
             if not skip_create_dbs:
                 yield from _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate_dbs, datastore_ro_name)
                 yield from _initialize_postgis_extensions(db_name)
-            yield from _import_data(migration['spec']['old-site-id'], db_name, datastore_name)
+            yield from _import_data(migration['spec']['old-site-id'], db_name, datastore_name,
+                                    skip_datastore_import=migration['spec'].get('skip-datastore-import'))
             migration['spec']['imported-data'] = True
             kubectl.apply(migration)
 
@@ -359,17 +363,16 @@ def _delete_dbs(admin_conn, db_name, datastore_name, datastore_ro_name):
         postgres_driver.delete_role(admin_conn, datastore_ro_name)
 
 
-def _import_data(old_site_id, db_name, datastore_name):
+def _import_data(old_site_id, db_name, datastore_name, skip_datastore_import=False):
     db_url, datastore_url = get_db_import_urls(old_site_id)
-    assert db_url and datastore_url, f'failed to find db import urls for old site id {old_site_id}'
-    # admin_user = db_manager.get_admin_db_user()
+    assert db_url and (datastore_url or skip_datastore_import), f'failed to find db import urls for old site id {old_site_id}'
     _gcloudsql().import_db(db_url, db_name, db_name)
     yield {'step': 'import-db-data', 'msg': f'Imported DB: {db_name}'}
-    # with postgres_driver.connect(db_manager.get_external_admin_connection_string(db_name=db_name)) as admin_conn:
-    #     with admin_conn.cursor() as cur:
-    #         cur.execute(f'REASSIGN OWNED BY "{admin_user}" TO "{db_name}";')
-    _gcloudsql().import_db(datastore_url, datastore_name, datastore_name)
-    yield {'step': 'import-datastore-data', 'msg': f'Imported Datastore: {datastore_name}'}
+    if skip_datastore_import:
+        yield {'step': 'import-datastore-data', 'msg': 'skipped'}
+    else:
+        _gcloudsql().import_db(datastore_url, datastore_name, datastore_name)
+        yield {'step': 'import-datastore-data', 'msg': f'Imported Datastore: {datastore_name}'}
 
 
 def _gcloud():
