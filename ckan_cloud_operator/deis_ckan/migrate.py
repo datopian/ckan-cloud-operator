@@ -68,7 +68,8 @@ def get_instance_env(old_site_id, path_to_old_cluster_kubeconfig):
 
 def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_class,
                       skip_gitlab=False, db_migration_name=None, recreate=False,
-                      skip_routes=False, skip_solr=False, skip_deployment=False):
+                      skip_routes=False, skip_solr=False, skip_deployment=False,
+                      no_db_proxy=False):
     assert db_migration_name, 'migration without a db migration is not supported yet'
     log_labels = {'instance': new_instance_id}
     if recreate:
@@ -103,7 +104,11 @@ def migrate_from_deis(old_site_id, new_instance_id, router_name, deis_instance_c
     logs.info(f'updating instance and setting ckan site url to {ckan_site_url}', **log_labels)
     deis_instance_class(
         new_instance_id,
-        override_spec={'envvars': {'CKAN_SITE_URL': ckan_site_url}},
+        override_spec={
+            'envvars': {'CKAN_SITE_URL': ckan_site_url}, **(
+                {'db': {'no-db-proxy': 'yes'}, 'datastore': {'no-db-proxy': 'yes'}} if no_db_proxy else {}
+            )
+        },
         persist_overrides=True
     ).update(wait_ready=True, skip_solr=skip_solr, skip_deployment=skip_deployment)
     if routers_manager.get_deis_instance_routes(new_instance_id):

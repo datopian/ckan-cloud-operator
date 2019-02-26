@@ -11,8 +11,8 @@ def start_port_forward():
     get_provider().start_port_forward()
 
 
-def update(wait_updated=False):
-    get_provider().update(wait_updated=wait_updated)
+def update(wait_updated=False, set_pool_mode=None):
+    get_provider().update(wait_updated=wait_updated, set_pool_mode=set_pool_mode)
 
 
 def reload():

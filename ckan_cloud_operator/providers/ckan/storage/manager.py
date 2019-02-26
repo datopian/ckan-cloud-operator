@@ -33,7 +33,7 @@ def get_default_storage_bucket():
 
 
 def config_get(key):
-    return config_manager.get(key, secret_name='storage-config')
+    return config_manager.get(key, secret_name='ckan-storage-config')
 
 
 def get_storage_path_status(storage_path, storage_bucket=None):

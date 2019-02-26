@@ -40,7 +40,9 @@ def initialize():
     _set_provider()
 
 
-def update(wait_updated=False):
+def update(wait_updated=False, set_pool_mode=None):
+    if set_pool_mode:
+        _config_set('pool-mode', set_pool_mode)
     _apply_config_secret()
     if wait_updated:
         logs.info('Waiting 1 minute for pgbouncer secret to be updated...')
@@ -107,6 +109,7 @@ def _apply_config_secret(force=False):
         pg_bouncer_ini.append(line)
     db_admin_user, _, _ = db_manager.get_admin_db_credentials()
     # see https://pgbouncer.github.io/config.html
+    pool_mode = _config_get('pool-mode', 'transaction')
     pg_bouncer_ini += [
         "",
         "[pgbouncer]",
@@ -116,14 +119,24 @@ def _apply_config_secret(force=False):
         "auth_file = /var/local/pgbouncer/users.txt",
         "logfile = /var/log/pgbouncer/pgbouncer.log",
         "pidfile = /var/run/pgbouncer/pgbouncer.pid",
-        "pool_mode = transaction",
-        "default_pool_size = 4",
-        "reserve_pool_size = 2",
-        "max_client_conn = 5000",
-        "server_round_robin = 1",
-        "listen_backlog = 8192",
-        "server_idle_timeout = 60",
-        "server_lifetime = 600",
+        f"pool_mode = {pool_mode}",
+        *([
+            "default_pool_size = 4",
+            "reserve_pool_size = 2",
+            "max_client_conn = 5000",
+            "server_round_robin = 1",
+            "listen_backlog = 8192",
+            "server_idle_timeout = 60",
+            "server_lifetime = 600",
+        ] if pool_mode == 'transaction' else [
+            "default_pool_size = 10",
+            "reserve_pool_size = 20",
+            "max_client_conn = 5000",
+            "server_round_robin = 1",
+            "listen_backlog = 8192",
+            "server_idle_timeout = 5",
+            "server_lifetime = 0",
+        ]),
         f"admin_users = {db_admin_user}",
     ]
     users_txt = []

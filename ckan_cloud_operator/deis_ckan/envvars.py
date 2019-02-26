@@ -1,7 +1,7 @@
 import subprocess
 import yaml
-import base64
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 from ckan_cloud_operator.gitlab import CkanGitlab
 from ckan_cloud_operator.deis_ckan import datapusher
 from ckan_cloud_operator.providers.db import manager as db_manager
@@ -26,6 +26,13 @@ class DeisCkanInstanceEnvvars(object):
         datastore_password = self.instance.annotations.get_secret('datastorePassword')
         datastore_ro_user = self.instance.annotations.get_secret('datastoreReadonlyUser')
         datastore_ro_password = self.instance.annotations.get_secret('datatastoreReadonlyPassword')
+        db_no_db_proxy = spec.db.get('no-db-proxy') == 'yes'
+        datastore_no_db_proxy = spec.datastore.get('no-db-proxy') == 'yes'
+        if db_no_db_proxy or datastore_no_db_proxy:
+            assert db_no_db_proxy and datastore_no_db_proxy, 'must set both DB and datastore with no-db-proxy'
+            no_db_proxy = True
+        else:
+            no_db_proxy = False
         from ckan_cloud_operator.providers.solr import manager as solr_manager
         solr_http_endpoint = solr_manager.get_internal_http_endpoint()
         solr_collection_name = spec.solrCloudCollection['name']
@@ -42,7 +49,12 @@ class DeisCkanInstanceEnvvars(object):
         storage_path_parts = spec.storage['path'].strip('/').split('/')
         storage_bucket = storage_path_parts[0]
         storage_path = '/'.join(storage_path_parts[1:])
-        postgres_host, postgres_port = db_manager.get_internal_proxy_host_port()
+        if no_db_proxy:
+            postgres_host, postgres_port = db_manager.get_internal_unproxied_db_host_port()
+            logs.info(f'Bypassing db proxy, connecting to DB directly: {postgres_host}:{postgres_port}')
+        else:
+            postgres_host, postgres_port = db_manager.get_internal_proxy_host_port()
+            logs.info(f'Connecting to DB proxy: {postgres_host}:{postgres_port}')
         envvars.update(
             CKAN_SQLALCHEMY_URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
             CKAN___BEAKER__SESSION__URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",

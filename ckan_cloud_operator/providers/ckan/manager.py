@@ -85,7 +85,7 @@ def get_default_instances_router_name():
 
 def migrate_deis_instance(old_site_id, new_instance_id=None, router_name=None, skip_gitlab=False,
                           force=False, rerun=False, recreate_dbs=False, recreate=False, recreate_instance=False,
-                          skip_routes=False, skip_solr=False, skip_deployment=False):
+                          skip_routes=False, skip_solr=False, skip_deployment=False, no_db_proxy=False):
     """Run a full end-to-end migration of an instasnce"""
     from ckan_cloud_operator.deis_ckan.instance import DeisCkanInstance
     if not router_name:
@@ -120,7 +120,8 @@ def migrate_deis_instance(old_site_id, new_instance_id=None, router_name=None, s
         recreate=recreate or recreate_instance,
         skip_routes=skip_routes,
         skip_solr=skip_solr,
-        skip_deployment=skip_deployment
+        skip_deployment=skip_deployment,
+        no_db_proxy=no_db_proxy
     )
     post_create_checks(new_instance_id)
 
@@ -247,10 +248,9 @@ def check_envvars(envvars, deis_instance):
         if url_type in ['site', 'datapusher', 's3']:
             check_cluster_url(url, verify_site_url=url_type == 'site', deis_instance=deis_instance)
         elif url_type in ['db', 'datastore', 'datastore-ro', 'beaker']:
-            assert '@ckan-cloud-provider-db-proxy-pgbouncer.ckan-cloud:5432' in url
-            # assuming we are running locally using db proxy
-            db_manager.check_connection_string(
-                url.replace('ckan-cloud-provider-db-proxy-pgbouncer.ckan-cloud', 'localhost'))
+            if '@ckan-cloud-provider-db-proxy-pgbouncer.ckan-cloud:5432' in url:
+                db_manager.check_connection_string(
+                    url.replace('ckan-cloud-provider-db-proxy-pgbouncer.ckan-cloud', 'localhost'))
         elif url_type == 'solr':
             from ckan_cloud_operator.providers.solr import manager as solr_manager
             assert url.startswith(solr_manager.get_internal_http_endpoint())
