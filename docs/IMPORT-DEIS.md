@@ -276,10 +276,11 @@ KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec $DB_OPERATIONS_POD -c db -- b
      "
 ```
 
-Sometimes the exec session is dropped without completion, in that case you can continue to follow the logs:
+Sometimes the exec session is dropped without completion, in that case you can continue to follow the logs and progress:
 
 ```
-KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec $DB_OPERATIONS_POD -c db -it -- tail -f ${OLD_SITE_ID}.logs
+KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec $DB_OPERATIONS_POD -c db -it -- bash -c 'ls -lah *.sql' &&\
+KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec $DB_OPERATIONS_POD -c db -it -- cat ${OLD_SITE_ID}.logs
 ```
 
 Once complete, the output should contain the Google Storage urls, you can verify backup size using `gsutil ls -l URL`
@@ -290,14 +291,23 @@ check the import urls which will be used by the migration for the instance:
 ckan-cloud-operator ckan db-migration-import-urls $OLD_SITE_ID
 ```
 
-Continue with the migration - migrate the DBs, sync storage and create the instance:
+Mirror the storage
 
 ```
-ckan-cloud-operator ckan migrate-deis-dbs $OLD_SITE_ID &&\
 ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
-    mc mirror --overwrite -a deis/ckan/$OLD_STORAGE_PATH prod/ckan/$OLD_STORAGE_PATH &&\
-ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-routes --rerun &&\
-echo Great Success
+    mc mirror --overwrite -a deis/ckan/$OLD_STORAGE_PATH prod/ckan/$OLD_STORAGE_PATH
+```
+
+Migrate DBs
+
+```
+ckan-cloud-operator ckan migrate-deis-dbs $OLD_SITE_ID
+```
+
+Migrate the instance
+
+```
+ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-routes --rerun
 ```
 
 some newer CKAN 2.8 instances require a direct connection to the DB, run the migrate-deis-instance command with following flags:

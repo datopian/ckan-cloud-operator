@@ -46,3 +46,37 @@ Depending on instance, some paths can be set to public download:
 mc policy download prod/ckan/instance/storage'*'
 ```
 
+
+## Updating instances
+
+Most updates can be done using the edit command:
+
+```
+ckan-cloud-operator deis-instance edit INSTANCE_ID
+```
+
+Following changes can be done to the spec:
+
+**container image**
+
+```
+  ckanContainerSpec:
+    image: DOCKER_IMAGE
+```
+
+**container env vars - from a secret**
+
+```
+  envvars:
+    fromSecret: secret-name-in-instance-namespace
+```
+
+**container env vars - from gitlab**
+
+gets the env vars from `.env` file in the gitlab project
+
+```
+  envvars:
+    fromGitlab: GITLAB_PROJECT
+```
+
