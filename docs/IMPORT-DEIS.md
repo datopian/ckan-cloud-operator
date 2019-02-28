@@ -264,7 +264,9 @@ Initialize the GitLab project for the instance:
 ckan-cloud-operator initialize-gitlab viderum/cloud-${OLD_SITE_ID} --wait-ready
 ```
 
-Make sure Docker image is built successfully, you might need to add `pip install --upgrade pip` to the Dockerfile
+Make sure docker image was build, if it's not, check the error and modify Dockerfile accordingly
+
+For some instances pip needs to be upgraded by adding `pip install --upgrade pip`
 
 Dump the DBs
 
@@ -294,7 +296,7 @@ Once complete, the output should contain the Google Storage urls, you can verify
 check the import urls which will be used by the migration for the instance:
 
 ```
-ckan-cloud-operator ckan db-migration-import-urls $OLD_SITE_ID
+gsutil ls -l `ckan-cloud-operator ckan db-migration-import-urls $OLD_SITE_ID --raw`
 ```
 
 Mirror the storage
@@ -341,6 +343,14 @@ Enable debug / verbose debug output:
 The DB dumps might throw some errors but that doesn't mean it didn't work properly.
 
 To debug these problems, execute bash on the db operations pod and run the relevant pg_dump commands manually (see functions.sh)
+
+If you get permission errors, try to import using postgres user by modifying the OLD_DB_URL and OLD_DATASTORE_URL
+
+You can get the postgres credentials from the db-operations pod:
+
+```
+KUBECONFIG=$DEIS_KUBECONFIG kubectl -n backup exec $DB_OPERATIONS_POD -c db -it -- bash -c 'echo $PG_USERNAME:$PG_PASSWORD'
+```
 
 
 **DB Migration**

@@ -314,7 +314,8 @@ class DeisCkanInstance(object):
                     else:
                         print(yaml.dump(
                             {
-                                k: v for k, v in data.items() if k not in ['ready'] and type(v) == dict and not v.get('ready')
+                                k: v for k, v in data.items()
+                                if (k not in ['ready'] and type(v) == dict and not v.get('ready')) or k == 'namespace'
                             },
                             default_flow_style=False)
                         )

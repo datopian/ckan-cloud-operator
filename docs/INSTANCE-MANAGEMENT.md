@@ -1,55 +1,64 @@
 # Instance Management
 
 
-## Reindex solr search index
+## CKAN management
 
-Run a full re-indexing (might take a while if there are a lot of documents):
-
-```
-ckan-cloud-operator deis-instance ckan paster <INSTANCE_ID> search-index rebuild
-```
-
-See search-index help message for some additional reindexing options:
+Run a bash shell on the instance's pod:
 
 ```
-ckan-cloud-operator deis-instance ckan paster <INSTANCE_ID> search-index --help
+ckan-cloud-operator deis-instance ckan exec INSTANCE_ID -- -it bash
 ```
 
-
-## Storage management
-
-Storage management can be done from a pod which is deployed on the cluster, or locally
-
-Using Rancher, deploy the minio client container (if it doesn' exist):
-
-* name: `minio-mc`
-* namespace: `ckan-cloud`
-* image: `minio/mc`
-* command entrypoint: `/bin/sh -c 'while true; do sleep 86400; done'`
-
-Add `prod` minio host:
+Get last 10 log lines:
 
 ```
-ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
-    mc config host add prod `ckan-cloud-operator storage credentials --raw`
+ckan-cloud-operator deis-instance ckan logs INSTANCE_ID -- --tail=10
 ```
 
-List bucket policies
+See additional log options:
 
 ```
-mc policy list prod/ckan
+ckan-cloud-operator deis-instance ckan logs INSTANCE_ID -- --help
 ```
 
-Depending on instance, some paths can be set to public download:
+Get list of available paster commands:
 
 ```
-mc policy download prod/ckan/instance/storage'*'
+ckan-cloud-operator deis-instance ckan paster INSTANCE_ID
+```
+
+Run a paster command:
+
+```
+ckan-cloud-operator deis-instance ckan paster INSTANCE_ID -- plugin-info
 ```
 
 
-## Updating instances
+## SOLR management
 
-Most updates can be done using the edit command:
+Use the search-index command to rebuild or fix the index:
+
+```
+ckan-cloud-operator deis-instance ckan paster INSTANCE_ID -- search-index --help
+```
+
+
+## CRUD operations
+
+##### list instances
+
+```
+ckan-cloud-operator deis-instance list -q  # quick list, without checking status
+ckan-cloud-operator deis-instance list -f  # full yaml list with configuration, status and health details
+```
+
+##### Get instance details and health:
+
+```
+ckan-cloud-operator deis-instance get INSTANCE_ID
+```
+
+##### Edit instance spec
 
 ```
 ckan-cloud-operator deis-instance edit INSTANCE_ID
@@ -78,5 +87,61 @@ gets the env vars from `.env` file in the gitlab project
 ```
   envvars:
     fromGitlab: GITLAB_PROJECT
+```
+
+
+## Instance routing
+
+Get all routes related to an instance:
+
+```
+ckan-cloud-operator routers get-routes --deis-instance-id INSTANCE_ID
+```
+
+
+## low-level objects and operations
+
+```
+ckan-cloud-operator kubectl -- get CkanCloudCkanInstance INSTANCE_ID -o yaml
+```
+
+instance spec can be modified directly (or using ckan-cloud-operator deis-instance edit):
+
+```
+spec:
+  # overrides the ckan container spec
+  ckanContainerSpec:
+    image: registry.gitlab.com/viderum/cloud-datahub
+  # overrides the ckan pod spec
+  ckanPodSpec: {}
+  datastore:
+    # source migration object, not relevant after migration is complete
+    fromDbMigration: deis-dbs-datahub-to-datahub--datahub-datastore
+    # datastore DB name, can be modified to switch DBs (need to make sure it's created first)
+    name: datahub-datastore
+  db:
+    # same as datastore
+    fromDbMigration: deis-dbs-datahub-to-datahub--datahub-datastore
+    name: datahub
+  envvars:
+    # envvars will are mounted to the pod environment directly from this secret
+    fromSecret: datahub-envvars
+    overrides:
+      # override secret envvars
+      CKAN_SITE_URL: https://datahub.ckan.io
+  solrCloudCollection:
+    # solr configuration, not relevant after collection was created
+    configName: ckan_default
+    # solr collection name
+    name: datahub
+  storage:
+    # minio storage path
+    path: /ckan/datahub
+```
+
+After update to kubernetes objects, run an instance update:
+
+```
+ckan-cloud-operator deis-instance update INSTANCE_ID
 ```
 

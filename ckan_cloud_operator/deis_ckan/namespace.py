@@ -25,10 +25,15 @@ class DeisCkanInstanceNamespace(object):
 
     def get(self):
         exitcode, output = subprocess.getstatusoutput(f'kubectl -n {self.instance.id} get ns/{self.instance.id} -o yaml')
+        events = [
+            '{firstTimestamp} - {lastTimestamp} ({type}*{count}) {message}'.format(**e)
+            for e in kubectl.get('events', namespace=self.instance.id)['items']
+            if e['type'] != 'Normal'
+        ]
         if exitcode == 0:
-            return {'ready': yaml.load(output).get('status', {}).get('phase') == 'Active'}
+            return {'ready': yaml.load(output).get('status', {}).get('phase') == 'Active', 'events': events}
         else:
-            return {'ready': False, 'error': output}
+            return {'ready': False, 'error': output, 'events': events}
 
     def _initialize_instance_namespace(self):
         ns = self.instance.id

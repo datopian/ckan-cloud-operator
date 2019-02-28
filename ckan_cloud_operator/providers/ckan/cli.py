@@ -111,5 +111,10 @@ def admin_credentials(instance_id):
 
 @ckan.command()
 @click.argument('OLD_SITE_ID')
-def db_migration_import_urls(old_site_id):
-    logs.print_yaml_dump(db_migration_manager.get_db_import_urls(old_site_id))
+@click.option('-r', '--raw', is_flag=True)
+def db_migration_import_urls(old_site_id, raw):
+    urls = db_migration_manager.get_db_import_urls(old_site_id)
+    if raw:
+        print(' '.join(urls))
+    else:
+        logs.print_yaml_dump(list(urls))

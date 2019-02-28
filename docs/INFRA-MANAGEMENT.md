@@ -73,3 +73,34 @@ Update the relevant router for the change to take effect:
 ```
 ckan-cloud-operator routers update ROUTER_NAME --wait-ready
 ```
+
+
+## Storage management
+
+Storage management can be done from a pod which is deployed on the cluster, or locally
+
+Using Rancher, deploy the minio client container (if it doesn' exist):
+
+* name: `minio-mc`
+* namespace: `ckan-cloud`
+* image: `minio/mc`
+* command entrypoint: `/bin/sh -c 'while true; do sleep 86400; done'`
+
+Add `prod` minio host:
+
+```
+ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
+    mc config host add prod `ckan-cloud-operator storage credentials --raw`
+```
+
+List bucket policies
+
+```
+mc policy list prod/ckan
+```
+
+Depending on instance, some paths can be set to public download:
+
+```
+mc policy download prod/ckan/instance/storage'*'
+```
