@@ -48,7 +48,7 @@ def start_solrcloud_port_forward(suffix='sc-0'):
 def get_internal_http_endpoint():
     solrcloud_host_name = _config_get('sc-main-host-name', required=True)
     namespace = cluster_manager.get_operator_namespace_name()
-    return f'http://{solrcloud_host_name}.{namespace}:8983/solr'
+    return f'http://{solrcloud_host_name}.{namespace}.svc.cluster.local:8983/solr'
 
 
 def solr_curl(path, required=False, debug=False):
@@ -70,7 +70,7 @@ def solr_curl(path, required=False, debug=False):
 
 
 def initialize(interactive=False):
-    zk_host_names = initialize_zookeeper()
+    zk_host_names = initialize_zookeeper(interactive)
 
     _config_set('zk-host-names', yaml.dump(zk_host_names, default_flow_style=False))
     logs.info(f'Initialized zookeeper: {zk_host_names}')
@@ -78,7 +78,7 @@ def initialize(interactive=False):
     zoonavigator_deployment_name = _apply_zoonavigator_deployment()
     logs.info(f'Initialized zoonavigator: {zoonavigator_deployment_name}')
 
-    sc_host_names = initialize_solrcloud(zk_host_names, pause_deployment=False)
+    sc_host_names = initialize_solrcloud(zk_host_names, pause_deployment=False, interactive=interactive)
     _config_set('sc-host-names', yaml.dump(sc_host_names, default_flow_style=False))
     logs.info(f'Initialized solrcloud: {sc_host_names}')
 
@@ -89,7 +89,7 @@ def initialize(interactive=False):
     _set_provider()
 
 
-def initialize_zookeeper():
+def initialize_zookeeper(interactive=False):
     headless_service_name = _apply_zookeeper_headless_service()
     zk_instances = {suffix: {
         'host_name': suffix,
@@ -97,12 +97,19 @@ def initialize_zookeeper():
     } for suffix in _get_zk_suffixes()}
     zk_host_names = [zk['host_name'] for zk in zk_instances.values()]
     zk_configmap_name = _apply_zookeeper_configmap(zk_host_names)
-    for zk_suffix, zk in zk_instances.items():
-        _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name)
-    return [f'{h}.{headless_service_name}:2181' for h in zk_host_names]
+    if interactive:
+        logs.info('Starting interactive update of zookeeper deployments')
+        print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
+        for zk_suffix, zk in zk_instances.items():
+            if input(f'Update zookeeper deployment {zk_suffix}? [y/n]: ') == 'y':
+                _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name)
+    else:
+        logs.warning('deployments are not updated in non-interactive mode')
+    namespace = cluster_manager.get_operator_namespace_name()
+    return [f'{h}.{headless_service_name}.{namespace}.svc.cluster.local:2181' for h in zk_host_names]
 
 
-def initialize_solrcloud(zk_host_names, pause_deployment):
+def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False):
     sc_logs_configmap_name = _apply_solrcloud_logs_configmap()
     headless_service_name = _apply_solrcloud_headless_service()
     sc_instances = {suffix: {
@@ -111,9 +118,15 @@ def initialize_solrcloud(zk_host_names, pause_deployment):
     } for suffix in _get_sc_suffixes()}
     sc_host_names = [sc['host_name'] for sc in sc_instances.values()]
     sc_configmap_name = _apply_solrcloud_configmap(zk_host_names)
-    for sc_suffix, sc in sc_instances.items():
-        _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
-                                    pause_deployment)
+    if interactive:
+        logs.info('Starting interactive update of solrcloud deployments')
+        print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
+        for sc_suffix, sc in sc_instances.items():
+            if input(f'Update solrcloud deployment {sc_suffix}? [y/n]: ') == 'y':
+                _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
+                                            pause_deployment)
+    else:
+        logs.warning('deployments are not updated in non-interactive mode')
     return sc_host_names
 
 
@@ -122,7 +135,7 @@ def _get_zk_suffixes():
 
 
 def _get_sc_suffixes():
-    return ['sc-0', 'sc-1', 'sc-2']
+    return ['sc-3', 'sc-4', 'sc-5']
 
 
 def _apply_zookeeper_configmap(zk_host_names):
@@ -223,7 +236,7 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
                                 'failureThreshold': 3, 'initialDelaySeconds': 15, 'periodSeconds': 10,
                                 'successThreshold': 1, 'timeoutSeconds': 5
                             },
-                            'resources': {'requests': {'cpu': '1', 'memory': '4Gi'}},
+                            'resources': {'requests': {'cpu': '0.5', 'memory': '1Gi'}, 'limits': {'memory': '2Gi'}},
                             'volumeMounts': [
                                 {'mountPath': '/var/lib/zookeeper', 'name': 'datadir'},
                             ],
@@ -273,7 +286,7 @@ def _apply_zoonavigator_deployment():
                             ],
                             'image': 'elkozmon/zoonavigator-api:0.5.0',
                             'name': 'zoonavigator-api',
-                            'resources': {},
+                            'resources': {'requests': {'cpu': '0.01', 'memory': '0.01Gi'}, 'limits': {'memory': '0.5Gi'}},
                         }
                     ],
                 }
@@ -284,6 +297,7 @@ def _apply_zoonavigator_deployment():
 
 
 def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configmap_name, headless_service_name, pause_deployment):
+    namespace = cluster_manager.get_operator_namespace_name()
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='sc'),
@@ -317,11 +331,10 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
                             'command': [
                                 "sh", "-c",
                                 f"""
-                                    rm -rf /data/solr &&\
                                     if [ -e /data/solr/solr.xml ]; then
                                         echo /data/solr/solr.xml already exists, will not recreate
                                     else
-                                        echo creating /data/solr/solr.cml &&\
+                                        echo creating /data/solr/solr.xml &&\
                                         mkdir -p /data/solr &&\
                                         echo \'{SOLR_CONFIG_XML}\' > /data/solr/solr.xml
                                     fi &&\
@@ -343,7 +356,7 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
                             'name': 'sc',
                             'envFrom': [{'configMapRef': {'name': configmap_name}}],
                             'env': [
-                                {'name': 'SOLR_HOST', 'valueFrom': {'fieldRef': {'apiVersion': 'v1', 'fieldPath': 'status.podIP'}}}
+                                {'name': 'SOLR_HOST', 'value': f'{suffix}.{headless_service_name}.{namespace}.svc.cluster.local'}
                             ],
                             **({
                                 'command': ['sh', '-c', 'sleep 86400']
@@ -365,7 +378,7 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
                                 {'containerPort': 7983, 'name': 'stop', 'protocol': 'TCP'},
                                 {'containerPort': 18983, 'name': 'rmi', 'protocol': 'TCP'}
                             ],
-                            'resources': {},
+                            'resources': {'requests': {'cpu': '1', 'memory': '4Gi'}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}},
                             'volumeMounts': [
                                 {'mountPath': '/data', 'name': 'datadir'},
                                 {'mountPath': '/logconfig', 'name': 'logconfig'}

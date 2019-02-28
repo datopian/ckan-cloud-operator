@@ -31,7 +31,11 @@ class DeisCkanInstanceDb(object):
                 # site_user = self.instance.spec.db['name']
                 site_user = db_name
                 datastore_permissions = DATASTORE_PERMISSIONS_SQL_TEMPLATE.replace('{{SITE_USER}}', site_user).replace('{{DS_RO_USER}}', ro_user)
-                cur.execute(datastore_permissions)
+                try:
+                    cur.execute(datastore_permissions)
+                except Exception:
+                    traceback.print_exc()
+                    print('Failed to set datastore sql template, continuing anyway')
 
     def update(self):
         db_migration_name = self.db_spec.get('fromDbMigration')

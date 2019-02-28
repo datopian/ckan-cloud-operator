@@ -121,8 +121,8 @@ def _apply_config_secret(force=False):
         "pidfile = /var/run/pgbouncer/pgbouncer.pid",
         f"pool_mode = {pool_mode}",
         *([
-            "default_pool_size = 4",
-            "reserve_pool_size = 2",
+            "default_pool_size = 8",
+            "reserve_pool_size = 8",
             "max_client_conn = 5000",
             "server_round_robin = 1",
             "listen_backlog = 8192",
@@ -184,6 +184,15 @@ def _apply_deployment():
                                     'port': 5432
                                 },
                                 'timeoutSeconds': 5
+                            },
+                            'resources': {
+                                'limits': {
+                                    'memory': '2Gi',
+                                },
+                                'requests': {
+                                    'cpu': '0.1',
+                                    'memory': '0.2Gi',
+                                }
                             }
                         }
                     ],

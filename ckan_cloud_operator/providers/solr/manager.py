@@ -40,7 +40,7 @@ def initialize(interactive=False):
 
 
 def initialize_self_hosted(interactive=False):
-    get_provider(default=solrcloud_provider_id, verbose=True).initialize()
+    get_provider(default=solrcloud_provider_id, verbose=True).initialize(interactive=interactive)
 
 
 def get_internal_http_endpoint():

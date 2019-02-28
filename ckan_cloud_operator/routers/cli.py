@@ -90,6 +90,25 @@ def add_cli_commands(click, command_group, great_success):
         routers_manager.update(router_name, wait_ready)
         great_success()
 
+    @command_group.command('create-backend-url-subdomain-route')
+    @click.argument('ROUTER_NAME')
+    @click.argument('TARGET_RESOURCE_ID')
+    @click.argument('BACKEND_URL')
+    @click.argument('SUB_DOMAIN', required=False, default='default')
+    @click.argument('ROOT_DOMAIN', required=False, default='default')
+    @click.option('--wait-ready', is_flag=True)
+    def routers_create_backend_url_subdomain_route(router_name, target_resource_id, backend_url,
+                                                   sub_domain, root_domain, wait_ready):
+        routers_manager.create_subdomain_route(router_name, {
+            'target-type': 'backend-url',
+            'target-resource-id': target_resource_id,
+            'backend-url': backend_url,
+            'sub-domain': sub_domain,
+            'root-domain': root_domain,
+        })
+        routers_manager.update(router_name, wait_ready)
+        great_success()
+
     @command_group.command('get-routes')
     @click.option('-p', '--datapusher-name', required=False)
     @click.option('-d', '--deis-instance-id', required=False)

@@ -229,7 +229,13 @@ To restart, press CTRL+C and re-run
 
 ### Place old instance in maintenance mode
 
-**TODO**
+Using Rancher - move the instance namespace to the migrated-instances project
+
+Edit the instance's service and add `--migrated` suffix to the app label selector
+
+Instance will now show "service unavailable"
+
+Pause the deployment to prevent any changes but keep the pod running until migration is complete
 
 
 ### Migrate
@@ -474,3 +480,8 @@ Create a subdomain route to the deis instance:
 ```
 ckan-cloud-operator routers create-deis-instance-subdomain-route prod-1 $OLD_SITE_ID $EXTERNAL_SUB_DOMAIN $EXTERNAL_ROOT_DOMAIN --wait-ready
 ```
+
+
+## Stop old instance
+
+Using Rancher, under migrated instances project - set the instance's deployment replicas to 0
