@@ -43,6 +43,50 @@ ckan-cloud-operator deis-instance ckan paster INSTANCE_ID -- search-index --help
 ```
 
 
+## Storage management
+
+Get the storage admin credentials:
+
+```
+ckan-cloud-operator storage credentials
+```
+
+Log-in to Minio using the web UI or using [Minio Client](https://docs.minio.io/docs/minio-client-quickstart-guide.html)
+
+
+## DB management
+
+Connect to the instance DBs with the different users:
+
+```
+ckan-cloud-operator deis-instance ckan exec INSTANCE_ID -- -it bash
+psql -d $CKAN_SQLALCHEMY_URL
+psql -d $CKAN__DATASTORE__WRITE_URL
+psql -d $CKAN__DATASTORE__READ_URL
+```
+
+
+## Datapusher management
+
+Get the datapusher URL:
+
+```
+ckan-cloud-operator deis-instance ckan exec datahub -- -it -- bash -c "'echo \$CKAN__DATAPUSHER__URL'"
+```
+
+The datapusher is parsed from the CKAN__DATAPUSHER__URL defined in the .env file:
+
+The url must be in the format: `DATAPUSHER_NAME.ckan.io` or `DATAPUSHER_NAME.l3.ckan.io`
+
+Where `DATAPUSHER_NAME` must match one of the datapushers installed on the environment
+
+To get the list of available datapushers:
+
+```
+ckan-cloud-operator datapushers list
+```
+
+
 ## CRUD operations
 
 ##### list instances
