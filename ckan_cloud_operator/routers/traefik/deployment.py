@@ -95,7 +95,7 @@ def _update(router_name, spec, annotations, routes):
         from ckan_cloud_operator.providers.routers import manager as routers_manager
         external_domains_router_root_domain = routers_manager.get_default_root_domain()
         env_id = routers_manager.get_env_id()
-        assert router_name in ['prod-1'], f'invalid external domains router name: {router_name}'
+        assert router_name.startswith('prod-'), f'invalid external domains router name: {router_name}'
         external_domains_router_sub_domain = f'cc-{env_id}-{router_name}'
         cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, external_domains_router_root_domain,
                                    f'{external_domains_router_sub_domain}.{external_domains_router_root_domain}', load_balancer_ip)
@@ -181,7 +181,7 @@ def get_dns_data(router_name, router):
         from ckan_cloud_operator.providers.routers import manager as routers_manager
         external_domains_router_root_domain = routers_manager.get_default_root_domain()
         env_id = routers_manager.get_env_id()
-        assert router_name in ['prod-1'], f'invalid external domains router name: {router_name}'
+        assert router_name.startswith('prod-'), f'invalid external domains router name: {router_name}'
         external_domains_router_sub_domain = f'cc-{env_id}-{router_name}'
         data['external-domain'] = f'{external_domains_router_sub_domain}.{external_domains_router_root_domain}'
     return data
