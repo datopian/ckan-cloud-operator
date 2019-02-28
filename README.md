@@ -11,9 +11,8 @@ The only requirement is a .kube-config file with permissions to the relevant clu
 Install ckan-cloud-operator-env
 
 ```
-curl https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/master/ckan-cloud-operator-env.sh \
-    | sudo tee /usr/local/bin/ckan-cloud-operator-env &&\
-sudo chmod +x /usr/local/bin/ckan-cloud-operator-env
+curl -s https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/master/ckan-cloud-operator-env.sh \
+| sudo tee /usr/local/bin/ckan-cloud-operator-env >/dev/null && sudo chmod +x /usr/local/bin/ckan-cloud-operator-env
 ```
 
 Pull the latest Docker image
