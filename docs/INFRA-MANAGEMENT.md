@@ -14,7 +14,7 @@ pgbouncer=# show help;
 
 ## Load Balancers and routing
 
-List routers:
+#### List routers:
 
 ```
 ckan-cloud-operator routers list
@@ -26,7 +26,7 @@ List routers with full details including all related routes:
 ckan-cloud-operator routers list --full
 ```
 
-Get routes for an instance:
+#### Get routes for an instance:
 
 ```
 ckan-cloud-operator routers get-routes --deis-instance-id INSTANCE_ID
@@ -37,6 +37,8 @@ edit route specs:
 ```
 EDITOR=nano ckan-cloud-operator routers get-routes --deis-instance-id INSTANCE_ID --edit
 ```
+
+#### Create a router
 
 Create an external domains router which is backed by a dedicated load balancer:
 
@@ -51,3 +53,23 @@ ckan-cloud-operator routers create-deis-instance-subdomain-route ROUTER_NAME DEI
 ```
 
 Other type of routes can be created as well, see `ckan-cloud-operator routers --help`
+
+#### Delete route:
+
+Get the routes related to an instance:
+
+```
+ckan-cloud-operator routers get-routes --deis-instance-id INSTANCE_ID
+```
+
+Delete the relevant route name (a hash that starts with cc...)
+
+```
+ckan-cloud-operator kubectl -- delete ckancloudroute "cc..."
+```
+
+Update the relevant router for the change to take effect:
+
+```
+ckan-cloud-operator routers update ROUTER_NAME --wait-ready
+```
