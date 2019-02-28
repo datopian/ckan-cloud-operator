@@ -93,28 +93,8 @@ def initialize_gitlab(gitlab_project_name, wait_ready):
 @main.command()
 def activate_gcloud_auth():
     """Authenticate with gcloud CLI using the ckan-cloud-operator credentials"""
-    infra = CkanInfra()
-    gcloud_project = infra.GCLOUD_AUTH_PROJECT
-    service_account_email = infra.GCLOUD_SERVICE_ACCOUNT_EMAIL
-    service_account_json = infra.GCLOUD_SERVICE_ACCOUNT_JSON
-    compute_zone = infra.GCLOUD_COMPUTE_ZONE
-    if all([gcloud_project, service_account_email, service_account_json]):
-        with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
-            f.write(service_account_json.encode())
-        try:
-            gcloud.check_call(
-                f'auth activate-service-account {service_account_email} --key-file={f.name} && '
-                f'gcloud --project={gcloud_project} config set compute/zone {compute_zone}',
-                with_activate=False,
-                ckan_infra=infra
-            )
-        except Exception:
-            traceback.print_exc()
-        os.unlink(f.name)
-        exit(0)
-    else:
-        logs.critical('missing gcloud auth details')
-        exit(1)
+    from ckan_cloud_operator.providers.cluster.gcloud import manager as gcloud_manager
+    gcloud_manager.activate_auth()
 
 
 @main.command()

@@ -51,6 +51,15 @@ def initialize(interactive=False):
     print(yaml.dump(get_info(), default_flow_style=False))
 
 
+def activate_auth():
+    gcloud_driver.activate_auth(
+        _config_get('project-id'),
+        _config_get('cluster-compute-zone'),
+        _config_get('service-account-email', is_secret=True),
+        _config_get('service-account-json', is_secret=True)
+    )
+
+
 def get_info(debug=False):
     cluster_name = _config_get('cluster-name')
     data = yaml.load(check_output(f'container clusters describe {cluster_name}'))
