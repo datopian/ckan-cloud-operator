@@ -42,6 +42,14 @@ Use the search-index command to rebuild or fix the index:
 ckan-cloud-operator deis-instance ckan paster INSTANCE_ID -- search-index --help
 ```
 
+SOLR web-ui is available via a port-forward:
+
+```
+ckan-cloud-operator solr solrcloud-port-forward
+```
+
+Access at http://localhost:8983
+
 
 ## Storage management
 
@@ -88,6 +96,22 @@ ckan-cloud-operator datapushers list
 
 
 ## CRUD operations
+
+##### create instance
+
+* Using Minio Web-UI or client - create the storage path (`/ckan/INSTANCE_ID`) and set permissions (might be different between instances, see permissions of other instasnces of the same type)
+* Determine the required SOLR schema config (see the list or available configs at the SOLR web-ui Cloud > Tree > /configs)
+* Create a GitLab app instance project, it should contain the following which can be copied from another project and modified:
+  * `.env` file
+  * `Dockerfile`
+  * `.gitlab-ci.yml`
+* Make sure gitlab CI ran successfully and pushed the image
+
+Create the instance:
+
+```
+ckan-cloud-operator deis-instance create from-gitlab GITLAB_REPO SOLR_SCHEMA_CONFIG NEW_INSTANCE_ID
+```
 
 ##### list instances
 

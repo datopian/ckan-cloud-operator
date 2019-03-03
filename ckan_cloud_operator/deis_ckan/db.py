@@ -39,8 +39,17 @@ class DeisCkanInstanceDb(object):
 
     def update(self):
         db_migration_name = self.db_spec.get('fromDbMigration')
-        assert db_migration_name, 'only import from a db migration is supported'
-        database_password, datastore_password, datastore_readonly_password = ckan_db_migration_manager.get_dbs_passwords(db_migration_name, required=True)
+        if not db_migration_name:
+            db_migration_name = f'new-{self.db_type}-{self.instance.id}'
+            db_migration_spec = {
+                'type': f'new-{self.db_type}',
+                f'{self.db_type}-name': self.db_spec['name'],
+            }
+            migration = ckan_db_migration_manager.create(db_migration_name, db_migration_spec, exists_ok=True)
+            for event in ckan_db_migration_manager.update(migration):
+                ckan_db_migration_manager.print_event_exit_on_complete(event, '')
+        database_password, datastore_password, datastore_readonly_password = ckan_db_migration_manager.get_dbs_passwords(db_migration_name)
+        datastore_readonly_user = ckan_db_migration_manager.get_datastore_raedonly_user_name(db_migration_name)
         if self.db_type == 'db':
             assert database_password
             self.instance.annotations.set_secrets({
@@ -50,7 +59,7 @@ class DeisCkanInstanceDb(object):
             assert datastore_password and datastore_readonly_password
             self.instance.annotations.set_secrets({
                 'datastorePassword': datastore_password,
-                'datastoreReadonlyUser': ckan_db_migration_manager.get_datastore_raedonly_user_name(db_migration_name, required=True),
+                'datastoreReadonlyUser': datastore_readonly_user,
                 'datatastoreReadonlyPassword': datastore_readonly_password,
             })
 

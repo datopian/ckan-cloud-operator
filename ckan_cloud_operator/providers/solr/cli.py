@@ -29,7 +29,7 @@ def zoonavigator_port_forward():
 
 
 @solr.command()
-@click.option('--suffix', default='sc-0')
+@click.option('--suffix', default='sc-3')
 def solrcloud_port_forward(suffix):
     manager.start_solrcloud_port_forward(suffix)
 

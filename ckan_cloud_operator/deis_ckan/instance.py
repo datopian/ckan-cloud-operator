@@ -104,12 +104,13 @@ class DeisCkanInstance(object):
         @click.argument('GITLAB_REPO_NAME')
         @click.argument('SOLR_CONFIG_NAME')
         @click.argument('NEW_INSTANCE_ID')
-        def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_instance_id):
+        @click.option('--no-db-proxy', is_flag=True)
+        def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_instance_id, no_db_proxy):
             """Create and update a new instance from a GitLab repo containing Dockerfile and .env
 
             Example: ckan-cloud-operator deis-isntance create --from-gitlab viderum/cloud-demo2 ckan_27_default <NEW_INSTANCE_ID>
             """
-            cls.create('from-gitlab', gitlab_repo_name, solr_config_name, new_instance_id).update()
+            cls.create('from-gitlab', gitlab_repo_name, solr_config_name, new_instance_id, no_db_proxy=no_db_proxy).update()
             great_success()
 
         @deis_instance_create.command('from-gcloud-envvars')
@@ -466,9 +467,8 @@ class DeisCkanInstance(object):
                 'datastore': {
                     'name': f'{instance_id}-datastore',
                 },
-                'ckan': {
-                    'init': [['paster', 'db', 'init'],
-                             ['paster', 'db', 'upgrade']]
+                'storage': {
+                    'path': f'/ckan/{instance_id}'
                 }
             }
         elif create_type == 'from-gcloud-envvars':

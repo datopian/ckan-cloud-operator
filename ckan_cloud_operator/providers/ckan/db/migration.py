@@ -135,7 +135,26 @@ def update(migration, recreate_dbs=False, skip_create_dbs=False):
                                     skip_datastore_import=migration['spec'].get('skip-datastore-import'))
             migration['spec']['imported-data'] = True
             kubectl.apply(migration)
-
+    elif migration_type == 'new-db':
+        if migration['spec'].get('created-db'):
+            yield {'step': 'created-db', 'msg': 'DB Already created'}
+        else:
+            migration_name = migration['spec']['name']
+            db_name = migration['spec']['db-name']
+            yield from _create_base_dbs_and_roles(migration_name, db_name, None, recreate_dbs, None)
+            yield from _initialize_postgis_extensions(db_name)
+            migration['spec']['created-db'] = True
+            kubectl.apply(migration)
+    elif migration_type == 'new-datastore':
+        if migration['spec'].get('created-datastore'):
+            yield {'step': 'created-datastore', 'msg': 'Datastore Already created'}
+        else:
+            migration_name = migration['spec']['name']
+            datastore_name = migration['spec']['datastore-name']
+            datastore_ro_name = _get_or_create_datastore_readonly_user_name(migration_name, datastore_name)
+            yield from _create_base_dbs_and_roles(migration_name, None, datastore_name, recreate_dbs, datastore_ro_name)
+            migration['spec']['created-datastore'] = True
+            kubectl.apply(migration)
     else:
         raise Exception(f'Unknown migration type: {migration_type}')
 
@@ -155,6 +174,22 @@ def get_all_dbs_users():
                 dbs.append((db_name, db_host, db_port))
                 dbs.append((datastore_name, db_host, db_port))
                 users.append((db_name, db_password))
+                users.append((datastore_name, datastore_password))
+                users.append((datastore_ro_name, datastore_ro_password))
+        elif spec.get('type') == 'new-db':
+            db_name = spec['db-name']
+            db_password, _, _ = get_dbs_passwords(migration_name, required=False)
+            if db_password:
+                db_host, db_port = db_manager.get_internal_unproxied_db_host_port()
+                dbs.append((db_name, db_host, db_port))
+                users.append((db_name, db_password))
+        elif spec.get('type') == 'new-datastore':
+            datastore_ro_name = get_datastore_raedonly_user_name(migration_name, required=False)
+            datastore_name = spec['datastore-name']
+            _, datastore_password, datastore_ro_password = get_dbs_passwords(migration_name, required=False)
+            if datastore_password and datastore_ro_password:
+                db_host, db_port = db_manager.get_internal_unproxied_db_host_port()
+                dbs.append((datastore_name, db_host, db_port))
                 users.append((datastore_name, datastore_password))
                 users.append((datastore_ro_name, datastore_ro_password))
     return dbs, users
@@ -254,10 +289,13 @@ def _get_labels(name, spec):
     return labels
 
 
-def _get_or_create_migration_db_passwords(migration_name, create_if_not_exists=True):
+def _get_or_create_migration_db_passwords(migration_name, create_if_not_exists=True, skip_keys=None):
     passwords = []
     errors = []
     for password_config_key in ['database-password', 'datastore-password', 'datastore-readonly-password']:
+        if skip_keys is not None and password_config_key not in skip_keys:
+            passwords.append(None)
+            continue
         password = crds_manager.config_get(
             CRD_SINGULAR, migration_name, key=password_config_key, is_secret=True, required=False
         )
@@ -315,9 +353,10 @@ def _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, da
             for user, password, db in [(db_name, db_password, db_name),
                                        (datastore_name, datastore_password, datastore_name),
                                        (datastore_ro_name, datastore_ro_password, datastore_name)]:
-                db_manager.check_connection_string(
-                    db_manager.get_external_connection_string(user, password, db)
-                )
+                if user:
+                    db_manager.check_connection_string(
+                        db_manager.get_external_connection_string(user, password, db)
+                    )
             ok = True
             break
         except Exception as e:
@@ -338,18 +377,34 @@ def _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate
     with postgres_driver.connect(admin_connection_string) as admin_conn:
         if recreate_dbs:
             _delete_dbs(admin_conn, db_name, datastore_name, datastore_ro_name)
+        if not datastore_name:
+            skip_keys = ['database-password']
+        elif not db_name:
+            skip_keys = ['datastore-password', 'datastore-readonly-password']
+        else:
+            skip_keys = None
         password_errors, db_password, datastore_password, datastore_ro_password = _get_or_create_migration_db_passwords(
-            migration_name)
+            migration_name,
+            skip_keys=skip_keys
+        )
         yield {'step': 'get-create-passwords', 'msg': 'Created Passwords'}
         admin_user = db_manager.get_admin_db_user()
-        db_errors = postgres_driver.create_base_db(admin_conn, db_name, db_password, grant_to_user=admin_user)
-        datastore_errors = postgres_driver.create_base_db(admin_conn, datastore_name, datastore_password,
-                                                          grant_to_user=admin_user)
-        assert (len(datastore_errors) == 0 and len(db_errors) == 0) or len(password_errors) == 3, \
-            'some passwords were not created, but DB / roles need to be created, we cannot know the right passwords'
+        if db_name:
+            db_errors = postgres_driver.create_base_db(admin_conn, db_name, db_password, grant_to_user=admin_user)
+        else:
+            db_errors = []
+        if datastore_name:
+            datastore_errors = postgres_driver.create_base_db(admin_conn, datastore_name, datastore_password,
+                                                              grant_to_user=admin_user)
+        else:
+            datastore_errors = []
+        if datastore_name and db_name:
+            assert (len(datastore_errors) == 0 and len(db_errors) == 0) or len(password_errors) == 3, \
+                'some passwords were not created, but DB / roles need to be created, we cannot know the right passwords'
         yield {'step': 'create-base-dbs', 'msg': f'Created Base DB and roles: {db_name}, {datastore_name}'}
-        postgres_driver.create_role_if_not_exists(admin_conn, datastore_ro_name, datastore_ro_password)
-        yield {'step': 'created-datastore-ro-role', 'msg': f'Created Datastore read-only user: {datastore_ro_name}'}
+        if datastore_name:
+            postgres_driver.create_role_if_not_exists(admin_conn, datastore_ro_name, datastore_ro_password)
+            yield {'step': 'created-datastore-ro-role', 'msg': f'Created Datastore read-only user: {datastore_ro_name}'}
     yield {'step': 'created-base-dbs-and-roles', f'msg': f'Created base dbs and roles: {db_name}, {datastore_name}, {datastore_ro_name}'}
     yield from _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, datastore_password, datastore_ro_password)
 
