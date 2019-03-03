@@ -288,7 +288,8 @@ class DeisCkanInstance(object):
             DeisCkanInstanceSolr(self).update()
         DeisCkanInstanceStorage(self).update()
         DeisCkanInstanceRegistry(self).update()
-        DeisCkanInstanceEnvvars(self).update()
+        envvars = DeisCkanInstanceEnvvars(self)
+        envvars.update()
         if not skip_deployment:
             DeisCkanInstanceDeployment(self).update()
             while True:
@@ -321,9 +322,12 @@ class DeisCkanInstance(object):
                         )
                         time.sleep(2)
         self.ckan.update()
-        DeisCkanInstanceDb(self, 'datastore').set_datastore_readonly_permissions()
+        try:
+            DeisCkanInstanceDb(self, 'datastore').set_datastore_readonly_permissions()
+        except Exception:
+            logs.warning('Setting datastore permissions failed, continuing anyway')
         # Create/Update uptime monitoring after everything else is ready
-        # DeisCkanInstanceUptime(self).update()
+        DeisCkanInstanceUptime(self).update(envvars.site_url)
 
     def delete(self, force=False, wait_deleted=False):
         """

@@ -2,6 +2,7 @@ import requests
 from requests.adapters import HTTPAdapter
 import six
 from six.moves.urllib.parse import urlencode
+from ckan_cloud_operator.config import manager as config_manager
 
 class StatusCakeError(Exception):
     pass
@@ -44,10 +45,10 @@ class DeisCkanInstanceUptime(object):
     }
 
     def __init__(self, instance):
-        self.site_url = instance.spec.spec.get('envvars', {}).get('overrides', {}).get('CKAN_SITE_URL')
-        self.statuscake_api_user = instance.ckan_infra.CKAN_STATUSCAKE_API_USER
-        self.statuscake_api_key = instance.ckan_infra.CKAN_STATUSCAKE_API_KEY
-        self.statuscake_group = instance.ckan_infra.CKAN_STATUSCAKE_GROUP
+        config = config_manager.get(secret_name='uptime-statuscake-api')
+        self.statuscake_api_user = config['user']
+        self.statuscake_api_key = config['key']
+        self.statuscake_group = config['group']
         self.instance_id = instance.id
         self.instance = instance
         self.timeout = 10
@@ -145,10 +146,10 @@ class DeisCkanInstanceUptime(object):
             return None
         return test[0]['TestID']
 
-    def update(self):
+    def update(self, site_url):
         data = {
             "WebsiteName": self.instance_id,
-            "WebsiteURL": self.site_url,
+            "WebsiteURL": site_url,
             "CheckRate": 300,
             "TestType": "HTTP",
             "ContactGroup": self.statuscake_group

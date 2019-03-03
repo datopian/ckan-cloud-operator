@@ -12,6 +12,7 @@ class DeisCkanInstanceEnvvars(object):
     def __init__(self, instance):
         self.instance = instance
         self.solr_spec = self.instance.spec.solrCloudCollection
+        self.site_url = None
 
     def _apply_instance_envvars_overrides(self, envvars):
         if 'overrides' in self.instance.spec.envvars:
@@ -78,6 +79,7 @@ class DeisCkanInstanceEnvvars(object):
             in envvars.items()
         }
         kubectl.update_secret('ckan-envvars', envvars, namespace=self.instance.id)
+        self.site_url = envvars.get('CKAN_SITE_URL')
 
     def update(self):
         self.instance.annotations.update_status('envvars', 'created', lambda: self._update(), force_update=True)
