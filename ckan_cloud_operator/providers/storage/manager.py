@@ -3,17 +3,20 @@ from .minio.constants import PROVIDER_ID as minio_provider_id
 from .constants import PROVIDER_SUBMODULE
 
 
-def initialize(interactive=False):
-    get_provider(default=minio_provider_id).initialize(interactive=interactive)
+def initialize(interactive=False, provider_id=None, storage_suffix=None, use_existing_disk_name=None):
+    get_provider(
+        default=minio_provider_id,
+        provider_id=provider_id
+    ).initialize(
+        interactive=interactive,
+        storage_suffix=storage_suffix,
+        use_existing_disk_name=use_existing_disk_name
+    )
 
 
-def get_provider(default=None):
-    return providers_manager.get_provider(PROVIDER_SUBMODULE, default=default)
+def get_provider(default=None, provider_id=None):
+    return providers_manager.get_provider(PROVIDER_SUBMODULE, default=default, provider_id=provider_id)
 
 
-def deploy():
-    get_provider().deploy()
-
-
-def print_credentials(raw=False):
-    return get_provider().print_credentials(raw=raw)
+def print_credentials(raw=False, storage_suffix=None, provider_id=None):
+    return get_provider(provider_id=provider_id).print_credentials(raw=raw, storage_suffix=storage_suffix)

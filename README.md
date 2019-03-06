@@ -56,12 +56,6 @@ This start a bash shell inside the ckan-cloud-operator Docker container, you can
 ckan-cloud-operator <TAB><TAB>
 ```
 
-Some commands require to activate gcloud authentication:
-
-```
-ckan-cloud-operator activate-gcloud-auth
-```
-
 
 ## Managing multiple environments
 

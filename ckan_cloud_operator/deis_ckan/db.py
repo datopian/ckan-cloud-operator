@@ -51,17 +51,17 @@ class DeisCkanInstanceDb(object):
         database_password, datastore_password, datastore_readonly_password = ckan_db_migration_manager.get_dbs_passwords(db_migration_name)
         datastore_readonly_user = ckan_db_migration_manager.get_datastore_raedonly_user_name(db_migration_name)
         if self.db_type == 'db':
-            assert database_password
-            self.instance.annotations.set_secrets({
-                'databasePassword': database_password
-            })
+            if database_password:
+                self.instance.annotations.set_secrets({
+                    'databasePassword': database_password
+                })
         elif self.db_type == 'datastore':
-            assert datastore_password and datastore_readonly_password
-            self.instance.annotations.set_secrets({
-                'datastorePassword': datastore_password,
-                'datastoreReadonlyUser': datastore_readonly_user,
-                'datatastoreReadonlyPassword': datastore_readonly_password,
-            })
+            if datastore_password and datastore_readonly_password:
+                self.instance.annotations.set_secrets({
+                    'datastorePassword': datastore_password,
+                    'datastoreReadonlyUser': datastore_readonly_user,
+                    'datatastoreReadonlyPassword': datastore_readonly_password,
+                })
 
     def get(self):
         return {'ready': db_manager.check_db_exists(self.db_spec['name'])}

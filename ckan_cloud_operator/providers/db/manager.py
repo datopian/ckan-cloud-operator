@@ -80,10 +80,12 @@ def get_external_admin_connection_string(db_name=None):
     return f'postgresql://{admin_user}:{admin_password}@{db_host}:{db_port}/{db_name}'
 
 
-def get_deis_instsance_external_connection_string(instance_id, is_datastore=False, is_datastore_readonly=False):
+def get_deis_instsance_external_connection_string(instance_id, is_datastore=False, is_datastore_readonly=False, admin=False):
     user, password, db_name, db_host, db_port = get_deis_instance_external_connection_details(
         instance_id, is_datastore=is_datastore, is_datastore_readonly=is_datastore_readonly
     )
+    if admin:
+        user, password, _ = get_admin_db_credentials()
     return f'postgresql://{user}:{password}@{db_host}:{db_port}/{db_name}'
 
 
