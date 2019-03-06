@@ -44,7 +44,6 @@ class DeisCkanInstanceEnvvars(object):
             envvars = CkanGitlab().get_envvars(spec.envvars['fromGitlab'])
         else:
             raise Exception(f'invalid envvars spec: {spec.envvars}')
-        assert envvars['CKAN_SITE_ID'] and envvars['CKAN_SITE_URL'] and envvars['CKAN_SQLALCHEMY_URL']
         from ckan_cloud_operator.providers.storage import manager as storage_manager
         storage_hostname, storage_access_key, storage_secret_key = storage_manager.get_provider().get_credentials()
         storage_path_parts = spec.storage['path'].strip('/').split('/')
@@ -71,6 +70,7 @@ class DeisCkanInstanceEnvvars(object):
             CKANEXT__S3FILESTORE__SIGNATURE_VERSION='s3v4',
             CKAN__DATAPUSHER__URL=datapusher.get_datapusher_url(envvars.get('CKAN__DATAPUSHER__URL')),
         )
+        assert envvars['CKAN_SITE_ID'] and envvars['CKAN_SITE_URL'] and envvars['CKAN_SQLALCHEMY_URL']
         # print(yaml.dump(envvars, default_flow_style=False))
         self._apply_instance_envvars_overrides(envvars)
         envvars = {
