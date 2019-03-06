@@ -97,10 +97,12 @@ def create_backup(database, connection_string=None, db_prefix=None):
         from ckan_cloud_operator.providers.db import manager as db_manager
         connection_string = db_manager.get_external_admin_connection_string(db_name=database)
     logs.info(f'Dumping DB: {filename}')
-    subprocess.check_call(f"pg_dump -d {connection_string} --format=plain --no-owner --no-acl --schema=public | "
-                          f"sed -E 's/(DROP|CREATE|COMMENT ON) EXTENSION/-- \\1 EXTENSION/g' | "
-                          f"gzip -c > {filename}",
-                          shell=True)
+    subprocess.check_call([
+        "bash", "-o", "pipefail", "-c",
+            f"pg_dump -d {connection_string} --format=plain --no-owner --no-acl --schema=public | "
+            f"sed -E 's/(DROP|CREATE|COMMENT ON) EXTENSION/-- \\1 EXTENSION/g' | "
+            f"gzip -c > {filename}",
+    ])
     subprocess.check_call(f'ls -lah {filename}', shell=True)
     logs.info(f'Copying to: {gs_url}')
     gcloud_driver.check_call(
@@ -108,6 +110,14 @@ def create_backup(database, connection_string=None, db_prefix=None):
         f'cp ./{filename} {gs_url} && rm {filename}',
         gsutil=True
     )
+
+
+def create_all_backups():
+    logs.info('Fetching all database names')
+    from ckan_cloud_operator.providers.db import manager as db_manager
+    db_names = [db[0] for db in db_manager.get_all_dbs_users()[0] if db[0] != 'postgres']
+    logs.info('{} DBs'.format(len(db_names)))
+    [create_backup(db) for db in db_names]
 
 
 def get_operation_status(operation_id):

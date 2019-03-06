@@ -31,3 +31,9 @@ def operation_status(operation_id):
 def create_backup(database, connection_string):
     manager.create_backup(database, connection_string)
     logs.exit_great_success()
+
+
+@gcloudsql_group.command()
+def create_all_backups():
+    manager.create_all_backups()
+    logs.exit_great_success()
