@@ -18,7 +18,13 @@ def _config_interactive_set(default_values, namespace=None, is_secret=False, suf
 # custom provider code starts here
 #
 
+import datetime
+import os
+import yaml
+import subprocess
+
 from ckan_cloud_operator.infra import CkanInfra
+from ckan_cloud_operator import logs
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 from ckan_cloud_operator.drivers.gcloud import driver as gcloud_driver
 
@@ -78,6 +84,37 @@ def import_db(import_url, target_db_name, import_user, db_prefix=None):
         _sql_instance_name(db_prefix),
         import_url, target_db_name, import_user
     )
+
+
+def create_backup(database, connection_string=None, db_prefix=None):
+    filename = f'{database}_' + datetime.datetime.now().strftime('%Y%m%d%H%M') + '.gz'
+    gs_url = os.path.join(
+        _credentials_get(db_prefix, key='backups-gs-base-url', required=True),
+        datetime.datetime.now().strftime('%Y/%m/%d/%H'),
+        filename
+    )
+    if not connection_string:
+        from ckan_cloud_operator.providers.db import manager as db_manager
+        connection_string = db_manager.get_external_admin_connection_string(db_name=database)
+    logs.info(f'Dumping DB: {filename}')
+    subprocess.check_call(f"pg_dump -d {connection_string} --format=plain --no-owner --no-acl --schema=public | "
+                          f"sed -E 's/(DROP|CREATE|COMMENT ON) EXTENSION/-- \\1 EXTENSION/g' | "
+                          f"gzip -c > {filename}",
+                          shell=True)
+    subprocess.check_call(f'ls -lah {filename}', shell=True)
+    logs.info(f'Copying to: {gs_url}')
+    gcloud_driver.check_call(
+        *_gcloud().get_project_zone(),
+        f'cp ./{filename} {gs_url} && rm {filename}',
+        gsutil=True
+    )
+
+
+def get_operation_status(operation_id):
+    return yaml.load(gcloud_driver.check_output(
+        *_gcloud().get_project_zone(),
+        f'sql operations describe {operation_id}'
+    ).decode())
 
 
 def _credentials_get(db_prefix, key=None, default=None, required=False):

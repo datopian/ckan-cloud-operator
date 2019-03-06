@@ -54,11 +54,11 @@ def get(name=None, required=True):
     return crds_manager.get(CRD_SINGULAR, name=name, required=required)
 
 
-def create(name, spec, force=False, exists_ok=False):
+def create(name, spec, force=False, exists_ok=False, delete_dbs=False):
     migration = get(name, required=False)
     if migration:
-        if force:
-            delete(name)
+        if force or delete_dbs:
+            delete(name, delete_dbs=delete_dbs)
         elif exists_ok:
             return migration
         else:
@@ -88,17 +88,30 @@ def delete(name, delete_dbs=False):
     crds_manager.delete(CRD_SINGULAR, name)
 
 
-def migrate_deis_dbs(old_site_id, db_name=None, datastore_name=None, force=False, rerun=False, recreate_dbs=False, dbs_suffix=None,
-                     skip_create_dbs=False, skip_datastore_import=False):
+def migrate_deis_dbs(old_site_id=None, db_name=None, datastore_name=None, force=False, rerun=False, recreate_dbs=False,
+                     dbs_suffix=None, skip_create_dbs=False, skip_datastore_import=False,
+                     db_import_url=None, datastore_import_url=None):
     if not dbs_suffix: dbs_suffix = ''
-    if not db_name: db_name = f'{old_site_id}{dbs_suffix}'
-    if not datastore_name: datastore_name = f'{db_name}{dbs_suffix}-datastore'
-    logs.info(f'Starting migration ({old_site_id} -> {db_name}, {datastore_name})')
-    if skip_datastore_import:
-        logs.warning('skipping datastore DB import')
-    migration_name = f'deis-dbs-{old_site_id}-to-{db_name}--{datastore_name}'
-    if len(migration_name) > 55:
-        migration_name = f'dd-{old_site_id}-{db_name}'
+    if db_import_url or datastore_import_url:
+        assert db_import_url and datastore_import_url
+        assert db_name and datastore_name
+        assert not old_site_id
+        logs.info(f'Restoring from backup: {db_import_url}, {datastore_import_url} -> {db_name}, {datastore_name}')
+        assert not skip_datastore_import
+        migration_name = f'restore-{db_name}-{datastore_name}'
+        if len(migration_name) > 55:
+            migration_name = f'rr-{db_name}'
+    else:
+        assert old_site_id
+        assert not db_import_url and not datastore_import_url
+        if not db_name: db_name = f'{old_site_id}{dbs_suffix}'
+        if not datastore_name: datastore_name = f'{db_name}{dbs_suffix}-datastore'
+        logs.info(f'Starting migration ({old_site_id} -> {db_name}, {datastore_name})')
+        if skip_datastore_import:
+            logs.warning('skipping datastore DB import')
+        migration_name = f'deis-dbs-{old_site_id}-to-{db_name}--{datastore_name}'
+        if len(migration_name) > 55:
+            migration_name = f'dd-{old_site_id}-{db_name}'
     migration = create(
         name=migration_name,
         spec={
@@ -106,10 +119,13 @@ def migrate_deis_dbs(old_site_id, db_name=None, datastore_name=None, force=False
             'old-site-id': old_site_id,
             'db-name': db_name,
             'datastore-name': datastore_name,
-            'skip-datastore-import': skip_datastore_import
+            'skip-datastore-import': skip_datastore_import,
+            'db-import-url': db_import_url,
+            'datastore-import-url': datastore_import_url,
         },
         force=force,
-        exists_ok=rerun and not force
+        exists_ok=rerun and not force,
+        delete_dbs=recreate_dbs
     )
     yield {'step': 'created-migration-resource',
            'msg': f'Created the migration custom resource: {migration_name}',
@@ -132,7 +148,9 @@ def update(migration, recreate_dbs=False, skip_create_dbs=False):
                 yield from _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate_dbs, datastore_ro_name)
                 yield from _initialize_postgis_extensions(db_name)
             yield from _import_data(migration['spec']['old-site-id'], db_name, datastore_name,
-                                    skip_datastore_import=migration['spec'].get('skip-datastore-import'))
+                                    skip_datastore_import=migration['spec'].get('skip-datastore-import'),
+                                    db_import_url=migration['spec'].get('db-import-url'),
+                                    datastore_import_url=migration['spec'].get('datastore-import-url'))
             migration['spec']['imported-data'] = True
             kubectl.apply(migration)
     elif migration_type == 'new-db':
@@ -418,15 +436,21 @@ def _delete_dbs(admin_conn, db_name, datastore_name, datastore_ro_name):
         postgres_driver.delete_role(admin_conn, datastore_ro_name)
 
 
-def _import_data(old_site_id, db_name, datastore_name, skip_datastore_import=False):
-    db_url, datastore_url = get_db_import_urls(old_site_id)
+def _import_data(old_site_id, db_name, datastore_name, skip_datastore_import=False,
+                 db_import_url=None, datastore_import_url=None,
+                 import_user=None):
+    if db_import_url or datastore_import_url:
+        assert db_import_url and datastore_import_url
+        db_url, datastore_url = db_import_url, datastore_import_url
+    else:
+        db_url, datastore_url = get_db_import_urls(old_site_id)
     assert db_url and (datastore_url or skip_datastore_import), f'failed to find db import urls for old site id {old_site_id}'
-    _gcloudsql().import_db(db_url, db_name, db_name)
+    _gcloudsql().import_db(db_url, db_name, import_user=import_user or db_name)
     yield {'step': 'import-db-data', 'msg': f'Imported DB: {db_name}'}
     if skip_datastore_import:
         yield {'step': 'import-datastore-data', 'msg': 'skipped'}
     else:
-        _gcloudsql().import_db(datastore_url, datastore_name, datastore_name)
+        _gcloudsql().import_db(datastore_url, datastore_name, import_user=import_user or datastore_name)
         yield {'step': 'import-datastore-data', 'msg': f'Imported Datastore: {datastore_name}'}
 
 

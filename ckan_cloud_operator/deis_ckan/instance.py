@@ -16,11 +16,11 @@ from ckan_cloud_operator.deis_ckan.registry import DeisCkanInstanceRegistry
 from ckan_cloud_operator.deis_ckan.solr import DeisCkanInstanceSolr
 from ckan_cloud_operator.deis_ckan.spec import DeisCkanInstanceSpec
 from ckan_cloud_operator.deis_ckan.storage import DeisCkanInstanceStorage
-from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
 from ckan_cloud_operator.monitoring.uptime import DeisCkanInstanceUptime
 from ckan_cloud_operator.routers import manager as routers_manager
 from ckan_cloud_operator import logs
 from ckan_cloud_operator.providers.ckan import manager as ckan_manager
+from ckan_cloud_operator.providers.ckan.db import migration as ckan_db_migration_manager
 
 
 class DeisCkanInstance(object):
@@ -105,46 +105,23 @@ class DeisCkanInstance(object):
         @click.argument('SOLR_CONFIG_NAME')
         @click.argument('NEW_INSTANCE_ID')
         @click.option('--no-db-proxy', is_flag=True)
-        def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_instance_id, no_db_proxy):
+        @click.option('--from-db-backups')
+        @click.option('--storage-path')
+        @click.option('--solr-collection')
+        @click.option('--rerun', is_flag=True)
+        @click.option('--force', is_flag=True)
+        @click.option('--recreate-dbs', is_flag=True)
+        def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_instance_id, no_db_proxy,
+                                             from_db_backups, storage_path, solr_collection, rerun,
+                                             force, recreate_dbs):
             """Create and update a new instance from a GitLab repo containing Dockerfile and .env
 
             Example: ckan-cloud-operator deis-isntance create --from-gitlab viderum/cloud-demo2 ckan_27_default <NEW_INSTANCE_ID>
             """
-            cls.create('from-gitlab', gitlab_repo_name, solr_config_name, new_instance_id, no_db_proxy=no_db_proxy).update()
-            great_success()
-
-        @deis_instance_create.command('from-gcloud-envvars')
-        @click.argument('PATH_TO_INSTANCE_ENV_YAML')
-        @click.argument('IMAGE')
-        @click.argument('SOLR_CONFIG')
-        @click.argument('GCLOUD_DB_URL')
-        @click.argument('GCLOUD_DATASTORE_URL')
-        @click.argument('STORAGE_PATH')
-        @click.argument('NEW_INSTANCE_ID')
-        def deis_instance_create_from_gcloud_envvars(
-                path_to_instance_env_yaml,
-                image,
-                solr_config,
-                gcloud_db_url,
-                gcloud_datastore_url,
-                storage_path,
-                new_instance_id):
-            """Create and update an instance from existing DB dump stored in gcloud sql format on google cloud storage.
-
-            Example:
-
-                ckan-cloud-operator deis-instance create from-gcloud-envvars "/path/to/configs/my-instance.yaml" "registry.gitlab.com/viderum/cloud-my-instance" "ckan_default" "gs://.." "gs://.." "/path/in/central/google/storage/bucket" "my-new-instance-id"
-            """
-            cls.create(
-                'from-gcloud-envvars',
-                path_to_instance_env_yaml,
-                image,
-                solr_config,
-                gcloud_db_url,
-                gcloud_datastore_url,
-                storage_path,
-                new_instance_id
-            ).update()
+            cls.create('from-gitlab', gitlab_repo_name, solr_config_name, new_instance_id,
+                       no_db_proxy=no_db_proxy, storage_path=storage_path,
+                       from_db_backups=from_db_backups, solr_collection=solr_collection,
+                       rerun=rerun, force=force, recreate_dbs=recreate_dbs).update()
             great_success()
 
         #### deis-instance ckan
@@ -452,23 +429,52 @@ class DeisCkanInstance(object):
         if create_type == 'from-gitlab':
             gitlab_repo = args[1]
             solr_config = args[2]
-            print(f'Creating Deis CKAN instance {instance_id} from Gitlab repo {gitlab_repo}')
+            db_name = instance_id
+            datastore_name = f'{instance_id}-datastore'
+            storage_path = kwargs.get('storage-path') or f'/ckan/{instance_id}'
+            from_db_backups = kwargs.get('from_db_backups')
+            logs.info(f'Creating Deis CKAN instance {instance_id}', gitlab_repo=gitlab_repo, solr_config=solr_config,
+                      db_name=db_name, datastore_name=datastore_name, storage_path=storage_path,
+                      from_db_backups=from_db_backups)
+            if from_db_backups:
+                db_import_url, datastore_import_url = from_db_backups.split(',')
+                migration_name = None
+                success = False
+                for event in ckan_db_migration_manager.migrate_deis_dbs(None, db_name, datastore_name,
+                                                                        db_import_url=db_import_url,
+                                                                        datastore_import_url=datastore_import_url,
+                                                                        rerun=kwargs.get('rerun'),
+                                                                        force=kwargs.get('force'),
+                                                                        recreate_dbs=kwargs.get('recreate_dbs')):
+                    migration_name = ckan_db_migration_manager.get_event_migration_created_name(event) or migration_name
+                    success = ckan_db_migration_manager.print_event_exit_on_complete(
+                        event,
+                        f'DBs import {from_db_backups} -> {db_name}, {datastore_name}',
+                        soft_exit=True
+                    )
+                    if success is not None:
+                        break
+                assert success, f'Invalid DB migration success value ({success})'
+            else:
+                migration_name = None
             spec = {
                 'ckanPodSpec': {},
                 'ckanContainerSpec': {'imageFromGitlab': gitlab_repo},
                 'envvars': {'fromGitlab': gitlab_repo},
                 'solrCloudCollection': {
-                    'name': instance_id,
+                    'name': kwargs.get('solr_collection') or instance_id,
                     'configName': solr_config
                 },
                 'db': {
-                    'name': instance_id,
+                    'name': db_name,
+                    **({'fromDbMigration': migration_name} if migration_name else {})
                 },
                 'datastore': {
-                    'name': f'{instance_id}-datastore',
+                    'name': datastore_name,
+                    **({'fromDbMigration': migration_name} if migration_name else {})
                 },
                 'storage': {
-                    'path': f'/ckan/{instance_id}'
+                    'path': storage_path,
                 }
             }
         elif create_type == 'from-gcloud-envvars':
@@ -505,9 +511,6 @@ class DeisCkanInstance(object):
                     'path': storage_path
                 }
             }
-        elif create_type == 'from-deis':
-            old_site_id, new_instance_id = args[1:]
-            return migrate_from_deis(old_site_id, new_instance_id, cls)
         else:
             raise NotImplementedError(f'invalid create type: {create_type}')
         instance_kind = ckan_manager.instance_kind()

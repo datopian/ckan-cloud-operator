@@ -38,13 +38,13 @@ def connection_string(admin, deis_instance, datastore, datastore_ro):
 
     Example: psql -d $(ckan-cloud-operator db connection-string --admin)
     """
-    if admin:
+    if deis_instance:
+        print(db_manager.get_deis_instsance_external_connection_string(deis_instance, is_datastore=datastore,
+                                                                       is_datastore_readonly=datastore_ro,
+                                                                       admin=admin))
+    elif admin:
         assert not deis_instance and not datastore and not datastore_ro
         print(db_manager.get_external_admin_connection_string())
-    elif deis_instance:
-        assert not admin
-        print(db_manager.get_deis_instsance_external_connection_string(deis_instance, is_datastore=datastore,
-                                                                       is_datastore_readonly=datastore_ro))
     else:
         raise Exception('invalid arguments')
 

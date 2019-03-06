@@ -4,16 +4,17 @@ from ckan_cloud_operator.labels import manager as labels_manager
 from ckan_cloud_operator.annotations import manager as annotations_manager
 
 
-def get_provider(submodule, required=True, supported_provider_ids=None, default=None, verbose=False):
+def get_provider(submodule, required=True, supported_provider_ids=None, default=None, verbose=False, provider_id=None):
     if default: required = False
-    provider_id = get_provider_id(submodule, required=required)
     if not provider_id:
-        if default:
-            provider_id = default
-        else:
-            return None
-    if verbose:
-        logs.info(f'submodule {submodule} using provider_id {provider_id}')
+        provider_id = get_provider_id(submodule, required=required)
+        if not provider_id:
+            if default:
+                provider_id = default
+            else:
+                return None
+        if verbose:
+            logs.info(f'submodule {submodule} using provider_id {provider_id}')
     if not supported_provider_ids or provider_id in supported_provider_ids:
         provider_manager = _get_submodule_ids_provider_or_provider_ids(submodule, provider_id)
     else:

@@ -118,14 +118,16 @@ def get_project_zone():
     return _config_get('project-id'), _config_get('cluster-compute-zone')
 
 
-def create_volume(disk_size_gb, labels):
-    disk_id = 'cc' + _generate_password(12)
-    logs.info(f'creating persistent disk {disk_id} with size {disk_size_gb}')
-    labels = ','.join([
-        '{}={}'.format(k.replace('/', '_'), v.replace('/', '_')) for k, v in labels.items()
-    ])
-    gcloud_driver.check_call(*get_project_zone(), f'compute disks create {disk_id} --size={disk_size_gb}GB --labels={labels}')
-    # return {'gcePersistentDisk': {'pdName': disk_id}}
+def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
+    disk_id = use_existing_disk_name or 'cc' + _generate_password(12)
+    if use_existing_disk_name:
+        logs.info(f'using existing persistent disk {disk_id}')
+    else:
+        logs.info(f'creating persistent disk {disk_id} with size {disk_size_gb}')
+        labels = ','.join([
+            '{}={}'.format(k.replace('/', '_'), v.replace('/', '_')) for k, v in labels.items()
+        ])
+        gcloud_driver.check_call(*get_project_zone(), f'compute disks create {disk_id} --size={disk_size_gb}GB --labels={labels}')
     kubectl.apply({
         'apiVersion': 'v1', 'kind': 'PersistentVolume',
         'metadata': {'name': disk_id, 'namespace': 'ckan-cloud'},
