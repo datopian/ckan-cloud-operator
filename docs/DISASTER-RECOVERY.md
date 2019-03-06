@@ -109,6 +109,21 @@ Full GcloudSQL instance backups are also available.
 
 In case of extreme disasters the entire DB cluster can be restored via the Gcloud web-ui.
 
+### Scheduled DB backups
+
+Scheduled DB backups are run using a Kubernetes cronjob running a ckan-cloud-operator pod.
+
+To create a ckan-cloud-operator pod:
+
+* Create a kubeconfig file for the operator and set in a secret:
+  * `kubectl -n ckan-cloud create secret generic operator-db-backups --from-file=.kubeconfig=/path/to/.kube-config`
+* Deploy a cronjob using rancher:
+  * scheduing: minimum of once every hour (as backups are created with hourly timestamp)
+  * image: `viderum/ckan-cloud-operator` (recommended to use a specific image hash, see the ckan-cloud-operator travis job on GitHub)
+  * volumes: mount the kubeconfig secret
+  * environment variables: `KUBECONFIG=/path/to/.kubeconfig`
+  * command: `db gcloudsql create-all-backups`
+
 ### Kubernetes and volume snapshots
 
 ARK / Velero creates backups of Kubernetes objects and disk snapshots for persistent volume claims.
