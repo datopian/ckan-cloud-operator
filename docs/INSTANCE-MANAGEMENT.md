@@ -1,6 +1,27 @@
 # Instance Management
 
 
+## Prerequisites
+
+* Installed ckan-cloud-operator according to the [README](/README.md)
+
+Start a ckan-cloud-operator shell:
+
+```
+ckan-cloud-operator bash
+```
+
+**All the following commands should run from within a ckan-cloud-operator shell**
+
+* Verify connection to the cluster
+  * `ckan-cloud-operator cluster info`
+* Verify connection to an instance DB
+  * `psql -d $(ckan-cloud-operator db connection-string --deis-instance INSTANCE_ID)`
+* Verify Google Cloud authentication
+  * `gsutil ls`
+  * `gcloud container clusters list`
+
+
 ## CKAN management
 
 Run a bash shell on the instance's pod:
@@ -112,6 +133,22 @@ Create the instance:
 ```
 ckan-cloud-operator deis-instance create from-gitlab GITLAB_REPO SOLR_SCHEMA_CONFIG NEW_INSTANCE_ID
 ```
+
+Add the default, internal instance route (`https://cc-?-INSTANCE_ID.DEFAULT_ROOT_DOMAIN`):
+
+```
+ckan-cloud-operator routers create-deis-instance-subdomain-route instances-default NEW_INSTANCE_ID --wait-ready
+```
+
+Add an external route (Make sure DNS is configured and propogated before):
+
+```
+ckan-cloud-operator routers create-deis-instance-subdomain-route EXTERNAL_DOMAINS_ROUTER_NAME DEIS_INSTANCE_ID EXTERNAL_SUB_DOMAIN EXTERNAL_ROOT_DOMAIN
+```
+
+This command can also be used to restore from backup or changing storage paths or solr collections, see [CKAN Instance Recovery](https://github.com/ViderumGlobal/ckan-cloud-operator/blob/master/docs/DISASTER-RECOVERY.md#ckan-instance-recovery).
+
+[Migration doc](https://github.com/ViderumGlobal/ckan-cloud-operator/blob/master/docs/IMPORT-DEIS.md) also contain useful details to troubleshoot or debug instance creation.
 
 ##### list instances
 
