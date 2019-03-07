@@ -72,10 +72,8 @@ Using Rancher, deploy a minio client container:
 Add a `deis` minio host:
 
 ```
-ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc \
-    mc config host add `ckan-cloud-operator-edge config get \
-                        --secret-name deis-minio-credentials \
-                        --template 'deis https://{hostname} {access-key} {secret-key}'`
+OLD_MINIO_CREDS=$(KUBECONFIG=$DEIS_KUBECONFIG kubectl -n deis get secret minio-user -o yaml | python3 -c "import sys, yaml, base64; data={k: base64.b64decode(v).decode() for k,v in yaml.load(sys.stdin)['data'].items() if k in ['accesskey','secretkey']}; print('{accesskey} {secretkey}'.format(**data))")
+ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc mc config host add deis https://old.minio.server/ $OLD_MINIO_CREDS
 ```
 
 Add `prod` minio host:
