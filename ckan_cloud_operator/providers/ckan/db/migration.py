@@ -281,7 +281,7 @@ def get_db_import_urls(old_site_id):
         file_instance = '.'.join(filename.split('.')[:-3])
         is_datastore = file_instance.endswith('-datastore')
         file_instance = file_instance.replace('-datastore', '')
-        dt = datetime.datetime.strptime(datestring, '%Y%M%d')
+        dt = datetime.datetime.strptime(datestring, '%Y%m%d')
         if file_instance == old_site_id:
             if is_datastore:
                 if instance_latest_datastore_dt is None or instance_latest_datastore_dt < dt:

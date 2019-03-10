@@ -241,18 +241,11 @@ Migrate DBs
 ckan-cloud-operator ckan migrate-deis-dbs $OLD_SITE_ID
 ```
 
-Migrate the instance
+Migrate the instance without db proxy
 
 ```
-ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-routes --rerun
+ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-gitlab --no-db-proxy --rerun
 ```
-
-some newer CKAN 2.8 instances require a direct connection to the DB, run the migrate-deis-instance command with following flags:
-
-```
-ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-routes --rerun --no-db-proxy
-```
-
 
 ### Troubleshooting migrations
 
@@ -330,21 +323,7 @@ Skip specific parts of the migration:
 * `--skip-deployment`
 
 
-### Set internal route and test
-
-Verify successful migration using port-forward
-
-```
-ckan-cloud-operator deis-instance ckan port-forward $OLD_SITE_ID
-```
-
-Check the site at http://localhost:5000 (some features won't work due to different site url)
-
-Once you verify basic site sanity, rerun the migration to set the internal route (remember to add --no-db-proxy if needed):
-
-```
-ckan-cloud-operator ckan migrate-deis-instance $OLD_SITE_ID --skip-gitlab --skip-solr --skip-deployment --rerun
-```
+### Test and set routing
 
 Get the CKAN admin credentails:
 
@@ -354,14 +333,16 @@ ckan-cloud-operator ckan admin-credentials $OLD_SITE_ID
 
 Test the instance on the default instance route
 
-
-## Set routing
-
 Remove the instance site url override (or set to the desired external domain):
 
 ```
 ckan-cloud-operator deis-instance edit $OLD_SITE_ID
 ```
+
+some newer CKAN 2.8 instances require a direct connection to the DB, other instances should work using the db proxy:
+
+* Delete the existing deployment: `ckan-cloud-operator kubectl -- -n $OLD_SITE_ID delete deployment $OLD_SITE_ID --force --now`
+* Edit the instance and remove the no-db-proxy: true attribute: `ckan-cloud-operator deis-instance edit $OLD_SITE_ID`
 
 
 #### For domains under the default root domain

@@ -61,7 +61,8 @@ class DeisCkanInstance(object):
         @click.argument('OVERRIDE_SPEC_JSON', required=False)
         @click.option('--persist-overrides', is_flag=True)
         @click.option('--wait-ready', is_flag=True)
-        def deis_instance_update(instance_id, override_spec_json, persist_overrides, wait_ready):
+        @click.option('--skip-deployment', is_flag=True)
+        def deis_instance_update(instance_id, override_spec_json, persist_overrides, wait_ready, skip_deployment):
             """Update an instance to the latest resource spec, optionally applying the given json override to the resource spec
 
             Examples:
@@ -72,7 +73,8 @@ class DeisCkanInstance(object):
             """
             override_spec = json.loads(override_spec_json) if override_spec_json else None
             cls(instance_id, override_spec=override_spec, persist_overrides=persist_overrides).update(
-                wait_ready=wait_ready)
+                wait_ready=wait_ready, skip_deployment=skip_deployment
+            )
             great_success()
 
         @command_group.command('delete')
