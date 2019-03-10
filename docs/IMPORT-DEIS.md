@@ -134,6 +134,20 @@ Verify ckan-cloud-operator is connected to the right cluster:
 ckan-cloud-operator cluster info
 ```
 
+### Instance preflight check
+
+Check the external site URL for any certificate reigstrations in the past 7 days which might trigger Let's encrypt rate limitting:
+
+```
+https://crt.sh/?q=%root.domain
+```
+
+Check the DNS to ensure it uses a CNAME via DNS in our control
+
+```
+nslookup external.site.domain 1.1.1.1
+```
+
 
 ### Get instance details
 
@@ -338,11 +352,6 @@ Remove the instance site url override (or set to the desired external domain):
 ```
 ckan-cloud-operator deis-instance edit $OLD_SITE_ID
 ```
-
-some newer CKAN 2.8 instances require a direct connection to the DB, other instances should work using the db proxy:
-
-* Delete the existing deployment: `ckan-cloud-operator kubectl -- -n $OLD_SITE_ID delete deployment $OLD_SITE_ID --force --now`
-* Edit the instance and remove the no-db-proxy: true attribute: `ckan-cloud-operator deis-instance edit $OLD_SITE_ID`
 
 
 #### For domains under the default root domain

@@ -107,7 +107,7 @@ def create_backup(database, connection_string=None, db_prefix=None):
     logs.info(f'Copying to: {gs_url}')
     gcloud_driver.check_call(
         *_gcloud().get_project_zone(),
-        f'cp -m ./{filename} {gs_url} && rm {filename}',
+        f'-m cp ./{filename} {gs_url} && rm {filename}',
         gsutil=True
     )
 
