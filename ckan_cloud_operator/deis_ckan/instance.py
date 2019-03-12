@@ -321,7 +321,7 @@ class DeisCkanInstance(object):
         except Exception:
             has_spec = False
         # this updates deletion timestamp but doesn't delete the object until all finalizers are removed
-        subprocess.call(f'kubectl -n ckan-cloud delete {self.kind} {self.id}', shell=True)
+        subprocess.call(f'kubectl -n ckan-cloud delete --wait=false {self.kind} {self.id}', shell=True)
         num_exceptions = 0
         if has_spec:
             for delete_id, delete_code in {
