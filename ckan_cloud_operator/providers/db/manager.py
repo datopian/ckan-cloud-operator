@@ -28,6 +28,9 @@ def update():
     db_proxy_manager.update()
 
 
+def get_all_db_names(db_prefix=None):
+    return get_provider().get_all_db_namees(db_prefix=db_prefix)
+
 def get_all_dbs_users():
     """Get a list of all databases and users, this is used by PgBouncer"""
     all_db_names, all_user_names, duplicate_db_names, duplicate_user_names = {}, {}, set(), set()

@@ -29,14 +29,16 @@ def operation_status(operation_id):
 @gcloudsql_group.command()
 @click.argument('DATABASE')
 @click.argument('CONNECTION_STRING', required=False)
-def create_backup(database, connection_string):
-    manager.create_backup(database, connection_string)
+@click.option('--db-prefix')
+@click.option('--dry-run', is_flag=True)
+def create_backup(database, connection_string, db_prefix, dry_run):
+    manager.create_backup(database, connection_string, db_prefix=db_prefix, dry_run=dry_run)
     logs.exit_great_success()
 
 
 @gcloudsql_group.command()
-@click.option('--missing', is_flag=True)
-@click.option('--one', is_flag=True)
-def create_all_backups(missing, one):
-    manager.create_all_backups(missing, one)
+@click.option('--db-prefix')
+@click.option('--dry-run', is_flag=True)
+def create_all_backups(db_prefix, dry_run):
+    manager.create_all_backups(db_prefix, dry_run=dry_run)
     logs.exit_great_success()
