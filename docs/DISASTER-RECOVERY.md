@@ -126,10 +126,11 @@ To create a ckan-cloud-operator pod:
   * image: `viderum/ckan-cloud-operator` (recommended to use a specific image hash, see the ckan-cloud-operator travis job on GitHub)
   * volumes: mount the kubeconfig secret on any path, refer to it in the KUBECONFIG environment variable
   * environment variables: `KUBECONFIG=/path/to/.kubeconfig`
-  * command: `bash -l -c "db gcloudsql create-all-backups"`
+  * command: `db gcloudsql create-all-backups`
   * parallelism: 1
   * completions: 1
 
+Create an additional cronjob for each instance, use the following command: `db gcloudsql create-all-backups --db-prefix PREFIX`
 
 
 ### Kubernetes and volume snapshots
