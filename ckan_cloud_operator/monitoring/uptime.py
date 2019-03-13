@@ -140,8 +140,8 @@ class DeisCkanInstanceUptime(object):
         self._check_fields(data, self.TESTS_FIELDS)
         return self._request('put', self.URL_UPDATE_TEST, data=data, **kwargs).json()
 
-    def get_test_id(self, site_id):
-        test = list(filter(lambda x: x.get('WebsiteName') == site_id, self.get_all_tests()))
+    def get_test_id(self, website_name):
+        test = list(filter(lambda x: x.get('WebsiteName') == website_name, self.get_all_tests()))
         if not len(test):
             return None
         return test[0]['TestID']
@@ -149,14 +149,15 @@ class DeisCkanInstanceUptime(object):
     def update(self, site_url):
         from ckan_cloud_operator.providers.routers import manager as routers_manager
         env_id = routers_manager.get_env_id()
+        website_name = f'{env_id}-{self.instance_id}'
         data = {
-            "WebsiteName": f'{env_id}-{self.instance_id}',
+            "WebsiteName": website_name,
             "WebsiteURL": site_url,
             "CheckRate": 300,
             "TestType": "HTTP",
             "ContactGroup": self.statuscake_group
         }
-        test_id = self.get_test_id(self.instance_id)
+        test_id = self.get_test_id(website_name)
         if test_id is None:
             try:
                 self.insert_test(data)
