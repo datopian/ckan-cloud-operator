@@ -147,8 +147,10 @@ class DeisCkanInstanceUptime(object):
         return test[0]['TestID']
 
     def update(self, site_url):
+        from ckan_cloud_operator.providers.routers import manager as routers_manager
+        env_id = routers_manager.get_env_id()
         data = {
-            "WebsiteName": self.instance_id,
+            "WebsiteName": f'{env_id}-{self.instance_id}',
             "WebsiteURL": site_url,
             "CheckRate": 300,
             "TestType": "HTTP",

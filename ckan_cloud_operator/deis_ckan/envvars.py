@@ -27,13 +27,14 @@ class DeisCkanInstanceEnvvars(object):
         datastore_password = self.instance.annotations.get_secret('datastorePassword')
         datastore_ro_user = self.instance.annotations.get_secret('datastoreReadonlyUser')
         datastore_ro_password = self.instance.annotations.get_secret('datatastoreReadonlyPassword')
-        db_no_db_proxy = spec.db.get('no-db-proxy') == 'yes'
-        datastore_no_db_proxy = spec.datastore.get('no-db-proxy') == 'yes'
-        if db_no_db_proxy or datastore_no_db_proxy:
-            assert db_no_db_proxy and datastore_no_db_proxy, 'must set both DB and datastore with no-db-proxy'
-            no_db_proxy = True
-        else:
-            no_db_proxy = False
+        no_db_proxy = True
+        # db_no_db_proxy = spec.db.get('no-db-proxy') == 'yes'
+        # datastore_no_db_proxy = spec.datastore.get('no-db-proxy') == 'yes'
+        # if db_no_db_proxy or datastore_no_db_proxy:
+        #     assert db_no_db_proxy and datastore_no_db_proxy, 'must set both DB and datastore with no-db-proxy'
+        #     no_db_proxy = True
+        # else:
+        #     no_db_proxy = False
         from ckan_cloud_operator.providers.solr import manager as solr_manager
         solr_http_endpoint = solr_manager.get_internal_http_endpoint()
         solr_collection_name = spec.solrCloudCollection['name']
@@ -70,6 +71,8 @@ class DeisCkanInstanceEnvvars(object):
             CKANEXT__S3FILESTORE__SIGNATURE_VERSION='s3v4',
             CKAN__DATAPUSHER__URL=datapusher.get_datapusher_url(envvars.get('CKAN__DATAPUSHER__URL')),
         )
+        from ckan_cloud_operator.providers.ckan import manager as ckan_manager
+        ckan_manager.update_deis_instance_envvars(self.instance, envvars)
         assert envvars['CKAN_SITE_ID'] and envvars['CKAN_SITE_URL'] and envvars['CKAN_SQLALCHEMY_URL']
         # print(yaml.dump(envvars, default_flow_style=False))
         self._apply_instance_envvars_overrides(envvars)

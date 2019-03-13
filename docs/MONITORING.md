@@ -50,7 +50,12 @@ To Add a target:
   - targets: ['postgresql-prometheus-exporter.ckan-cloud:9187']
 ```
 
-* Restart Prometheus:
+Restart Prometheus:
+
+```
+ckan-cloud-operator kubectl -- -n prometheus exec prometheus-prometheus-0 -- kill -HUP 1
+```
+
   * Edit `prometheus-prometheus` statefulset under `prometheus` namespace
   * Delete the pods to recreate
 

@@ -75,13 +75,6 @@ class DeisCkanInstanceDeployment(object):
                 },
                 'timeoutSeconds': 5
             },
-            # lifecycle={
-            #     'postStart': {
-            #         'exec': {
-            #             'command': ["sh", "-c", "sleep 240 && pkill -f 'pre'run || true"]
-            #         }
-            #     }
-            # },
             resources={
                 'limits': {
                     'memory': '2Gi',
