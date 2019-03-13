@@ -134,6 +134,10 @@ Create the instance:
 ckan-cloud-operator deis-instance create from-gitlab GITLAB_REPO SOLR_SCHEMA_CONFIG NEW_INSTANCE_ID
 ```
 
+The following options are supported to modify the created instance:
+
+* `--db-prefix PREFIX` - supports multiple DB instances, see [DB Infrastructure management](/docs/INFAR-MANAGEMENT.md) for more details
+
 Add the default, internal instance route (`https://cc-?-INSTANCE_ID.DEFAULT_ROOT_DOMAIN`):
 
 ```

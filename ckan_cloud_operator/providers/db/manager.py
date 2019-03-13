@@ -60,37 +60,38 @@ def get_all_dbs_users():
     return all_dbs, all_users
 
 
-def get_admin_db_credentials():
+def get_admin_db_credentials(db_prefix=None):
     db_provider_manager = get_provider()
-    admin_user, admin_password, db_name = db_provider_manager.get_postgres_admin_credentials()
+    admin_user, admin_password, db_name = db_provider_manager.get_postgres_admin_credentials(db_prefix=db_prefix)
     return admin_user, admin_password, db_name
 
 
-def get_admin_db_user():
-    admin_user, admin_password, db_name = get_admin_db_credentials()
+def get_admin_db_user(db_prefix=None):
+    admin_user, admin_password, db_name = get_admin_db_credentials(db_prefix=db_prefix)
     return admin_user
 
 
-def get_external_admin_connection_string(db_name=None):
+def get_external_admin_connection_string(db_name=None, db_prefix=None):
     """Get an admin connection string for access from outside the cluster"""
-    admin_user, admin_password, admin_db_name = get_admin_db_credentials()
+    admin_user, admin_password, admin_db_name = get_admin_db_credentials(db_prefix=db_prefix)
     if not db_name:
         db_name = admin_db_name
-    db_host, db_port = get_external_proxy_host_port()
+    db_host, db_port = get_external_proxy_host_port(db_prefix=db_prefix)
     return f'postgresql://{admin_user}:{admin_password}@{db_host}:{db_port}/{db_name}'
 
 
-def get_deis_instsance_external_connection_string(instance_id, is_datastore=False, is_datastore_readonly=False, admin=False):
+def get_deis_instsance_external_connection_string(instance_id, is_datastore=False, is_datastore_readonly=False, admin=False, db_prefix=None):
     user, password, db_name, db_host, db_port = get_deis_instance_external_connection_details(
-        instance_id, is_datastore=is_datastore, is_datastore_readonly=is_datastore_readonly
+        instance_id, is_datastore=is_datastore, is_datastore_readonly=is_datastore_readonly,
+        db_prefix=db_prefix
     )
     if admin:
-        user, password, _ = get_admin_db_credentials()
+        user, password, _ = get_admin_db_credentials(db_prefix=db_prefix)
     return f'postgresql://{user}:{password}@{db_host}:{db_port}/{db_name}'
 
 
-def get_external_connection_string(user, password, db_name):
-    db_host, db_port = get_external_proxy_host_port()
+def get_external_connection_string(user, password, db_name, db_prefix=None):
+    db_host, db_port = get_external_proxy_host_port(db_prefix=db_prefix)
     return f'postgresql://{user}:{password}@{db_host}:{db_port}/{db_name}'
 
 
@@ -131,9 +132,9 @@ def get_deis_instance_internal_connection_details(instance_id, is_datastore=Fals
         return None, None, None, None, None
 
 
-def get_deis_instance_external_connection_details(instance_id, is_datastore=False, is_datastore_readonly=False, required=True):
+def get_deis_instance_external_connection_details(instance_id, is_datastore=False, is_datastore_readonly=False, required=True, db_prefix=None):
     user, password, db_name = get_deis_instance_credentials(instance_id, is_datastore, is_datastore_readonly, required)
-    db_host, db_port = get_external_proxy_host_port()
+    db_host, db_port = get_external_proxy_host_port(db_prefix=db_prefix)
     res = [user, password, db_name, db_host, db_port]
     if all(res):
         return res
@@ -153,19 +154,19 @@ def get_internal_proxy_host_port():
     return db_host, db_port
 
 
-def get_external_proxy_host_port():
+def get_external_proxy_host_port(db_prefix=None):
     """Returns connection details for access from outside the cluster, via proxy if enabled"""
     db_proxy_provider = db_proxy_manager.get_provider(required=False)
     if db_proxy_provider:
-        host, port = db_proxy_provider.get_external_proxy_host_port()
+        host, port = db_proxy_provider.get_external_proxy_host_port(db_prefix=db_prefix)
         if host and port:
             return host, port
-    return get_provider().get_postgres_external_host_port()
+    return get_provider().get_postgres_external_host_port(db_prefix=db_prefix)
 
 
-def get_internal_unproxied_db_host_port():
+def get_internal_unproxied_db_host_port(db_prefix=None):
     db_provider_manager = get_provider()
-    return db_provider_manager.get_postgres_internal_host_port()
+    return db_provider_manager.get_postgres_internal_host_port(db_prefix=db_prefix)
 
 
 def get_provider():

@@ -68,6 +68,8 @@ class DeisCkanInstanceSpec(object):
                         assert type(vv) == str
                     elif kk == 'no-db-proxy':
                         assert vv in ['yes', 'no', ''], 'only valid values for no-db-proxy are: "yes", "no", ""'
+                    elif kk == 'dbPrefix':
+                        assert not vv or type(vv) == str
                     else:
                         raise ValueError(f'Invalid db spec attribute: {kk}={vv}')
             elif k == 'solrCloudCollection':

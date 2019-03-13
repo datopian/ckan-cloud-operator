@@ -33,7 +33,8 @@ def initialize(interactive):
 @click.option('--deis-instance')
 @click.option('--datastore', is_flag=True)
 @click.option('--datastore-ro', is_flag=True)
-def connection_string(admin, deis_instance, datastore, datastore_ro):
+@click.option('--db-prefix')
+def connection_string(admin, deis_instance, datastore, datastore_ro, db_prefix):
     """Get a DB connection string
 
     Example: psql -d $(ckan-cloud-operator db connection-string --admin)
@@ -41,10 +42,10 @@ def connection_string(admin, deis_instance, datastore, datastore_ro):
     if deis_instance:
         print(db_manager.get_deis_instsance_external_connection_string(deis_instance, is_datastore=datastore,
                                                                        is_datastore_readonly=datastore_ro,
-                                                                       admin=admin))
+                                                                       admin=admin, db_prefix=db_prefix))
     elif admin:
         assert not deis_instance and not datastore and not datastore_ro
-        print(db_manager.get_external_admin_connection_string())
+        print(db_manager.get_external_admin_connection_string(db_prefix=db_prefix))
     else:
         raise Exception('invalid arguments')
 

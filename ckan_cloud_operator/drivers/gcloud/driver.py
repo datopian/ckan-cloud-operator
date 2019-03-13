@@ -34,6 +34,11 @@ def run(project, compute_zone, cmd, gsutil=False, **kwargs):
     return subprocess.run(f'{bin} {cmd}', shell=True, **kwargs)
 
 
+def call(project, compute_zone, cmd, gsutil=False, **kwargs):
+    bin = 'gsutil' if gsutil else f'CLOUDSDK_COMPUTE_ZONE={compute_zone} gcloud --project={project}'
+    return subprocess.call(f'{bin} {cmd}', shell=True, **kwargs)
+
+
 def check_call(project, compute_zone, cmd, gsutil=False):
     bin = 'gsutil' if gsutil else f'CLOUDSDK_COMPUTE_ZONE={compute_zone} gcloud --project={project}'
     return subprocess.check_call(f'{bin} {cmd}', shell=True)

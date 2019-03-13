@@ -12,9 +12,10 @@ def gcloudsql_group():
 
 @gcloudsql_group.command()
 @click.option('--interactive', is_flag=True)
-def initialize(interactive):
+@click.option('--db-prefix')
+def initialize(interactive, db_prefix):
     """Enable Google Cloud SQL as the main DB provider"""
-    manager.initialize(interactive=interactive)
+    manager.initialize(interactive=interactive, db_prefix=db_prefix)
     logs.exit_great_success()
 
 
@@ -34,6 +35,8 @@ def create_backup(database, connection_string):
 
 
 @gcloudsql_group.command()
-def create_all_backups():
-    manager.create_all_backups()
+@click.option('--missing', is_flag=True)
+@click.option('--one', is_flag=True)
+def create_all_backups(missing, one):
+    manager.create_all_backups(missing, one)
     logs.exit_great_success()

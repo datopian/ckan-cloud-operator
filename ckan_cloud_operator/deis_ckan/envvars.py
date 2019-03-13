@@ -51,7 +51,7 @@ class DeisCkanInstanceEnvvars(object):
         storage_bucket = storage_path_parts[0]
         storage_path = '/'.join(storage_path_parts[1:])
         if no_db_proxy:
-            postgres_host, postgres_port = db_manager.get_internal_unproxied_db_host_port()
+            postgres_host, postgres_port = db_manager.get_internal_unproxied_db_host_port(db_prefix=spec.db.get('dbPrefix') or '')
             logs.info(f'Bypassing db proxy, connecting to DB directly: {postgres_host}:{postgres_port}')
         else:
             postgres_host, postgres_port = db_manager.get_internal_proxy_host_port()

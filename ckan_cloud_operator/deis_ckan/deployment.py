@@ -16,7 +16,7 @@ class DeisCkanInstanceDeployment(object):
 
     def delete(self):
         print(f'Deleting instance {self.instance.id}')
-        subprocess.check_call(f'kubectl -n {self.instance.id} delete deployment/{self.instance.id} --force --now', shell=True)
+        subprocess.check_call(f'kubectl -n {self.instance.id} delete deployment/{self.instance.id} --now', shell=True)
 
     def get(self):
         exitcode, output = subprocess.getstatusoutput(f'kubectl -n {self.instance.id} get deployment/{self.instance.id} -o yaml')
