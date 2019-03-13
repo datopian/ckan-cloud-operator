@@ -173,9 +173,10 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
 
     elif submodule == db_proxy_provider_submodule:
         from ckan_cloud_operator.providers.db.proxy.pgbouncer.constants import PROVIDER_ID as pgbouncer_provider_id
+        from ckan_cloud_operator.providers.db.proxy.gcloudsql.constants import PROVIDER_ID as db_proxy_gcloudsql_provider_id
 
         if not provider_id:
-            return [pgbouncer_provider_id]
+            return [pgbouncer_provider_id, db_proxy_gcloudsql_provider_id]
 
         ## pgbouncer
 
@@ -183,6 +184,13 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.db.proxy.pgbouncer import manager as pgbouncer_manager
 
             return pgbouncer_manager
+
+        ## gcloudsql proxy
+
+        elif provider_id == db_proxy_gcloudsql_provider_id:
+            from ckan_cloud_operator.providers.db.proxy.gcloudsql import manager as db_proxy_gcloudsql_manager
+
+            return db_proxy_gcloudsql_manager
 
     ## db
 

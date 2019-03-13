@@ -16,9 +16,9 @@ class DeisCkanInstanceSolr(object):
 
     def delete(self):
         collection_name = self.solr_spec['name']
-        print(f'Deleting solrcloud collection {collection_name}')
-        from ckan_cloud_operator.providers.solr import manager as solr_manager
-        solr_manager.delete_collection(collection_name)
+        logs.warning(f'Not deleting solrcloud collection {collection_name}')
+        # from ckan_cloud_operator.providers.solr import manager as solr_manager
+        # solr_manager.delete_collection(collection_name)
 
     def get_replication_factor(self):
         from ckan_cloud_operator.providers.solr import manager as solr_manager

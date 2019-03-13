@@ -1,6 +1,25 @@
 # Infrastructure Management
 
 
+## DB Instances
+
+DB Instances are namespaced by an optional prefix
+
+Initialize a new DB instance with given PREFIX:
+
+```
+ckan-cloud-operator db gcloudsql initialize --interactive --db-prefix PREFIX
+```
+
+To move an existing instance DB to a new instance, see [disaster recovery](/docs/DISASTER-RECOVERY.md), add `--db-prefix` argument to the create command.
+
+When using a prefixed DB locally, ensure you start a proxy for this DB as well:
+
+```
+ckan-cloud-operator db proxy port-forward --db-prefix PREFIX
+```
+
+
 ## DB Connection pooler - PgBouncer
 
 ```

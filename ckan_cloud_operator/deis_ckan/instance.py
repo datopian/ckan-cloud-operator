@@ -113,9 +113,10 @@ class DeisCkanInstance(object):
         @click.option('--rerun', is_flag=True)
         @click.option('--force', is_flag=True)
         @click.option('--recreate-dbs', is_flag=True)
+        @click.option('--db-prefix')
         def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_instance_id, no_db_proxy,
                                              from_db_backups, storage_path, solr_collection, rerun,
-                                             force, recreate_dbs):
+                                             force, recreate_dbs, db_prefix):
             """Create and update a new instance from a GitLab repo containing Dockerfile and .env
 
             Example: ckan-cloud-operator deis-isntance create --from-gitlab viderum/cloud-demo2 ckan_27_default <NEW_INSTANCE_ID>
@@ -123,7 +124,8 @@ class DeisCkanInstance(object):
             cls.create('from-gitlab', gitlab_repo_name, solr_config_name, new_instance_id,
                        no_db_proxy=no_db_proxy, storage_path=storage_path,
                        from_db_backups=from_db_backups, solr_collection=solr_collection,
-                       rerun=rerun, force=force, recreate_dbs=recreate_dbs).update()
+                       rerun=rerun, force=force, recreate_dbs=recreate_dbs,
+                       db_prefix=db_prefix).update()
             great_success()
 
         #### deis-instance ckan
@@ -433,7 +435,7 @@ class DeisCkanInstance(object):
             solr_config = args[2]
             db_name = instance_id
             datastore_name = f'{instance_id}-datastore'
-            storage_path = kwargs.get('storage-path') or f'/ckan/{instance_id}'
+            storage_path = kwargs.get('storage_path') or f'/ckan/{instance_id}'
             from_db_backups = kwargs.get('from_db_backups')
             logs.info(f'Creating Deis CKAN instance {instance_id}', gitlab_repo=gitlab_repo, solr_config=solr_config,
                       db_name=db_name, datastore_name=datastore_name, storage_path=storage_path,
@@ -447,7 +449,8 @@ class DeisCkanInstance(object):
                                                                         datastore_import_url=datastore_import_url,
                                                                         rerun=kwargs.get('rerun'),
                                                                         force=kwargs.get('force'),
-                                                                        recreate_dbs=kwargs.get('recreate_dbs')):
+                                                                        recreate_dbs=kwargs.get('recreate_dbs'),
+                                                                        db_prefix=kwargs.get('db_prefix')):
                     migration_name = ckan_db_migration_manager.get_event_migration_created_name(event) or migration_name
                     success = ckan_db_migration_manager.print_event_exit_on_complete(
                         event,
@@ -469,11 +472,13 @@ class DeisCkanInstance(object):
                 },
                 'db': {
                     'name': db_name,
-                    **({'fromDbMigration': migration_name} if migration_name else {})
+                    **({'fromDbMigration': migration_name} if migration_name else {}),
+                    **({'dbPrefix': kwargs['db_prefix']} if kwargs.get('db_prefix') else {})
                 },
                 'datastore': {
                     'name': datastore_name,
-                    **({'fromDbMigration': migration_name} if migration_name else {})
+                    **({'fromDbMigration': migration_name} if migration_name else {}),
+                    **({'dbPrefix': kwargs['db_prefix']} if kwargs.get('db_prefix') else {})
                 },
                 'storage': {
                     'path': storage_path,

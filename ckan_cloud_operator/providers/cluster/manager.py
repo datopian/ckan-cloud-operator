@@ -69,8 +69,23 @@ def get_kubeconfig_info():
     return {
         'name': cluster['name'],
         'server': cluster['cluster']['server'],
-        'user': context['context']['user']
+        'user': context['context']['user'],
+        **get_kube_version_info(),
     }
+
+
+def get_kube_version_info():
+    version = kubectl.get('', get_cmd='version')
+    version = {
+        'clientMajor': version['clientVersion']['major'],
+        'clientMinor': version['clientVersion']['minor'],
+        'serverMajor': version['serverVersion']['major'],
+        'serverMinor': version['serverVersion']['minor'],
+    }
+    assert int(version['clientMajor']) == 1 and int(version['clientMinor']) >= 11, 'Invalid kubectl client version, ' \
+                                                                                   'minimal supported version: 1.11\n' \
+                                                                                   'If you are using GKE, run: gcloud components update'
+    return version
 
 
 def get_node_names():

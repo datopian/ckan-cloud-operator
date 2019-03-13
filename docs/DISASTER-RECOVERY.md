@@ -14,6 +14,8 @@ Storage path can usually be shared between the old and restored instances. See "
 
 SOLR collection can also be shared. If needed a new collection can be used, this will require a full search-index rebuild after the instance is created.
 
+Get the current instance details: `ckan-cloud-operator kubectl -- get ckancloudckaninstance INSTANCE_ID -o yaml`
+
 Create a new CKAN instance from backups
 
 ```
@@ -32,6 +34,8 @@ ckan-cloud-operator routers create-deis-instance-subdomain-route instances-defau
 ```
 
 See [IMPORT-DEIS.md](/docs/IMPORT-DEIS.md) for setting up an external route and more troubleshooting and configuration options.
+
+Old instance can be deleted, SOLR, storage and DB will not be deleted: `ckan-cloud-operator deis-instance delete OLD_INSTANCE`
 
 ### Restore Minio Storage
 
@@ -120,9 +124,13 @@ To create a ckan-cloud-operator pod:
 * Deploy a cronjob using rancher:
   * scheduing: minimum of once every hour (as backups are created with hourly timestamp)
   * image: `viderum/ckan-cloud-operator` (recommended to use a specific image hash, see the ckan-cloud-operator travis job on GitHub)
-  * volumes: mount the kubeconfig secret
+  * volumes: mount the kubeconfig secret on any path, refer to it in the KUBECONFIG environment variable
   * environment variables: `KUBECONFIG=/path/to/.kubeconfig`
-  * command: `db gcloudsql create-all-backups`
+  * command: `bash -l -c "db gcloudsql create-all-backups"`
+  * parallelism: 1
+  * completions: 1
+
+
 
 ### Kubernetes and volume snapshots
 

@@ -129,13 +129,13 @@ def _apply_config_secret(force=False):
             "server_idle_timeout = 60",
             "server_lifetime = 600",
         ] if pool_mode == 'transaction' else [
-            "default_pool_size = 10",
+            "default_pool_size = 20",
             "reserve_pool_size = 20",
             "max_client_conn = 5000",
             "server_round_robin = 1",
+            "server_fast_close = 1",
             "listen_backlog = 8192",
-            "server_idle_timeout = 5",
-            "server_lifetime = 0",
+            "server_lifetime = 5",
         ]),
         f"admin_users = {db_admin_user}",
     ]

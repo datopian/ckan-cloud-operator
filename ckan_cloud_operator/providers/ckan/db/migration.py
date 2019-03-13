@@ -78,7 +78,8 @@ def create(name, spec, force=False, exists_ok=False, delete_dbs=False):
 def delete(name, delete_dbs=False):
     migration = crds_manager.get(CRD_SINGULAR, name=name, required=False) or {}
     if delete_dbs:
-        admin_connection_string = db_manager.get_external_admin_connection_string()
+        db_prefix = migration.get('spec', {}).get('db-prefix') or ''
+        admin_connection_string = db_manager.get_external_admin_connection_string(db_prefix=db_prefix)
         db_name = migration.get('spec', {}).get('datastore-name')
         datastore_name = migration.get('spec', {}).get('db-name')
         datastore_ro_name = crds_manager.config_get(CRD_SINGULAR, name, key='datastore-readonly-user-name', is_secret=True, required=False)
@@ -90,17 +91,20 @@ def delete(name, delete_dbs=False):
 
 def migrate_deis_dbs(old_site_id=None, db_name=None, datastore_name=None, force=False, rerun=False, recreate_dbs=False,
                      dbs_suffix=None, skip_create_dbs=False, skip_datastore_import=False,
-                     db_import_url=None, datastore_import_url=None):
+                     db_import_url=None, datastore_import_url=None, db_prefix=None):
     if not dbs_suffix: dbs_suffix = ''
+    if not db_prefix: db_prefix = ''
     if db_import_url or datastore_import_url:
         assert db_import_url and datastore_import_url
         assert db_name and datastore_name
         assert not old_site_id
-        logs.info(f'Restoring from backup: {db_import_url}, {datastore_import_url} -> {db_name}, {datastore_name}')
+        logs.info(f'Restoring from backup: {db_import_url}, {datastore_import_url} -> {db_name}, {datastore_name} ({db_prefix})')
         assert not skip_datastore_import
         migration_name = f'restore-{db_name}-{datastore_name}'
-        if len(migration_name) > 55:
+        if len(migration_name) > 50:
             migration_name = f'rr-{db_name}'
+        if db_prefix:
+            migration_name += f'-{db_prefix}'
     else:
         assert old_site_id
         assert not db_import_url and not datastore_import_url
@@ -110,8 +114,10 @@ def migrate_deis_dbs(old_site_id=None, db_name=None, datastore_name=None, force=
         if skip_datastore_import:
             logs.warning('skipping datastore DB import')
         migration_name = f'deis-dbs-{old_site_id}-to-{db_name}--{datastore_name}'
-        if len(migration_name) > 55:
+        if len(migration_name) > 50:
             migration_name = f'dd-{old_site_id}-{db_name}'
+        if db_prefix:
+            migration_name += f'-{db_prefix}'
     migration = create(
         name=migration_name,
         spec={
@@ -122,6 +128,7 @@ def migrate_deis_dbs(old_site_id=None, db_name=None, datastore_name=None, force=
             'skip-datastore-import': skip_datastore_import,
             'db-import-url': db_import_url,
             'datastore-import-url': datastore_import_url,
+            'db-prefix': db_prefix
         },
         force=force,
         exists_ok=rerun and not force,
@@ -144,13 +151,16 @@ def update(migration, recreate_dbs=False, skip_create_dbs=False):
             db_name = migration['spec']['db-name']
             datastore_name = migration['spec']['datastore-name']
             datastore_ro_name = _get_or_create_datastore_readonly_user_name(migration_name, datastore_name)
+            db_prefix = migration['spec'].get('db-prefix')
             if not skip_create_dbs:
-                yield from _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate_dbs, datastore_ro_name)
-                yield from _initialize_postgis_extensions(db_name)
+                yield from _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate_dbs, datastore_ro_name,
+                                                      db_prefix=db_prefix)
+                yield from _initialize_postgis_extensions(db_name, db_prefix)
             yield from _import_data(migration['spec']['old-site-id'], db_name, datastore_name,
                                     skip_datastore_import=migration['spec'].get('skip-datastore-import'),
                                     db_import_url=migration['spec'].get('db-import-url'),
-                                    datastore_import_url=migration['spec'].get('datastore-import-url'))
+                                    datastore_import_url=migration['spec'].get('datastore-import-url'),
+                                    db_prefix=db_prefix)
             migration['spec']['imported-data'] = True
             kubectl.apply(migration)
     elif migration_type == 'new-db':
@@ -159,8 +169,9 @@ def update(migration, recreate_dbs=False, skip_create_dbs=False):
         else:
             migration_name = migration['spec']['name']
             db_name = migration['spec']['db-name']
-            yield from _create_base_dbs_and_roles(migration_name, db_name, None, recreate_dbs, None)
-            yield from _initialize_postgis_extensions(db_name)
+            db_prefix = migration['spec'].get('db-prefix')
+            yield from _create_base_dbs_and_roles(migration_name, db_name, None, recreate_dbs, None, db_prefix=db_prefix)
+            yield from _initialize_postgis_extensions(db_name, db_prefix)
             migration['spec']['created-db'] = True
             kubectl.apply(migration)
     elif migration_type == 'new-datastore':
@@ -170,7 +181,8 @@ def update(migration, recreate_dbs=False, skip_create_dbs=False):
             migration_name = migration['spec']['name']
             datastore_name = migration['spec']['datastore-name']
             datastore_ro_name = _get_or_create_datastore_readonly_user_name(migration_name, datastore_name)
-            yield from _create_base_dbs_and_roles(migration_name, None, datastore_name, recreate_dbs, datastore_ro_name)
+            db_prefix = migration['spec'].get('db-prefix')
+            yield from _create_base_dbs_and_roles(migration_name, None, datastore_name, recreate_dbs, datastore_ro_name, db_prefix=db_prefix)
             migration['spec']['created-datastore'] = True
             kubectl.apply(migration)
     else:
@@ -347,9 +359,9 @@ def _get_or_create_datastore_readonly_user_name(migration_name, datastore_name):
     return name
 
 
-def _initialize_postgis_extensions(db_name):
+def _initialize_postgis_extensions(db_name, db_prefix):
     logs.info('initializing postgis extensions for main db')
-    connection_string = db_manager.get_external_admin_connection_string(db_name)
+    connection_string = db_manager.get_external_admin_connection_string(db_name, db_prefix=db_prefix)
     with postgres_driver.connect(connection_string) as conn:
         postgres_driver.initialize_extensions(conn, [
             'postgis', 'postgis_topology', 'fuzzystrmatch', 'postgis_tiger_geocoder'
@@ -359,10 +371,10 @@ def _initialize_postgis_extensions(db_name):
                 cur.execute(f'ALTER TABLE spatial_ref_sys OWNER TO "{db_name}"')
             except Exception:
                 traceback.print_exc()
-    yield {'step': 'initialize-postgis', 'msg': f'Initialized postgis for db: {db_name}'}
+    yield {'step': 'initialize-postgis', 'msg': f'Initialized postgis for db: {db_name} ({db_prefix})'}
 
 
-def _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, datastore_password, datastore_ro_password):
+def _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, datastore_password, datastore_ro_password, db_prefix):
     logs.info('Updating db proxy')
     db_proxy_manager.update(wait_updated=False)
     ok = False
@@ -373,7 +385,7 @@ def _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, da
                                        (datastore_ro_name, datastore_ro_password, datastore_name)]:
                 if user:
                     db_manager.check_connection_string(
-                        db_manager.get_external_connection_string(user, password, db)
+                        db_manager.get_external_connection_string(user, password, db, db_prefix=db_prefix)
                     )
             ok = True
             break
@@ -386,12 +398,12 @@ def _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, da
         time.sleep(10 if i == 2 else 5)
     assert ok, 'failed to get connection to db proxy'
     yield {'step': 'update-db-proxy',
-           'msg': f'Updated DB Proxy with the new dbs and roles: {db_name}, {datastore_name}, {datastore_ro_name}'}
+           'msg': f'Updated DB Proxy with the new dbs and roles: {db_name}, {datastore_name}, {datastore_ro_name} ({db_prefix})'}
 
 
-def _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate_dbs, datastore_ro_name):
+def _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate_dbs, datastore_ro_name, db_prefix=None):
     logs.info('Creating base DBS')
-    admin_connection_string = db_manager.get_external_admin_connection_string()
+    admin_connection_string = db_manager.get_external_admin_connection_string(db_prefix=db_prefix)
     with postgres_driver.connect(admin_connection_string) as admin_conn:
         if recreate_dbs:
             _delete_dbs(admin_conn, db_name, datastore_name, datastore_ro_name)
@@ -406,7 +418,7 @@ def _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate
             skip_keys=skip_keys
         )
         yield {'step': 'get-create-passwords', 'msg': 'Created Passwords'}
-        admin_user = db_manager.get_admin_db_user()
+        admin_user = db_manager.get_admin_db_user(db_prefix=db_prefix)
         if db_name:
             db_errors = postgres_driver.create_base_db(admin_conn, db_name, db_password, grant_to_user=admin_user)
         else:
@@ -419,12 +431,12 @@ def _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate
         if datastore_name and db_name:
             assert (len(datastore_errors) == 0 and len(db_errors) == 0) or len(password_errors) == 3, \
                 'some passwords were not created, but DB / roles need to be created, we cannot know the right passwords'
-        yield {'step': 'create-base-dbs', 'msg': f'Created Base DB and roles: {db_name}, {datastore_name}'}
+        yield {'step': 'create-base-dbs', 'msg': f'Created Base DB and roles: {db_name}, {datastore_name} ({db_prefix})'}
         if datastore_name:
             postgres_driver.create_role_if_not_exists(admin_conn, datastore_ro_name, datastore_ro_password)
-            yield {'step': 'created-datastore-ro-role', 'msg': f'Created Datastore read-only user: {datastore_ro_name}'}
-    yield {'step': 'created-base-dbs-and-roles', f'msg': f'Created base dbs and roles: {db_name}, {datastore_name}, {datastore_ro_name}'}
-    yield from _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, datastore_password, datastore_ro_password)
+            yield {'step': 'created-datastore-ro-role', 'msg': f'Created Datastore read-only user: {datastore_ro_name} ({db_prefix})'}
+    yield {'step': 'created-base-dbs-and-roles', f'msg': f'Created base dbs and roles: {db_name}, {datastore_name}, {datastore_ro_name} ({db_prefix})'}
+    yield from _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, datastore_password, datastore_ro_password, db_prefix)
 
 
 def _delete_dbs(admin_conn, db_name, datastore_name, datastore_ro_name):
@@ -438,19 +450,19 @@ def _delete_dbs(admin_conn, db_name, datastore_name, datastore_ro_name):
 
 def _import_data(old_site_id, db_name, datastore_name, skip_datastore_import=False,
                  db_import_url=None, datastore_import_url=None,
-                 import_user=None):
+                 import_user=None, db_prefix=None):
     if db_import_url or datastore_import_url:
         assert db_import_url and datastore_import_url
         db_url, datastore_url = db_import_url, datastore_import_url
     else:
         db_url, datastore_url = get_db_import_urls(old_site_id)
     assert db_url and (datastore_url or skip_datastore_import), f'failed to find db import urls for old site id {old_site_id}'
-    _gcloudsql().import_db(db_url, db_name, import_user=import_user or db_name)
+    _gcloudsql().import_db(db_url, db_name, import_user=import_user or db_name, db_prefix=db_prefix)
     yield {'step': 'import-db-data', 'msg': f'Imported DB: {db_name}'}
     if skip_datastore_import:
         yield {'step': 'import-datastore-data', 'msg': 'skipped'}
     else:
-        _gcloudsql().import_db(datastore_url, datastore_name, import_user=import_user or datastore_name)
+        _gcloudsql().import_db(datastore_url, datastore_name, import_user=import_user or datastore_name, db_prefix=db_prefix)
         yield {'step': 'import-datastore-data', 'msg': f'Imported Datastore: {datastore_name}'}
 
 

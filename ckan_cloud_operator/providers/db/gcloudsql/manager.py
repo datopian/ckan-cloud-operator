@@ -23,7 +23,6 @@ import os
 import yaml
 import subprocess
 
-from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator import logs
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 from ckan_cloud_operator.drivers.gcloud import driver as gcloud_driver
@@ -31,14 +30,13 @@ from ckan_cloud_operator.drivers.gcloud import driver as gcloud_driver
 
 def initialize(db_prefix=None, interactive=False):
     _set_provider()
-    ckan_infra = CkanInfra(required=False)
     default_values = {
-        'host': ckan_infra.POSTGRES_HOST,
+        'host': '',
         'port': '5432',
         'is-private-ip': True,
-        'admin-user': ckan_infra.POSTGRES_USER,
-        'admin-password': ckan_infra.POSTGRES_PASSWORD,
-        'gcloud-sql-instance-name': ckan_infra.GCLOUD_SQL_INSTANCE_NAME,
+        'admin-user': '',
+        'admin-password': '',
+        'gcloud-sql-instance-name': '',
     }
     if interactive:
         print("\n"
@@ -55,6 +53,8 @@ def initialize(db_prefix=None, interactive=False):
             _config_set(key, default_value, **_get_config_credentials_kwargs(db_prefix))
         elif not config.get(key):
             raise Exception(f'missing key: {key}')
+    from ckan_cloud_operator.providers.db.proxy.gcloudsql import manager as db_proxy_gcloudsql_manager
+    db_proxy_gcloudsql_manager.initialize(db_prefix=db_prefix)
 
 
 def get_postgres_internal_host_port(db_prefix=None):
@@ -86,38 +86,44 @@ def import_db(import_url, target_db_name, import_user, db_prefix=None):
     )
 
 
-def create_backup(database, connection_string=None, db_prefix=None):
+def create_backup(database, connection_string=None, db_prefix=None, if_not_exists=False):
     filename = f'{database}_' + datetime.datetime.now().strftime('%Y%m%d%H%M') + '.gz'
     gs_url = os.path.join(
         _credentials_get(db_prefix, key='backups-gs-base-url', required=True),
         datetime.datetime.now().strftime('%Y/%m/%d/%H'),
         filename
     )
-    if not connection_string:
-        from ckan_cloud_operator.providers.db import manager as db_manager
-        connection_string = db_manager.get_external_admin_connection_string(db_name=database)
-    logs.info(f'Dumping DB: {filename}')
-    subprocess.check_call([
-        "bash", "-o", "pipefail", "-c",
-            f"pg_dump -d {connection_string} --format=plain --no-owner --no-acl --schema=public | "
-            f"sed -E 's/(DROP|CREATE|COMMENT ON) EXTENSION/-- \\1 EXTENSION/g' | "
-            f"gzip -c > {filename}",
-    ])
-    subprocess.check_call(f'ls -lah {filename}', shell=True)
-    logs.info(f'Copying to: {gs_url}')
-    gcloud_driver.check_call(
-        *_gcloud().get_project_zone(),
-        f'-m cp ./{filename} {gs_url} && rm {filename}',
-        gsutil=True
-    )
+    if if_not_exists and gcloud_driver.call(*_gcloud().get_project_zone(), f'ls {gs_url}') == 0:
+        return False
+    else:
+        if not connection_string:
+            from ckan_cloud_operator.providers.db import manager as db_manager
+            connection_string = db_manager.get_external_admin_connection_string(db_name=database)
+        logs.info(f'Dumping DB: {filename}')
+        subprocess.check_call([
+            "bash", "-o", "pipefail", "-c",
+                f"pg_dump -d {connection_string} --format=plain --no-owner --no-acl --schema=public | "
+                f"sed -E 's/(DROP|CREATE|COMMENT ON) EXTENSION/-- \\1 EXTENSION/g' | "
+                f"gzip -c > {filename}",
+        ])
+        subprocess.check_call(f'ls -lah {filename}', shell=True)
+        logs.info(f'Copying to: {gs_url}')
+        gcloud_driver.check_call(
+            *_gcloud().get_project_zone(),
+            f'-m cp ./{filename} {gs_url} && rm {filename}',
+            gsutil=True
+        )
+        return True
 
 
-def create_all_backups():
+def create_all_backups(missing=False, one=False):
     logs.info('Fetching all database names')
     from ckan_cloud_operator.providers.db import manager as db_manager
     db_names = [db[0] for db in db_manager.get_all_dbs_users()[0] if db[0] != 'postgres']
     logs.info('{} DBs'.format(len(db_names)))
-    [create_backup(db) for db in db_names]
+    for db in db_names:
+        if create_backup(db, if_not_exists=missing) and one:
+            break
 
 
 def get_operation_status(operation_id):
