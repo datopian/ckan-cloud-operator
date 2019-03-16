@@ -98,8 +98,19 @@ def get_external_connection_string(user, password, db_name, db_prefix=None):
     return f'postgresql://{user}:{password}@{db_host}:{db_port}/{db_name}'
 
 
-def get_deis_instance_credentials(instance_id, is_datastore=False, is_datastore_readonly=False, required=True):
-    none = None, None, None
+def get_deis_instance_db_prefix(instance_id, is_datastore=False):
+    instance_kind = ckan_manager.instance_kind()
+    instance = kubectl.get(f'{instance_kind} {instance_id}', required=False)
+    return get_deis_instance_db_prefix_from_instance(instance, is_datastore)
+
+
+def get_deis_instance_db_prefix_from_instance(instance, is_datastore=False):
+    return instance['spec'].get('datastore' if is_datastore else 'db', {}).get('dbPrefix') if instance else None
+
+
+def get_deis_instance_credentials(instance_id, is_datastore=False, is_datastore_readonly=False, required=True,
+                                  with_db_prefix=False):
+    none = (None, None, None, None) if with_db_prefix else (None, None, None)
     instance_kind = ckan_manager.instance_kind()
     instance = kubectl.get(f'{instance_kind} {instance_id}', required=required)
     if not instance: return none
@@ -118,6 +129,8 @@ def get_deis_instance_credentials(instance_id, is_datastore=False, is_datastore_
         password = secret.get('databasePassword')
     res = [user, password, db_name]
     if all(res):
+        if with_db_prefix:
+            res.append(get_deis_instance_db_prefix_from_instance(instance, is_datastore or is_datastore_readonly))
         return res
     else:
         assert not required, 'missing some db values'
@@ -125,8 +138,9 @@ def get_deis_instance_credentials(instance_id, is_datastore=False, is_datastore_
 
 
 def get_deis_instance_internal_connection_details(instance_id, is_datastore=False, is_datastore_readonly=False, required=True):
-    user, password, db_name = get_deis_instance_credentials(instance_id, is_datastore, is_datastore_readonly, required)
-    db_host, db_port = get_internal_proxy_host_port()
+    user, password, db_name, db_prefix = get_deis_instance_credentials(instance_id, is_datastore, is_datastore_readonly, required,
+                                                                       with_db_prefix=True)
+    db_host, db_port = get_internal_proxy_host_port(db_prefix=db_prefix)
     res = [user, password, db_name, db_host, db_port]
     if all(res):
         return res
@@ -136,7 +150,10 @@ def get_deis_instance_internal_connection_details(instance_id, is_datastore=Fals
 
 
 def get_deis_instance_external_connection_details(instance_id, is_datastore=False, is_datastore_readonly=False, required=True, db_prefix=None):
-    user, password, db_name = get_deis_instance_credentials(instance_id, is_datastore, is_datastore_readonly, required)
+    user, password, db_name, i_db_prefix = get_deis_instance_credentials(instance_id, is_datastore, is_datastore_readonly,
+                                                                         required, with_db_prefix=True)
+    if not db_prefix:
+        db_prefix = i_db_prefix
     db_host, db_port = get_external_proxy_host_port(db_prefix=db_prefix)
     res = [user, password, db_name, db_host, db_port]
     if all(res):
@@ -146,14 +163,14 @@ def get_deis_instance_external_connection_details(instance_id, is_datastore=Fals
         return None, None, None, None, None
 
 
-def get_internal_proxy_host_port():
+def get_internal_proxy_host_port(db_prefix=None):
     """Returns connection details for internal cluster access, via proxy if enabled"""
     db_proxy_provider = db_proxy_manager.get_provider(required=False)
     if db_proxy_provider:
-        db_host, db_port = db_proxy_provider.get_internal_proxy_host_port()
+        db_host, db_port = db_proxy_provider.get_internal_proxy_host_port(db_prefix=db_prefix)
     else:
         db_provider_manager = get_provider()
-        db_host, db_port = db_provider_manager.get_postgres_internal_host_port()
+        db_host, db_port = db_provider_manager.get_postgres_internal_host_port(db_prefix=db_prefix)
     return db_host, db_port
 
 

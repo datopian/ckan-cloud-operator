@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3:4.5.11
+FROM continuumio/miniconda3
 RUN conda update -n base -c defaults conda
 RUN apt-get update && apt-get install -y gnupg bash-completion
 RUN echo "deb http://packages.cloud.google.com/apt cloud-sdk-stretch main" >> /etc/apt/sources.list.d/google-cloud-sdk.list && \

@@ -10,3 +10,4 @@ dependencies:
     - click
     - toml
     - requests
+    - postgres-db-diff

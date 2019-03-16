@@ -8,6 +8,7 @@ from ckan_cloud_operator import logs
 from . import manager
 
 from .gcloudsql import cli as gcloudsql_proxy_cli
+from ckan_cloud_operator.config import manager as config_manager
 
 
 @click.group()
@@ -25,13 +26,12 @@ proxy.add_command(gcloudsql_proxy_cli.gcloudsql)
 def port_forward(db_prefix, all_daemon):
     if all_daemon:
         assert not db_prefix and all_daemon == 'I know the risks'
-        logs.info('Starting main DB proxy')
         subprocess.Popen(['ckan-cloud-operator', 'db', 'proxy', 'port-forward'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        from ckan_cloud_operator.config import manager as config_manager
-        for db_prefix in config_manager.get("all-db-prefixes", configmap_name="ckan-cloud-provider-db-proxy-gcloudsql").split(","):
-            logs.info(f'Starting {db_prefix} DB proxy')
-            subprocess.Popen(['ckan-cloud-operator', 'db', 'proxy', 'port-forward', '--db-prefix', db_prefix],
-                             stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        prefixes = config_manager.get("all-db-prefixes", configmap_name="ckan-cloud-provider-db-proxy-gcloudsql")
+        if prefixes:
+            for db_prefix in prefixes.split(","):
+                subprocess.Popen(['ckan-cloud-operator', 'db', 'proxy', 'port-forward', '--db-prefix', db_prefix],
+                                 stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
     else:
         while True:
             start_time = datetime.datetime.now()

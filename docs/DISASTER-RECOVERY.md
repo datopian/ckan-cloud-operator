@@ -5,10 +5,15 @@
 Get the DB backups bucket name and path:
 
 ```
-ckan-cloud-operator config get --secret-name ckan-cloud-provider-db-gcloudsql-credentials --key backups-gs-base-url
+BACKUPS_GS_BASE_URL=`ckan-cloud-operator config get --secret-name ckan-cloud-provider-db-gcloudsql-credentials --key backups-gs-base-url --raw`
+echo $BACKUPS_GS_BASE_URL
 ```
 
-Browse the available backups using the Gcloud console storage web-ui.
+Browse the available backups using the Gcloud console storage web-ui or the console:
+
+```
+gsutil ls $BACKUPS_GS_BASE_URL/
+```
 
 Storage path can usually be shared between the old and restored instances. See "Restore Minio Storage" if you need to restore storage for an instance.
 
@@ -169,4 +174,24 @@ Ark supports restoring the whole cluster:
 
 ```
 ark restore
+```
+
+
+### DB Backup data verification
+
+Create a new instance based on backups, set old and new instance IDs in env vars:
+
+```
+OLD_INSTANCE_ID=
+NEW_INSTANCE_ID=
+DIFF_FOLDER=/tmp/dbdiff_$OLD_INSTANCE_ID
+```
+
+Compare main DB
+
+```
+postgres-db-diff \
+    --db1 `ckan-cloud-operator db connection-string --deis-instance $OLD_INSTANCE_ID` \
+    --db2 `ckan-cloud-operator db connection-string --deis-instance $NEW_INSTANCE_ID` \
+    --diff-folder $DIFF_FOLDER
 ```

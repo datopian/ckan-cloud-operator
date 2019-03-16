@@ -6,6 +6,16 @@ import datetime
 import json
 
 
+### disable yaml load warnings
+# see https://github.com/yaml/pyyaml/wiki/PyYAML-yaml.load(input)-Deprecation
+
+if hasattr(yaml, 'warnings'):
+    yaml.warnings({'YAMLLoadWarning': False})
+
+
+### global fix for yaml handling of datetime formats with compatibility for kubectl
+
+
 datetime_format = '%Y-%m-%dT%H:%M:%SZ'
 
 
@@ -20,6 +30,8 @@ def datetime_constructor(loader, node):
 
 yaml.add_representer(datetime.datetime, datetime_representer)
 yaml.add_constructor(u'!datetime', datetime_constructor)
+
+### end yaml fixes
 
 
 def check_call(cmd, namespace='ckan-cloud', use_first_pod=False):

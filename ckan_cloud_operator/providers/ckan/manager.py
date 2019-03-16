@@ -293,7 +293,9 @@ def ckan_admin_credentials(instance_id):
 
 def update_deis_instance_envvars(deis_instance, envvars):
     smtp_creds = config_manager.get(secret_name='ckan-default-smtp-credentials')
-    if smtp_creds and envvars.get('CKAN_SMTP_MAIL_FROM', '') in ['', smtp_creds['from']]:
+    old_froms = smtp_creds.get('old-froms')
+    old_froms = old_froms.split(',') if old_froms else []
+    if smtp_creds and envvars.get('CKAN_SMTP_MAIL_FROM', '') in ['', smtp_creds['from']] + old_froms:
         logs.info(f'updating smtp credentials for deis instance {deis_instance.id}')
         envvars.update(CKAN_SMTP_MAIL_FROM=smtp_creds['from'],
                        CKAN_SMTP_SERVER=smtp_creds['server'],
