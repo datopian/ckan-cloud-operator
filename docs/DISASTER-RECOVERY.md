@@ -179,19 +179,35 @@ ark restore
 
 ### DB Backup data verification
 
-Create a new instance based on backups, set old and new instance IDs in env vars:
+Create a new instance based on backups
+
+Set some env vars and initialize the DB diff tool:
 
 ```
 OLD_INSTANCE_ID=
 NEW_INSTANCE_ID=
 DIFF_FOLDER=/tmp/dbdiff_$OLD_INSTANCE_ID
+
+mkdir -p $DIFF_FOLDER/db
+mkdir -p $DIFF_FOLDER/datastore
+
+alias postgresdbdiff.py="python -m ckan_cloud_operator.drivers.postgresdbdiff"
 ```
 
 Compare main DB
 
 ```
-postgres-db-diff \
+postgresdbdiff.py \
     --db1 `ckan-cloud-operator db connection-string --deis-instance $OLD_INSTANCE_ID` \
     --db2 `ckan-cloud-operator db connection-string --deis-instance $NEW_INSTANCE_ID` \
-    --diff-folder $DIFF_FOLDER
+    --diff-folder $DIFF_FOLDER/db | tee -a $DIFF_FOLDER/db.log
+```
+
+Compare datastore DB
+
+```
+postgresdbdiff.py \
+    --db1 `ckan-cloud-operator db connection-string --deis-instance $OLD_INSTANCE_ID --datastore` \
+    --db2 `ckan-cloud-operator db connection-string --deis-instance $NEW_INSTANCE_ID --datastore` \
+    --diff-folder $DIFF_FOLDER/datastore | tee -a $DIFF_FOLDER/datastore.log
 ```
