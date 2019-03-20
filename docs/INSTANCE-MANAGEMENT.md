@@ -175,12 +175,27 @@ ckan-cloud-operator deis-instance edit INSTANCE_ID
 
 Following changes can be done to the spec:
 
-**container image**
+**override container spec**
+
+Set specific CKAN Docker image:
 
 ```
   ckanContainerSpec:
     image: DOCKER_IMAGE
 ```
+
+Set container resources:
+
+```
+  ckanContainerSpec:
+    resources:
+      limits:
+        memory: 3Gi
+      requests:
+        memory: 2Gi
+```
+
+See [kubernetes api: container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.11/#container-v1-core).
 
 **container env vars - from a secret**
 

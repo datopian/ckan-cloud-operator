@@ -53,11 +53,11 @@ To Add a target:
 Restart Prometheus:
 
 ```
-ckan-cloud-operator kubectl -- -n prometheus exec prometheus-prometheus-0 -- kill -HUP 1
+ckan-cloud-operator kubectl -- -n prometheus exec prometheus-prometheus-0 -- bash -c '"kill -HUP 1"' &&\
+ckan-cloud-operator kubectl -- -n prometheus exec prometheus-prometheus-1 -- bash -c '"kill -HUP 1"' && echo Great Success!
 ```
 
-  * Edit `prometheus-prometheus` statefulset under `prometheus` namespace
-  * Delete the pods to recreate
+Start a port forward to Prometheus and verify target is configured and up: http://localhost:9090/targets
 
 ### Configure alerts
 

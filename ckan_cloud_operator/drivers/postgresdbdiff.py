@@ -244,7 +244,7 @@ def compare_each_table(options, db1_tables, db2_tables, items_name):
                     for diff_line in diff:
                         f.write(diff_line)
 
-        else:
+        elif options.rowcount:
             t1_rowcount = get_table_rowcount(options.db1, t)
             t2_rowcount = get_table_rowcount(options.db2, t)
             if t1_rowcount != t2_rowcount:

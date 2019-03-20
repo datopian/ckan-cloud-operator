@@ -9,10 +9,10 @@ BACKUPS_GS_BASE_URL=`ckan-cloud-operator config get --secret-name ckan-cloud-pro
 echo $BACKUPS_GS_BASE_URL
 ```
 
-Browse the available backups using the Gcloud console storage web-ui or the console:
+List all backups from current day of an instance:
 
 ```
-gsutil ls $BACKUPS_GS_BASE_URL/
+gsutil ls $BACKUPS_GS_BASE_URL/`date +%Y/%m/%d`/'*'/ | grep INSTANCE_ID
 ```
 
 Storage path can usually be shared between the old and restored instances. See "Restore Minio Storage" if you need to restore storage for an instance.
@@ -32,10 +32,22 @@ ckan-cloud-operator deis-instance create from-gitlab GITLAB_REPO SOLR_SCHEMA_CON
 
 In case of failure, you can add `--rerun` / `--force` / `--recreate-dbs` arguments to rerun from last successful step or force / recreate. See [IMPORT-DEIS.md](/docs/IMPORT-DEIS.md) for more details about DB migrations.
 
-Add the default instance route:
+To deploy on a different DB instance, add `--db-prefix DB_PREFIX`
+
+To switch existing external domain to use the new instance -
+
+Edit the routes associated with the old instance -
 
 ```
-ckan-cloud-operator routers create-deis-instance-subdomain-route instances-default NEW_INSTANCE_ID --wait-ready
+ckan-cloud-operator routers get-routes --deis-instance-id OLD_INSTANCE_ID --edit
+```
+
+For the route associated with the external domains router - change the instance id in all fields (be sure to update all fields, including labels, annotations and spec)
+
+Update the router:
+
+```
+ckan-cloud-operator routers update ROUTER_NAME
 ```
 
 See [IMPORT-DEIS.md](/docs/IMPORT-DEIS.md) for setting up an external route and more troubleshooting and configuration options.
@@ -200,7 +212,7 @@ Compare main DB
 postgresdbdiff.py \
     --db1 `ckan-cloud-operator db connection-string --deis-instance $OLD_INSTANCE_ID` \
     --db2 `ckan-cloud-operator db connection-string --deis-instance $NEW_INSTANCE_ID` \
-    --diff-folder $DIFF_FOLDER/db | tee -a $DIFF_FOLDER/db.log
+    --rowcount --diff-folder $DIFF_FOLDER/db | tee -a $DIFF_FOLDER/db.log
 ```
 
 Compare datastore DB
@@ -209,5 +221,5 @@ Compare datastore DB
 postgresdbdiff.py \
     --db1 `ckan-cloud-operator db connection-string --deis-instance $OLD_INSTANCE_ID --datastore` \
     --db2 `ckan-cloud-operator db connection-string --deis-instance $NEW_INSTANCE_ID --datastore` \
-    --diff-folder $DIFF_FOLDER/datastore | tee -a $DIFF_FOLDER/datastore.log
+    --rowcount --diff-folder $DIFF_FOLDER/datastore | tee -a $DIFF_FOLDER/datastore.log
 ```

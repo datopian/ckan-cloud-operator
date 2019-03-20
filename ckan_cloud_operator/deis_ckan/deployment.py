@@ -62,7 +62,6 @@ class DeisCkanInstanceDeployment(object):
     def _deploy(self):
         print(f'Deploying instance {self.instance.id}')
         ckanContainerSpec = dict(
-            self.instance.spec.spec['ckanContainerSpec'],
             name='ckan',
             envFrom=[{'secretRef': {'name': 'ckan-envvars'}}],
             readinessProbe={
@@ -84,6 +83,7 @@ class DeisCkanInstanceDeployment(object):
                 }
             }
         )
+        ckanContainerSpec.update(self.instance.spec.spec['ckanContainerSpec'])
         if 'imageFromGitlab' in ckanContainerSpec:
             ckanContainerSpec['image'] = 'registry.gitlab.com/{}:latest'.format(ckanContainerSpec.pop('imageFromGitlab'))
         ckanPodSpec = dict(self.instance.spec.spec['ckanPodSpec'],
