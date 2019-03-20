@@ -193,8 +193,8 @@ def get_provider():
     return providers_manager.get_provider(db_provider_submodule)
 
 
-def check_db_exists(db_name):
-    admin_connection_string = get_external_admin_connection_string()
+def check_db_exists(db_name, db_prefix=None):
+    admin_connection_string = get_external_admin_connection_string(db_prefix=db_prefix)
     with postgres_driver.connect(admin_connection_string) as admin_conn:
         return len(list(postgres_driver.list_roles(admin_conn, role_name=db_name))) > 0
 

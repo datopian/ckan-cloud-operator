@@ -13,13 +13,14 @@ class DeisCkanInstanceDb(object):
         assert db_type in ['db', 'datastore']
         self.db_type = db_type
         self.db_spec = getattr(self.instance.spec, db_type)
+        self.db_prefix = self.db_spec.get('dbPrefix')
 
     def set_datastore_readonly_permissions(self):
         assert self.db_type == 'datastore'
         db_name = self.db_spec['name']
         ro_user = self.instance.annotations.get_secret('datastoreReadonlyUser')
         print(f'setting datastore permissions: {db_name} ({ro_user})')
-        with postgres_driver.connect(db_manager.get_external_admin_connection_string(db_name=db_name)) as conn:
+        with postgres_driver.connect(db_manager.get_external_admin_connection_string(db_name=db_name, db_prefix=self.db_prefix)) as conn:
             with conn.cursor() as cur:
                 for line in [
                     f"GRANT CONNECT ON DATABASE \"{db_name}\" TO \"{ro_user}\";",
@@ -64,4 +65,6 @@ class DeisCkanInstanceDb(object):
                 })
 
     def get(self):
-        return {'ready': db_manager.check_db_exists(self.db_spec['name'])}
+        return {'ready': db_manager.check_db_exists(self.db_spec['name'], db_prefix=self.db_prefix),
+                'db-name': self.db_spec['name'],
+                'db-prefix': self.db_prefix}
