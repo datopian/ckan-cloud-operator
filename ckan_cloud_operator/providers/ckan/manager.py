@@ -301,6 +301,12 @@ def update_deis_instance_envvars(deis_instance, envvars):
                        CKAN_SMTP_SERVER=smtp_creds['server'],
                        CKAN_SMTP_USER=smtp_creds['user'],
                        CKAN_SMTP_PASSWORD=smtp_creds['password'])
+        if envvars.get('CKANEXT__ORGPORTALS__SMTP__MAIL__FROM'):
+            logs.info(f'updating orgportls smtp credentials for deis instance {deis_instance.id}')
+            envvars.update(CKANEXT__ORGPORTALS__SMTP__MAIL__FROM=smtp_creds['from'],
+                           CKANEXT__ORGPORTALS__SMTP__SERVER=smtp_creds['server'],
+                           CKANEXT__ORGPORTALS__SMTP__USER=smtp_creds['user'],
+                           CKANEXT__ORGPORTALS__SMTP__PASSWORD=smtp_creds['password'])
 
 
 def _generate_db_password(purpose):
