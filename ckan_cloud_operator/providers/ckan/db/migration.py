@@ -93,7 +93,7 @@ def migrate_deis_dbs(old_site_id=None, db_name=None, datastore_name=None, force=
                      dbs_suffix=None, skip_create_dbs=False, skip_datastore_import=False,
                      db_import_url=None, datastore_import_url=None, db_prefix=None):
     if not dbs_suffix: dbs_suffix = ''
-    if not db_prefix: db_prefix = ''
+    if not db_prefix: db_prefix = db_manager.get_default_db_prefix()
     if db_import_url or datastore_import_url:
         assert db_import_url and datastore_import_url
         assert db_name and datastore_name

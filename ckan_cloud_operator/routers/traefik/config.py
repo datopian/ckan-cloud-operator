@@ -93,7 +93,14 @@ def _add_route(config, domains, route, enable_ssl_redirect):
             'route1': {
                 'rule': f'Host:{frontend_hostname}{extra_hostnames}'
             }
-        }
+        },
+        **({
+            'auth': {
+                'basic': {
+                    'usersFile': '/httpauth-' + route['spec']['httpauth-secret'] + '/.htpasswd'
+                }
+            }
+        } if route['spec'].get('httpauth-secret') else {}),
     }
 
 

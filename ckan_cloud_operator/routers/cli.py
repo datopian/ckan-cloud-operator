@@ -97,14 +97,17 @@ def add_cli_commands(click, command_group, great_success):
     @click.argument('SUB_DOMAIN', required=False, default='default')
     @click.argument('ROOT_DOMAIN', required=False, default='default')
     @click.option('--wait-ready', is_flag=True)
+    @click.option('--httpauth-secret')
     def routers_create_backend_url_subdomain_route(router_name, target_resource_id, backend_url,
-                                                   sub_domain, root_domain, wait_ready):
+                                                   sub_domain, root_domain, wait_ready,
+                                                   httpauth_secret):
         routers_manager.create_subdomain_route(router_name, {
             'target-type': 'backend-url',
             'target-resource-id': target_resource_id,
             'backend-url': backend_url,
             'sub-domain': sub_domain,
             'root-domain': root_domain,
+            **({'httpauth-secret': httpauth_secret} if httpauth_secret else {}),
         })
         routers_manager.update(router_name, wait_ready)
         great_success()

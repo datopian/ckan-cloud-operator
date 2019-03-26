@@ -108,6 +108,11 @@ def get_deis_instance_db_prefix_from_instance(instance, is_datastore=False):
     return instance['spec'].get('datastore' if is_datastore else 'db', {}).get('dbPrefix') if instance else None
 
 
+def get_default_db_prefix():
+    from ckan_cloud_operator.config import manager as config_manager
+    return config_manager.get('default-db-prefix', default='')
+
+
 def get_deis_instance_credentials(instance_id, is_datastore=False, is_datastore_readonly=False, required=True,
                                   with_db_prefix=False):
     none = (None, None, None, None) if with_db_prefix else (None, None, None)

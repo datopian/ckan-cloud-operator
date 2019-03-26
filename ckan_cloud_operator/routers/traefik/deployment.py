@@ -10,8 +10,20 @@ from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 
 
-def _get_deployment_spec(router_name, router_type, annotations, image=None):
+def _get_deployment_spec(router_name, router_type, annotations, image=None, httpauth_secrets=None):
     volume_spec = cluster_manager.get_or_create_multi_user_volume_claim(get_label_suffixes(router_name, router_type))
+    httpauth_secrets_volume_mounts, httpauth_secrets_volumes = [], []
+    if httpauth_secrets:
+        added_secrets = []
+        for httpauth_secret in httpauth_secrets:
+            if httpauth_secret in added_secrets: continue
+            added_secrets.append(httpauth_secret)
+            httpauth_secrets_volumes.append({
+                'name': httpauth_secret, 'secret': {'secretName': httpauth_secret}
+            })
+            httpauth_secrets_volume_mounts.append({
+                'name': httpauth_secret, 'mountPath': f'/httpauth-{httpauth_secret}'
+            })
     deployment_spec = {
         'replicas': 1,
         'revisionHistoryLimit': 5,
@@ -27,14 +39,16 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None):
                         'ports': [{'containerPort': 80}],
                         'volumeMounts': [
                             {'name': 'etc-traefik', 'mountPath': '/etc-traefik'},
-                            {'name': 'traefik-acme', 'mountPath': '/traefik-acme', 'subPath': f'router-traefik-{router_name}'}
+                            {'name': 'traefik-acme', 'mountPath': '/traefik-acme', 'subPath': f'router-traefik-{router_name}'},
+                            *httpauth_secrets_volume_mounts,
                         ],
                         'args': ['--configFile=/etc-traefik/traefik.toml']
                     }
                 ],
                 'volumes': [
                     {'name': 'etc-traefik', 'configMap': {'name': f'router-traefik-{router_name}'}},
-                    dict(volume_spec, name='traefik-acme')
+                    dict(volume_spec, name='traefik-acme'),
+                    *httpauth_secrets_volumes,
                 ]
             }
         }
@@ -70,10 +84,13 @@ def _update(router_name, spec, annotations, routes):
         ))}
     ))
     domains = {}
+    httpauth_secrets = []
     for route in routes:
         root_domain, sub_domain = routes_manager.get_domain_parts(route)
         domains.setdefault(root_domain, []).append(sub_domain)
         routes_manager.pre_deployment_hook(route, get_labels(router_name, router_type))
+        if route['spec'].get('httpauth-secret') and route['spec']['httpauth-secret'] not in httpauth_secrets:
+            httpauth_secrets.append(route['spec']['httpauth-secret'])
     load_balancer = kubectl.get_resource(
         'v1', 'Service', f'loadbalancer-{resource_name}',
         get_labels(router_name, router_type)
@@ -106,7 +123,11 @@ def _update(router_name, spec, annotations, routes):
                                            f'{sub_domain}.{root_domain}', load_balancer_ip)
     kubectl.apply(kubectl.get_deployment(
         resource_name, get_labels(router_name, router_type, for_deployment=True),
-        _get_deployment_spec(router_name, router_type, annotations, image='traefik:1.7' if external_domains else None)
+        _get_deployment_spec(
+            router_name, router_type, annotations,
+            image=('traefik:1.7' if (external_domains or len(httpauth_secrets) > 0) else None),
+            httpauth_secrets=httpauth_secrets
+        )
     ))
 
 
