@@ -45,8 +45,11 @@ class DeisCkanInstanceDb(object):
             db_migration_spec = {
                 'type': f'new-{self.db_type}',
                 f'{self.db_type}-name': self.db_spec['name'],
+                **({'db-prefix': self.db_spec['dbPrefix']} if self.db_spec.get('dbPrefix') else {}),
             }
-            migration = ckan_db_migration_manager.create(db_migration_name, db_migration_spec, exists_ok=True)
+            migration = ckan_db_migration_manager.create(
+                db_migration_name, db_migration_spec, exists_ok=True
+            )
             for event in ckan_db_migration_manager.update(migration):
                 ckan_db_migration_manager.print_event_exit_on_complete(event, '')
         database_password, datastore_password, datastore_readonly_password = ckan_db_migration_manager.get_dbs_passwords(db_migration_name)

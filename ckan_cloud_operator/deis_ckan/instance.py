@@ -430,6 +430,8 @@ class DeisCkanInstance(object):
     def create(cls, *args, **kwargs):
         create_type = args[0]
         instance_id = args[-1]
+        from ckan_cloud_operator.providers.db.manager import get_default_db_prefix
+        db_prefix = kwargs['db_prefix'] if kwargs.get('db_prefix') else get_default_db_prefix()
         if create_type == 'from-gitlab':
             gitlab_repo = args[1]
             solr_config = args[2]
@@ -450,7 +452,7 @@ class DeisCkanInstance(object):
                                                                         rerun=kwargs.get('rerun'),
                                                                         force=kwargs.get('force'),
                                                                         recreate_dbs=kwargs.get('recreate_dbs'),
-                                                                        db_prefix=kwargs.get('db_prefix')):
+                                                                        db_prefix=db_prefix):
                     migration_name = ckan_db_migration_manager.get_event_migration_created_name(event) or migration_name
                     success = ckan_db_migration_manager.print_event_exit_on_complete(
                         event,
@@ -473,12 +475,12 @@ class DeisCkanInstance(object):
                 'db': {
                     'name': db_name,
                     **({'fromDbMigration': migration_name} if migration_name else {}),
-                    **({'dbPrefix': kwargs['db_prefix']} if kwargs.get('db_prefix') else {})
+                    **({'dbPrefix': db_prefix} if db_prefix else {})
                 },
                 'datastore': {
                     'name': datastore_name,
                     **({'fromDbMigration': migration_name} if migration_name else {}),
-                    **({'dbPrefix': kwargs['db_prefix']} if kwargs.get('db_prefix') else {})
+                    **({'dbPrefix': db_prefix} if db_prefix else {})
                 },
                 'storage': {
                     'path': storage_path,
@@ -508,11 +510,13 @@ class DeisCkanInstance(object):
                 },
                 'db': {
                     'name': instance_id,
-                    'fromDbMigration':db_migration_name
+                    'fromDbMigration':db_migration_name,
+                    **({'dbPrefix': db_prefix} if db_prefix else {})
                 },
                 'datastore': {
                     'name': f'{instance_id}-datastore',
-                    'fromDbMigration': db_migration_name
+                    'fromDbMigration': db_migration_name,
+                    **({'dbPrefix': db_prefix} if db_prefix else {})
                 },
                 'storage': {
                     'path': storage_path
