@@ -90,21 +90,15 @@ ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
     mc mb prod/ckan
 ```
 
-Copy the bucket policy from deis
+do not run the following steps, it will reset all bucket policies
 
-```
-ckan-cloud-operator ckan storage deis-minio-bucket-policy \
+~Copy the bucket policy from deis~
+~ckan-cloud-operator ckan storage deis-minio-bucket-policy \
     | ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
-        "sh -c 'cat > deis-minio-bucket-policy.json'"
-```
-
-Apply the policy to the bucket
-
-```
-ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
-    mc policy deis-minio-bucket-policy.json prod/ckan
-```
-
+        "sh -c 'cat > deis-minio-bucket-policy.json'"~
+~Apply the policy to the bucket~
+~ckan-cloud-operator kubectl -- exec -it deployment-pod::minio-mc -- \
+    mc policy deis-minio-bucket-policy.json prod/ckan~
 
 ## Instance migration
 
