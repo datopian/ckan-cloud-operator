@@ -195,31 +195,33 @@ def get_domain_routes(root_domain=None, sub_domain=None):
     return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
 
 
-def delete_routes(routes=None, deis_instance_id=None, backend_url_target_resource_id=None, datapusher_name=None,
-                  root_domain=None, sub_domain=None):
-    if deis_instance_id:
-        assert not routes and not backend_url_target_resource_id and not datapusher_name and not root_domain and not sub_domain
-        routes = get_deis_instance_routes(deis_instance_id)
-    elif backend_url_target_resource_id:
-        assert not routes and not datapusher_name and not root_domain and not sub_domain
-        routes = get_backend_url_routes(backend_url_target_resource_id)
-    elif datapusher_name:
-        assert not routes and not root_domain and not sub_domain
-        routes = get_datapusher_routes(datapusher_name)
-    elif root_domain or sub_domain:
-        assert not routes
-        routes = get_domain_routes(root_domain, sub_domain)
-    assert routes
-    delete_route_names = set()
-    update_router_names = set()
-    for route in routes:
-        delete_route_names.add(route['metadata']['name'])
-        update_router_names.add(route['spec']['router_name'])
-    if len(delete_route_names) > 0:
-        delete_route_names = ' '.join(delete_route_names)
-        kubectl.check_call(f'delete CkanCloudRoute {delete_route_names}')
-        for router_name in update_router_names:
-            update(router_name)
+# delete_routes mtehod is dangerous - better to delete manually via kubectl
+#
+# def delete_routes(routes=None, deis_instance_id=None, backend_url_target_resource_id=None, datapusher_name=None,
+#                   root_domain=None, sub_domain=None):
+#     if deis_instance_id:
+#         assert not routes and not backend_url_target_resource_id and not datapusher_name and not root_domain and not sub_domain
+#         routes = get_deis_instance_routes(deis_instance_id)
+#     elif backend_url_target_resource_id:
+#         assert not routes and not datapusher_name and not root_domain and not sub_domain
+#         routes = get_backend_url_routes(backend_url_target_resource_id)
+#     elif datapusher_name:
+#         assert not routes and not root_domain and not sub_domain
+#         routes = get_datapusher_routes(datapusher_name)
+#     elif root_domain or sub_domain:
+#         assert not routes
+#         routes = get_domain_routes(root_domain, sub_domain)
+#     assert routes
+#     delete_route_names = set()
+#     update_router_names = set()
+#     for route in routes:
+#         delete_route_names.add(route['metadata']['name'])
+#         update_router_names.add(route['spec']['router_name'])
+#     if len(delete_route_names) > 0:
+#         delete_route_names = ' '.join(delete_route_names)
+#         kubectl.check_call(f'delete CkanCloudRoute {delete_route_names}')
+#         for router_name in update_router_names:
+#             update(router_name)
 
 
 def get_default_infra_router_name():
