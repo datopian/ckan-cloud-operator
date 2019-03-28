@@ -6,7 +6,7 @@ if [ "${1}" == "install" ]; then
 
 elif [ "${1}" == "script" ]; then
     ! docker build --cache-from viderum/ckan-cloud-operator:latest -t ckan-cloud-operator . && echo Failed to build image && exit 1
-    ! docker build -t ckan-cloud-operator-jnlp . && echo Failed to build jnlp image && exit 1
+    ! docker build -t ckan-cloud-operator-jnlp -f Dockerfile.jenkins-jnlp . && echo Failed to build jnlp image && exit 1
     echo Great Success! && exit 0
 
 elif [ "${1}" == "deploy" ]; then
