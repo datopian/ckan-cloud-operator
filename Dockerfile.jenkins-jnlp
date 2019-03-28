@@ -24,4 +24,5 @@ RUN . miniconda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
     cd ckan-cloud-operator && python3 -m pip install -e .
 ENV PATH=/home/jenkins/miniconda/envs/ckan-cloud-operator/bin:/home/jenkins/miniconda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV CKAN_CLOUD_OPERATOR_USE_PROXY=n
+WORKDIR /home/jenkins
 ENTRYPOINT ["./ckan-cloud-operator/entrypoint-jnlp.sh"]
