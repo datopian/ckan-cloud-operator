@@ -65,7 +65,8 @@ def get_postgres_internal_host_port(db_prefix=None):
 
 
 def get_postgres_external_host_port(db_prefix=None):
-    assert _credentials_get(db_prefix, key='is-private-ip', required=False) != 'y', 'direct access to the DB is not supported, please enable the db proxy'
+    if os.environ.get('CKAN_CLOUD_OPERATOR_USE_PROXY') != 'n':
+        assert _credentials_get(db_prefix, key='is-private-ip', required=False) != 'y', 'direct access to the DB is not supported, please enable the db proxy'
     host, port = get_postgres_internal_host_port(db_prefix)
     return host, port
 
