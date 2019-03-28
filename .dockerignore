@@ -6,3 +6,5 @@ tests/data
 .dfs-checkpoints
 **/__pycache__
 **/*.pyc
+.checkpoints
+data
