@@ -509,7 +509,11 @@ class BaseAnnotations(object):
 def _parse_call_cmd(cmd, namespace, use_first_pod):
     args = []
     for arg in cmd.split(' '):
-        if arg.startswith('deployment-pod::'):
-            arg = get_deployment_pod_name(arg.replace('deployment-pod::', ''), namespace=namespace, use_first_pod=use_first_pod)
+        splitarg = arg.split(':')
+        if splitarg[0] == 'deployment-pod':
+            _, deployment_namespace, deployment_name = splitarg
+            if not deployment_namespace:
+                deployment_namespace = namespace
+            arg = get_deployment_pod_name(deployment_name, namespace=deployment_namespace, use_first_pod=use_first_pod)
         args.append(arg)
     return ' '.join(args)

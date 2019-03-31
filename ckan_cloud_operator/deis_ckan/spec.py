@@ -110,6 +110,13 @@ class DeisCkanInstanceSpec(object):
                         assert type(vv) == str and len(vv) > 6, f'Invalid storage path: {vv}'
                     else:
                         raise ValueError(f'Invalid storage spec attribute: {kk}={vv}')
+            elif k == 'routes':
+                assert type(v) == dict
+                for kk, vv in v.items():
+                    if kk == 'target-port':
+                        assert type(vv) == int and vv > 0, f'invalid target-port: {vv}'
+                    else:
+                        raise ValueError(f'Invalid routers spec attribute: {kk}={vv}')
             else:
                 raise ValueError(f'Invalid spec attribute: {k}={v}')
         assert spec['db']['name'] != spec['datastore']['name']
