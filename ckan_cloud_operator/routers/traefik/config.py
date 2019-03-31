@@ -106,7 +106,17 @@ def _add_route(config, domains, route, enable_ssl_redirect):
 
 def get(routes, letsencrypt_cloudflare_email, enable_access_log=False, wildcard_ssl_domain=None, external_domains=False):
     config = _get_base_config(
-        **({'accessLog': {},} if enable_access_log else {})
+        **(
+            {
+                'accessLog': {
+                    "format": "json",
+                    "fields": {
+                        'defaultMode': "keep"
+                    }
+                },
+            }
+            if enable_access_log else {}
+        )
     )
     domains = {}
     for route in routes:

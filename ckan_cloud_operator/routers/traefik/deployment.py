@@ -79,6 +79,7 @@ def _update(router_name, spec, annotations, routes):
         resource_name, get_labels(router_name, router_type),
         {'traefik.toml': toml.dumps(traefik_router_config.get(
             routes, cloudflare_email,
+            enable_access_log=bool(spec.get('enable-access-log')),
             wildcard_ssl_domain=spec.get('wildcard-ssl-domain'),
             external_domains=external_domains
         ))}
