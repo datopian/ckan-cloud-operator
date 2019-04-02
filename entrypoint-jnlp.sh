@@ -13,4 +13,8 @@ rm -rf .config/gcloud
 
 export KUBECONFIG="${USER_KUBECONFIG}"
 
-exec jenkins-slave
+if [ "$*" == "" ]; then
+    exec jenkins-slave
+else
+    exec "$@"
+fi
