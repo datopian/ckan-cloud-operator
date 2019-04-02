@@ -118,7 +118,8 @@ def ckan_cloud_instances(operator):
                     'db': '',
                     'solr': '',
                     'storage': '',
-                    'creationTimestamp': str(deployment['metadata']['creationTimestamp'])
+                    'creationTimestamp': str(deployment['metadata']['creationTimestamp']),
+                    'generation': '',
                 }
 
     return _processor
