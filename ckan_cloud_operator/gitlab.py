@@ -6,7 +6,6 @@ import traceback
 import requests
 
 
-from ckan_cloud_operator.providers.ckan import manager as ckan_manager
 from ckan_cloud_operator import logs
 
 
@@ -75,6 +74,7 @@ class CkanGitlab(object):
                 # needs_update = True
                 # line = 'RUN pip install --upgrade pip==18.1 && pip install {}'.format(line[15:])
             lines.append(line)
+        from ckan_cloud_operator.providers.ckan import manager as ckan_manager
         search_replace_needs_update, lines = ckan_manager.gitlab_search_replace(lines)
         if needs_update or search_replace_needs_update:
             return needs_update, search_replace_needs_update, '{}\n'.format('\n'.join(lines))
@@ -106,6 +106,7 @@ class CkanGitlab(object):
                 return None
 
     def _curl(self, urlpart, postjson=None, method='POST'):
+        from ckan_cloud_operator.providers.ckan import manager as ckan_manager
         gitlab_token = ckan_manager.gitlab_token()
         if postjson:
             r = requests.request(
