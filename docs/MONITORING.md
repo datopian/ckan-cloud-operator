@@ -1,38 +1,43 @@
 # Monitoring
 
+## Alerts
+
+Following alerts should be defined:
+
+* Prometheus alertmanager - 
+  * General kubernetes alerts
+  * Can be configured to send to slack, see [Prometheus docs](https://prometheus.io/docs/alerting/alertmanager/)
+  * Alertmanager web-UI can be used to silence and comment on alerts
+* Periodical task that checks instance readyness
+  * Use Jenkins to periodically (e.g. every 5 minutes) check readyness of each instances based on `ready` attributes in `ckan-cloud-operator deis-instance list --full`
+
 ## Prometheus + Grafana
 
 ### Deploy Prometheus
 
 [Google click to deploy Prometheus & Grafana](https://console.cloud.google.com/marketplace/details/google/prometheus?q=prometheus)
 
-### Expose grafana
+### Expose services
+
+Use ckan-cloud-operator routes to expose the service, for example:
 
 ```
 ckan-cloud-operator routers create-backend-url-subdomain-route --wait-ready ROUTER_NAME grafana http://prometheus-grafana.prometheus
 ```
+
+The following routes are required:
+
+* grafana.example.com --> http://prometheus-grafana.prometheus
+* prometheus.example.com --> http://prometheus-prometheus.prometheus:9090
+* prometheus-alertmanager.example.com --> http://prometheus-alertmanager.prometheus:9093
+
+Grafan can be exposed directly as it handles user authentication. Alertmanager and prometheus needs to be password protected (see ckan-cloud-operator routers create httpauth-secret flag)
 
 Get the Grafana admin credentials
 
 ```
 ckan-cloud-operator config get --secret-name prometheus-grafana --namespace prometheus
 ```
-
-### Access Prometheus web-ui
-
-```
-KUBECONFIG=/path/to/cluster/kubeconfig kubectl -n prometheus port-forward prometheus-prometheus-0 9090
-```
-
-Access Prometheus at http://localhost:9090
-
-### Access Alertmanager web-ui
-
-```
-KUBECONFIG=/path/to/cluster/kubeconfig kubectl -n prometheus port-forward prometheus-alertmanager-0 9093
-```
-
-Access alertmanager at http://localhost:9093
 
 ### Configure targets
 
