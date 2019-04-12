@@ -13,6 +13,7 @@ from ckan_cloud_operator.crds import manager as crds_manager
 from ckan_cloud_operator.providers.db.proxy import manager as db_proxy_manager
 from ckan_cloud_operator.providers.db import manager as db_manager
 from ckan_cloud_operator.providers import manager as providers_manager
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 from ckan_cloud_operator.infra import CkanInfra
 
@@ -34,20 +35,21 @@ def initialize(log_kwargs=None, interactive=False):
     log_kwargs = log_kwargs or {}
     logs.info(f'Installing crds', **log_kwargs)
     crds_manager.install_crd(CRD_SINGULAR, CRD_PLURAL, CRD_KIND, hash_names=True)
-    ckan_infra = CkanInfra(required=False)
-    if interactive:
-        providers_manager.config_interactive_set(
-            PROVIDER_SUBMODULE,
-            default_values={'gcloud-storage-import-bucket': ckan_infra.GCLOUD_SQL_DEIS_IMPORT_BUCKET},
-            suffix='deis-migration'
-        )
-    else:
-        if not providers_manager.config_get(PROVIDER_SUBMODULE, key='gcloud-storage-import-bucket', suffix='deis-migration', required=False):
-            providers_manager.config_set(
+    if cluster_manager.get_provider_id() == 'gcloud':
+        ckan_infra = CkanInfra(required=False)
+        if interactive:
+            providers_manager.config_interactive_set(
                 PROVIDER_SUBMODULE,
-                values={'gcloud-storage-import-bucket': ckan_infra.GCLOUD_SQL_DEIS_IMPORT_BUCKET},
+                default_values={'gcloud-storage-import-bucket': ckan_infra.GCLOUD_SQL_DEIS_IMPORT_BUCKET},
                 suffix='deis-migration'
             )
+        else:
+            if not providers_manager.config_get(PROVIDER_SUBMODULE, key='gcloud-storage-import-bucket', suffix='deis-migration', required=False):
+                providers_manager.config_set(
+                    PROVIDER_SUBMODULE,
+                    values={'gcloud-storage-import-bucket': ckan_infra.GCLOUD_SQL_DEIS_IMPORT_BUCKET},
+                    suffix='deis-migration'
+                )
 
 
 def get(name=None, required=True):

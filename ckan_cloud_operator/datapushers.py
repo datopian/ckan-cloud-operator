@@ -1,7 +1,7 @@
 import yaml
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.routers import manager as routers_manager
-
+from ckan_cloud_operator.config import manager as config_manager
 
 def add_cli_commands(click, command_group, great_success):
 
@@ -54,35 +54,36 @@ def initialize():
     router_name = 'datapushers'
     if not routers_manager.get(router_name, required=False):
         routers_manager.create(router_name, routers_manager.get_traefik_router_spec())
-    create(
-        'datapusher-1',
-        'registry.gitlab.com/viderum/docker-datapusher:cloud-datapusher-1-v9',
-        datapusher_envvars,
-        router_name
-    )
-    create(
-        'datapusher-de',
-        'registry.gitlab.com/viderum/docker-datapusher:cloud-de-git-943fc3e0',
-        datapusher_envvars,
-        router_name
-    )
-    create(
-        'datapusher-giga',
-        'registry.gitlab.com/viderum/docker-datapusher:cloud-giga-git-2b05b22d',
-        datapusher_envvars,
-        router_name
-    )
-    create(
-        'datapusher-increased-max-length',
-        'registry.gitlab.com/viderum/docker-datapusher:cloud-increased-max-length-git-84e86116',
-        datapusher_envvars,
-        router_name
-    )
-    update('datapusher-1')
-    update('datapusher-de')
-    update('datapusher-giga')
-    update('datapusher-increased-max-length')
-    routers_manager.update(router_name)
+    if config_manager.get('enable-deis-ckan', configmap_name='global-ckan-config') == 'y':
+        create(
+            'datapusher-1',
+            'registry.gitlab.com/viderum/docker-datapusher:cloud-datapusher-1-v9',
+            datapusher_envvars,
+            router_name
+        )
+        create(
+            'datapusher-de',
+            'registry.gitlab.com/viderum/docker-datapusher:cloud-de-git-943fc3e0',
+            datapusher_envvars,
+            router_name
+        )
+        create(
+            'datapusher-giga',
+            'registry.gitlab.com/viderum/docker-datapusher:cloud-giga-git-2b05b22d',
+            datapusher_envvars,
+            router_name
+        )
+        create(
+            'datapusher-increased-max-length',
+            'registry.gitlab.com/viderum/docker-datapusher:cloud-increased-max-length-git-84e86116',
+            datapusher_envvars,
+            router_name
+        )
+        update('datapusher-1')
+        update('datapusher-de')
+        update('datapusher-giga')
+        update('datapusher-increased-max-length')
+        routers_manager.update(router_name)
 
 
 def install_crds():

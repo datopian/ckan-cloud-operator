@@ -8,10 +8,9 @@ from ckan_cloud_operator.infra import CkanInfra
 
 
 def initialize(interactive=False):
-    ckan_infra = CkanInfra(required=False)
     config_manager.interactive_set(
         {
-            'default-storage-bucket': ckan_infra.GCLOUD_STORAGE_BUCKET,
+            'default-storage-bucket': 'ckan',
         },
         secret_name='ckan-storage-config',
         interactive=interactive

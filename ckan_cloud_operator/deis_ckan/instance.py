@@ -402,7 +402,9 @@ class DeisCkanInstance(object):
     @classmethod
     def list(cls, full=False, quick=False, return_list=False):
         res = []
-        for item in kubectl.get(ckan_manager.instance_kind())['items']:
+        data = kubectl.get(ckan_manager.instance_kind(), required=False)
+        if not data: data = {'items': []}
+        for item in data['items']:
             if quick:
                 data = {
                     'id': item['metadata']['name'],
