@@ -21,19 +21,24 @@ def get_record_id(auth_email, auth_key, zone_id, record_name):
     return records[0] if len(records) > 0 else None
 
 
+def is_ip(target_ip):
+    return all([c in '0123456789.' for c in target_ip.strip()])
+
+
 def update_a_record(auth_email, auth_key, zone_name, record_name, target_ip):
     zone_id = get_zone_id(auth_email, auth_key, zone_name)
     assert zone_id is not None, f'Invalid zone name: {zone_name}'
     record_id = get_record_id(auth_email, auth_key, zone_id, record_name)
+
+    cf_record = {'type': 'A' if is_ip(target_ip) else 'CNAME',
+                 'name': record_name, 'content': target_ip, 'ttl': 120, 'proxied': False}
+
     if record_id:
         print(f'Updating existing record {record_name}')
-        cf_record = {'type': 'A', 'name': record_name, 'content': target_ip, 'ttl': 120, 'proxied': False}
         data = curl(auth_email, auth_key, f'zones/{zone_id}/dns_records/{record_id}', cf_record, 'PUT')
     else:
         print(f'Creating new record: {record_name}')
-        cf_record = {'type': 'A', 'name': record_name, 'content': target_ip, 'ttl': 120, 'proxied': False}
         data = curl(auth_email, auth_key, f'zones/{zone_id}/dns_records', cf_record, 'POST')
-    print(data)
     assert data.get('success')
 
 
