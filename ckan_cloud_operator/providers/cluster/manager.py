@@ -25,13 +25,14 @@ def print_info(debug=False, minimal=False):
             return True
 
 
-def initialize(log_kwargs=None, interactive=False):
-    if interactive:
+def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None, skip_to=None):
+    if interactive and not skip_to:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)
         input('Verify your are connected to the right cluster and press <RETURN> to continue')
-    logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
-    subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
+        logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
+        subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
+        assert default_cluster_provider in ['gcloud', 'aws'], f'invalid cluster provider: {default_cluster_provider}'
 
     from ckan_cloud_operator.labels import manager as labels_manager
     from ckan_cloud_operator.crds import manager as crds_manager
@@ -43,17 +44,19 @@ def initialize(log_kwargs=None, interactive=False):
 
     for component, func in (
             ('labels', lambda lk: labels_manager.initialize(log_kwargs=lk)),
-            ('cluster', lambda lk: providers_manager.get_provider('cluster', default='gcloud').initialize(interactive=interactive)),
+            ('cluster', lambda lk: providers_manager.get_provider('cluster', default=default_cluster_provider).initialize(interactive=interactive)),
             ('crds', lambda lk: crds_manager.initialize(log_kwargs=lk)),
-            ('db', lambda lk: db_manager.initialize(log_kwargs=lk, interactive=interactive)),
+            ('db', lambda lk: db_manager.initialize(log_kwargs=lk, interactive=interactive, default_cluster_provider=default_cluster_provider)),
             ('routers', lambda lk: routers_manager.initialize(interactive=interactive)),
             ('solr', lambda lk: solr_manager.initialize(interactive=interactive)),
             ('storage', lambda lk: storage_manager.initialize(interactive=interactive)),
             ('ckan', lambda lk: ckan_manager.initialize(interactive=interactive)),
     ):
-        log_kwargs = {'cluster-init': component}
-        logs.info(f'Initializing', **log_kwargs)
-        func(log_kwargs)
+        if not skip_to or skip_to == component:
+            skip_to = None
+            log_kwargs = {'cluster-init': component}
+            logs.info(f'Initializing', **log_kwargs)
+            func(log_kwargs)
 
 
 def get_kubeconfig_info():
@@ -116,6 +119,10 @@ def get_provider():
     return providers_manager.get_provider('cluster')
 
 
+def get_provider_id():
+    return providers_manager.get_provider_id('cluster', default='gcloud')
+
+
 def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
     assert len(labels) > 0, 'must provide some labels to identify the volume'
     labels = dict(
@@ -157,6 +164,10 @@ def get_or_create_multi_user_volume_claim(label_suffixes):
 
 def get_multi_user_storage_class_name():
     return 'cca-ckan'
+
+
+def provider_exec(cmd):
+    get_provider().exec(cmd)
 
 
 def _generate_password(l):

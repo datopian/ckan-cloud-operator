@@ -1,5 +1,3 @@
-import subprocess
-
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
 
@@ -11,13 +9,20 @@ from ckan_cloud_operator.providers.ckan import manager as ckan_manager
 
 from .constants import PROVIDER_SUBMODULE as db_provider_submodule
 from .gcloudsql.constants import PROVIDER_ID as db_gcloudsql_provider_id
+from .rds.constants import PROVIDER_ID as db_rds_provider_id
 
 
-def initialize(log_kwargs=None, interactive=False):
+def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None):
     """Initialize / upgrade the db module and sub-modules"""
+    if default_cluster_provider == 'aws':
+        default_provider = db_rds_provider_id
+    elif not default_cluster_provider or default_cluster_provider == 'gcloud':
+        default_provider = db_gcloudsql_provider_id
+    else:
+        raise NotImplementedError(f'Unknown provider: {default_cluster_provider}')
     log_kwargs = log_kwargs or {}
     logs.info(f'Initializing DB provider', **log_kwargs)
-    db_provider = providers_manager.get_provider(db_provider_submodule, default=db_gcloudsql_provider_id)
+    db_provider = providers_manager.get_provider(db_provider_submodule, default=default_provider)
     db_provider.initialize(interactive=interactive)
     if db_provider.is_private_ip():
         logs.info('DB Uses a private ip, initializing the DB proxy')

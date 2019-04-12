@@ -174,9 +174,10 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     elif submodule == db_proxy_provider_submodule:
         from ckan_cloud_operator.providers.db.proxy.pgbouncer.constants import PROVIDER_ID as pgbouncer_provider_id
         from ckan_cloud_operator.providers.db.proxy.gcloudsql.constants import PROVIDER_ID as db_proxy_gcloudsql_provider_id
+        from ckan_cloud_operator.providers.db.proxy.rds.constants import PROVIDER_ID as db_proxy_rds_provider_id
 
         if not provider_id:
-            return [pgbouncer_provider_id, db_proxy_gcloudsql_provider_id]
+            return [pgbouncer_provider_id, db_proxy_gcloudsql_provider_id, db_proxy_rds_provider_id]
 
         ## pgbouncer
 
@@ -192,10 +193,18 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
 
             return db_proxy_gcloudsql_manager
 
+        ## rds proxy
+
+        elif provider_id == db_proxy_rds_provider_id:
+            from ckan_cloud_operator.providers.db.proxy.rds import manager as db_proxy_rds_manager
+
+            return db_proxy_rds_manager
+
     ## db
 
     elif submodule == db_provider_submodule:
         from ckan_cloud_operator.providers.db.gcloudsql.constants import PROVIDER_ID as gcloudsql_provider_id
+        from ckan_cloud_operator.providers.db.rds.constants import PROVIDER_ID as rds_provider_id
 
         if not provider_id:
             return [gcloudsql_provider_id]
@@ -206,6 +215,13 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.db.gcloudsql import manager as gcloudsql_manager
 
             return gcloudsql_manager
+
+        ## rds
+
+        elif provider_id == rds_provider_id:
+            from ckan_cloud_operator.providers.db.rds import manager as rds_manager
+
+            return rds_manager
 
     ## db-web-ui
 
@@ -241,9 +257,10 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
 
     elif submodule == cluster_provider_submodule:
         from ckan_cloud_operator.providers.cluster.gcloud.constants import PROVIDER_ID as cluster_gcloud_provider_id
+        from ckan_cloud_operator.providers.cluster.aws.constants import PROVIDER_ID as cluster_aws_provider_id
 
         if not provider_id:
-            return [cluster_gcloud_provider_id]
+            return [cluster_gcloud_provider_id, cluster_aws_provider_id]
 
         ## gcloud
 
@@ -251,6 +268,13 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.cluster.gcloud import manager as clouster_gcloud_manager
 
             return clouster_gcloud_manager
+
+        ## aws
+
+        elif provider_id == cluster_aws_provider_id:
+            from ckan_cloud_operator.providers.cluster.aws import manager as cluster_aws_manager
+
+            return cluster_aws_manager
 
     ## storage
 
