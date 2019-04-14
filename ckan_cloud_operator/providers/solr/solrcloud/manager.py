@@ -185,23 +185,26 @@ def _apply_solrcloud_logs_configmap():
     return _get_resource_name(suffix=configmap_suffix)
 
 
-def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, headless_service_name):
+def _get_volume_pod_scheduling(volume_spec, app_in):
     node_selector = volume_spec.pop('nodeSelector', None)
-    if node_selector:
-        pod_scheduling = {'nodeSelector': node_selector}
-    else:
-        pod_scheduling = {
-            'affinity': {
-                'podAntiAffinity': {'requiredDuringSchedulingIgnoredDuringExecution': [
+    return {
+        **({'nodeSelector': node_selector} if node_selector else {}),
+        'affinity': {
+            'podAntiAffinity': {
+                'requiredDuringSchedulingIgnoredDuringExecution': [
                     {
                         'labelSelector': {'matchExpressions': [
-                            {'key': 'app', 'operator': 'In', 'values': [
-                                _get_resource_labels(for_deployment=True, suffix='zk')['app']
-                            ]}
+                            {'key': 'app', 'operator': 'In', 'values': [app_in]}
                         ]},
                         'topologyKey': 'kubernetes.io/hostname'
                     }
-                ]}}}
+                ]
+            }
+        }
+    }
+
+
+def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, headless_service_name):
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='zk'),
@@ -217,7 +220,10 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
                 'spec': {
                     'hostname': suffix,
                     'subdomain': headless_service_name,
-                    **pod_scheduling,
+                    **_get_volume_pod_scheduling(
+                        volume_spec,
+                        _get_resource_labels(for_deployment=True, suffix='zk')['app']
+                    ),
                     'containers': [
                         {
                             'name': 'zk',
@@ -304,22 +310,6 @@ def _apply_zoonavigator_deployment():
 
 def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configmap_name, headless_service_name, pause_deployment):
     namespace = cluster_manager.get_operator_namespace_name()
-    node_selector = volume_spec.pop('nodeSelector', None)
-    if node_selector:
-        pod_scheduling = {'nodeSelector': node_selector}
-    else:
-        pod_scheduling = {
-            'affinity': {
-                        'podAntiAffinity': {'requiredDuringSchedulingIgnoredDuringExecution': [
-                            {
-                                'labelSelector': {'matchExpressions': [
-                                    {'key': 'app', 'operator': 'In', 'values': [
-                                        _get_resource_labels(for_deployment=True, suffix='sc')['app']
-                                    ]}
-                                ]},
-                                'topologyKey': 'kubernetes.io/hostname'
-                            }
-                        ]}}}
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='sc'),
@@ -335,7 +325,10 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
                 'spec': {
                     'hostname': suffix,
                     'subdomain': headless_service_name,
-                    **pod_scheduling,
+                    **_get_volume_pod_scheduling(
+                        volume_spec,
+                        _get_resource_labels(for_deployment=True, suffix='sc')['app']
+                    ),
                     'initContainers': [
                         {
                             'name': 'init',

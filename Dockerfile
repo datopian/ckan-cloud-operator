@@ -9,8 +9,8 @@ RUN conda env create -f /environment.yaml
 RUN echo conda activate ckan-cloud-operator >> ~/.bashrc &&\
     echo '[ -e /etc/ckan-cloud/.kube-config ] && export KUBECONFIG=/etc/ckan-cloud/.kube-config' >> ~/.bashrc &&\
     echo '! [ -z "${KUBE_CONTEXT}" ] && kubectl config use-context "${KUBE_CONTEXT}" >/dev/null 2>&1' >> ~/.bashrc &&\
-    echo 'ckan-cloud-operator activate-gcloud-auth >/dev/null 2>&1' >> ~/.bashrc &&\
-    echo 'ckan-cloud-operator db proxy port-forward --all-daemon "I know the risks"' >> ~/.bashrc &&\
+    echo '! [ "$(ckan-cloud-operator config get --key=ckan-cloud-provider-cluster-main-provider-id --raw)" == "aws" ] && ckan-cloud-operator activate-gcloud-auth >/dev/null 2>&1' >> ~/.bashrc &&\
+    echo 'ckan-cloud-operator db proxy port-forward --all-daemon "I know the risks" >/dev/null 2>&1' >> ~/.bashrc &&\
     echo 'while ! pg_isready -h localhost >/dev/null 2>&1; do sleep .1; done' >> ~/.bashrc &&\
     mkdir /usr/src/ckan-cloud-operator
 COPY ckan_cloud_operator /usr/src/ckan-cloud-operator/ckan_cloud_operator

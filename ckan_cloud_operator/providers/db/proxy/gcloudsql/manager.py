@@ -43,7 +43,15 @@ def initialize(db_prefix=None):
         db_prefixes = db_prefixes.split(',') if db_prefixes else []
         if db_prefix not in db_prefixes:
             db_prefixes.append(db_prefix)
-            _config_set(f'all-db-prefixes', ','.join(db_prefixes))
+            _config_set('all-db-prefixes', ','.join(db_prefixes))
+
+
+def get_all_db_prefixes():
+    prefixes = _config_get('all-db-prefixes')
+    if prefixes:
+        return prefixes.split(',')
+    else:
+        return []
 
 
 def update(**kwargs):
