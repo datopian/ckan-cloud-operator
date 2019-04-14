@@ -77,6 +77,11 @@ def _apply_secret(storage_suffix=None):
 
 
 def _apply_deployment(volume_spec, storage_suffix=None):
+    node_selector = volume_spec.pop('nodeSelector', None)
+    if node_selector:
+        pod_scheduling = {'nodeSelector': node_selector}
+    else:
+        pod_scheduling = {}
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix=storage_suffix),
         _get_resource_labels(for_deployment=True, suffix=storage_suffix),
@@ -90,6 +95,7 @@ def _apply_deployment(volume_spec, storage_suffix=None):
                     'annotations': _get_resource_annotations(suffix=storage_suffix)
                 },
                 'spec': {
+                    **pod_scheduling,
                     'containers': [
                         {
                             'name': 'minio',

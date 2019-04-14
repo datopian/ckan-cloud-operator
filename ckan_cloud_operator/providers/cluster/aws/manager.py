@@ -118,7 +118,14 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
             'resources': {'requests': {'storage': f'{disk_size_gb}G'}}
         }
     })
-    return {'persistentVolumeClaim': {'claimName': volume_id}}
+    return {
+        'persistentVolumeClaim': {
+            'claimName': volume_id
+        },
+        'nodeSelector': {
+            'failure-domain.beta.kubernetes.io/zone': availability_zone
+        }
+    }
 
 
 def get_storage_availability_zone():
@@ -136,3 +143,11 @@ def auto_get_availability_zone():
         zones[node['metadata']['labels']['failure-domain.beta.kubernetes.io/zone']] += 1
     return sorted([{'zone': zone, 'nodes': nodes} for zone, nodes in zones.items()],
                   key=lambda item: item['nodes'], reverse=True)[0]['zone']
+
+
+def get_name():
+    name = _config_get('cluster-name')
+    if not name:
+        name = get_info()['name']
+        _config_set('cluster-name', name)
+    return name

@@ -82,7 +82,8 @@ def config_set(submodule, provider_id=None, key=None, value=None, values=None, n
     )
 
 
-def config_get(submodule, provider_id=None, key=None, default=None, required=False, namespace=None, is_secret=False, suffix=None):
+def config_get(submodule, provider_id=None, key=None, default=None, required=False, namespace=None, is_secret=False,
+               suffix=None, template=None):
     resource_name = get_resource_name(submodule, provider_id=provider_id, suffix=suffix)
     return config_manager.get(
         key=key,
@@ -90,7 +91,8 @@ def config_get(submodule, provider_id=None, key=None, default=None, required=Fal
         secret_name=resource_name if is_secret else None,
         configmap_name=None if is_secret else resource_name,
         required=required,
-        namespace=namespace
+        namespace=namespace,
+        template=template
     )
 
 
@@ -242,9 +244,10 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
 
     elif submodule == users_provider_submodule:
         from ckan_cloud_operator.providers.users.gcloud.constants import PROVIDER_ID as users_gcloud_provider_id
+        from ckan_cloud_operator.providers.users.rancher.constants import PROVIDER_ID as users_rancher_provider_id
 
         if not provider_id:
-            return [users_gcloud_provider_id]
+            return [users_gcloud_provider_id, users_rancher_provider_id]
 
         ## gcloud
 
@@ -252,6 +255,13 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.users.gcloud import manager as users_gcloud_manager
 
             return users_gcloud_manager
+
+        ## rancher
+
+        elif provider_id == users_rancher_provider_id:
+            from ckan_cloud_operator.providers.users.rancher import manager as users_rancher_manager
+
+            return users_rancher_manager
 
     ## cluster
 
