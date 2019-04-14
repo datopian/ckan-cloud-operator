@@ -94,14 +94,7 @@ def start_port_forward(db_prefix=None):
 
 
 def _apply_deployment(db_prefix=None):
-    config = config_manager.get(configmap_name='ckan-cloud-provider-cluster-gcloud')
-    project_id = config['project-id']
-    location = '-'.join(config['cluster-compute-zone'].split('-')[:2])
-    if db_prefix:
-        db_config = config_manager.get(secret_name=f'ckan-cloud-provider-db-gcloudsql-{db_prefix}-credentials')
-    else:
-        db_config = config_manager.get(secret_name='ckan-cloud-provider-db-gcloudsql-credentials')
-    db_instance_name = db_config['gcloud-sql-instance-name']
+    rds_host = config_manager.get(secret_name='ckan-cloud-provider-db-rds-credentials')['rds-host']
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix=db_prefix),
         _get_resource_labels(for_deployment=True, suffix=db_prefix or ''),
@@ -118,41 +111,27 @@ def _apply_deployment(db_prefix=None):
                     'containers': [
                         {
                             'name': 'proxy',
-                            'image': 'gcr.io/cloudsql-docker/gce-proxy:1.11',
-                            'args': [
-                                '/cloud_sql_proxy', f'-instances={project_id}:{location}:{db_instance_name}=tcp:5432'
-                            ],
+                            # https://github.com/OriHoch/docker-tcp-proxy
+                            'image': 'viderum/docker-tcp-proxy:latest',
                             'env': [
                                 {
-                                    'name': 'GOOGLE_APPLICATION_CREDENTIALS',
-                                    'value': '/infra/creds.json'
+                                    'name': 'LISTEN',
+                                    'value': ':5432'
+                                },
+                                {
+                                    'name': 'TALK',
+                                    'value': f'{rds_host}:5432',
                                 }
                             ],
                             'ports': [{'containerPort': 5432}],
-                            'volumeMounts': [
-                                {
-                                    'name': 'service-account',
-                                    'mountPath': '/infra/creds.json',
-                                    'readOnly': True,
-                                    'subPath': 'service-account-json'
-                                },
-                            ],
                             'resources': {
                                 'limits': {
-                                    'memory': '1Gi',
+                                    'memory': '0.5Gi',
                                 },
                                 'requests': {
                                     'cpu': '0.1',
                                     'memory': '0.2Gi',
                                 }
-                            }
-                        }
-                    ],
-                    'volumes': [
-                        {
-                            'name': 'service-account',
-                            'secret': {
-                                'secretName': 'ckan-cloud-provider-cluster-gcloud',
                             }
                         }
                     ]

@@ -132,18 +132,27 @@ def _update(router_name, spec, annotations, routes):
     ))
 
 
-def get_load_balancer_ip(router_name):
+def get_load_balancer_ip(router_name, failfast=False):
     resource_name = _get_resource_name(router_name)
     while True:
         time.sleep(.2)
         load_balancer = kubectl.get(f'service loadbalancer-{resource_name}', required=False)
-        if not load_balancer: continue
+        if not load_balancer:
+            if failfast:
+                return None
+            else:
+                continue
         ingresses = load_balancer.get('status', {}).get('loadBalancer', {}).get('ingress', [])
         if len(ingresses) == 0: continue
         assert len(ingresses) == 1
-        load_balancer_ip = ingresses[0].get('ip')
-        if load_balancer_ip:
-            return load_balancer_ip
+        if cluster_manager.get_provider_id() == 'aws':
+            load_balancer_hostname = ingresses[0].get('hostname')
+            if load_balancer_hostname:
+                return load_balancer_hostname
+        else:
+            load_balancer_ip = ingresses[0].get('ip')
+            if load_balancer_ip:
+                return load_balancer_ip
 
 
 def get_cloudflare_credentials():
@@ -194,10 +203,10 @@ def get(router_name):
         return {'ready': False}
 
 
-def get_dns_data(router_name, router):
+def get_dns_data(router_name, router, failfast=False):
     external_domains = router['spec'].get('external-domains')
     data = {
-        'load-balancer-ip': get_load_balancer_ip(router_name),
+        'load-balancer-ip': get_load_balancer_ip(router_name, failfast=failfast),
     }
     if external_domains:
         from ckan_cloud_operator.providers.routers import manager as routers_manager

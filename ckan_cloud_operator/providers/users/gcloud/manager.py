@@ -26,7 +26,7 @@ from ckan_cloud_operator.providers.users.manager import get_user_labels, get_rol
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 
-def initialize():
+def initialize(interactive=False):
     _set_provider()
 
 

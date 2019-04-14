@@ -11,8 +11,9 @@ def users():
 
 
 @users.command()
-def initialize():
-    manager.initialize()
+@click.option('--interactive', is_flag=True)
+def initialize(interactive):
+    manager.initialize(interactive=interactive)
     logs.exit_great_success()
 
 

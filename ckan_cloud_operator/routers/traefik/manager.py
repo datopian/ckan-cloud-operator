@@ -55,13 +55,13 @@ def delete(router_name):
         raise Exception('Deletion failed')
 
 
-def get_dns_data(router_name, router):
-    return traefik_deployment.get_dns_data(router_name, router)
+def get_dns_data(router_name, router, failfast=False):
+    return traefik_deployment.get_dns_data(router_name, router, failfast=failfast)
 
 
-def get(router_name, attr='deployment', router=None):
+def get(router_name, attr='deployment', router=None, failfast=False):
     deployment_data = lambda: traefik_deployment.get(router_name)
-    dns_data = lambda: get_dns_data(router_name, router)
+    dns_data = lambda: get_dns_data(router_name, router, failfast=failfast)
     if attr == 'deployment':
         return deployment_data()
     elif attr == 'dns':

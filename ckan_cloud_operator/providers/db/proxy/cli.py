@@ -27,11 +27,9 @@ def port_forward(db_prefix, all_daemon):
     if all_daemon:
         assert not db_prefix and all_daemon == 'I know the risks'
         subprocess.Popen(['ckan-cloud-operator', 'db', 'proxy', 'port-forward'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        prefixes = config_manager.get("all-db-prefixes", configmap_name="ckan-cloud-provider-db-proxy-gcloudsql")
-        if prefixes:
-            for db_prefix in prefixes.split(","):
-                subprocess.Popen(['ckan-cloud-operator', 'db', 'proxy', 'port-forward', '--db-prefix', db_prefix],
-                                 stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        for db_prefix in manager.get_provider().get_all_db_prefixes():
+            subprocess.Popen(['ckan-cloud-operator', 'db', 'proxy', 'port-forward', '--db-prefix', db_prefix],
+                             stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
     else:
         while True:
             start_time = datetime.datetime.now()

@@ -23,7 +23,7 @@ def create(router_name, router_spec):
     router_type = router_spec.get('type')
     default_root_domain = router_spec.get('default-root-domain')
     assert router_type in ROUTER_TYPES and default_root_domain, f'Invalid router spec: {router_spec}'
-    get(router_name)
+    get(router_name, only_dns=True, failfast=True)
     print(f'Creating CkanCloudRouter {router_name} {router_spec}')
     labels = _get_labels(router_name, router_type)
     router = kubectl.get_resource('stable.viderum.com/v1', 'CkanCloudRouter', router_name, labels,
@@ -80,7 +80,7 @@ def list(full=False, values_only=False, async_print=True):
         return res
 
 
-def get(router_name_or_values, required=False, only_dns=False):
+def get(router_name_or_values, required=False, only_dns=False, failfast=False):
     if type(router_name_or_values) == str:
         router_name = router_name_or_values
         router_values = kubectl.get(f'CkanCloudRouter {router_name}', required=required)
@@ -89,7 +89,7 @@ def get(router_name_or_values, required=False, only_dns=False):
         router_values = router_name_or_values
     router, spec, router_type, annotations, labels, router_type_config = _init_router(router_name, router_values, required=required)
     if router:
-        dns_data = router_type_config['manager'].get(router_name, 'dns', router)
+        dns_data = router_type_config['manager'].get(router_name, 'dns', router, failfast=True)
         if not only_dns:
             deployment_data = router_type_config['manager'].get(router_name, 'deployment')
             routes = routes_manager.list(_get_labels(router_name, router_type))

@@ -9,6 +9,7 @@ from ckan_cloud_operator import logs
 
 from ckan_cloud_operator.crds import manager as crds_manager
 from ckan_cloud_operator.config import manager as config_manager
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
@@ -19,32 +20,33 @@ from .constants import INSTANCE_CRD_SINGULAR, INSTANCE_CRD_PLURAL_SUFFIX, INSTAN
 
 def initialize(interactive=False):
     ckan_db_migration_manager.initialize(interactive=interactive)
-    ckan_infra = CkanInfra(required=False)
-    config_manager.interactive_set(
-        {
-            'deis-kubeconfig': ckan_infra.DEIS_KUBECONFIG,
-        },
-        from_file=True,
-        secret_name='ckan-migration-secrets',
-        interactive=interactive
-    )
-    config_manager.interactive_set(
-        {
-            'gitlab-token': ckan_infra.GITLAB_TOKEN_PASSWORD,
-        },
-        secret_name='ckan-migration-secrets',
-        interactive=interactive
-    )
-    config_manager.interactive_set(
-        {
-            'docker-server': ckan_infra.DOCKER_REGISTRY_SERVER,
-            'docker-username': ckan_infra.DOCKER_REGISTRY_USERNAME,
-            'docker-password': ckan_infra.DOCKER_REGISTRY_PASSWORD,
-            'docker-email': ckan_infra.DOCKER_REGISTRY_EMAIL,
-        },
-        secret_name='ckan-docker-registry',
-        interactive=interactive
-    )
+    if config_manager.get('enable-deis-ckan', configmap_name='global-ckan-config') == 'y':
+        ckan_infra = CkanInfra(required=False)
+        config_manager.interactive_set(
+            {
+                'deis-kubeconfig': ckan_infra.DEIS_KUBECONFIG,
+            },
+            from_file=True,
+            secret_name='ckan-migration-secrets',
+            interactive=interactive
+        )
+        config_manager.interactive_set(
+            {
+                'gitlab-token': ckan_infra.GITLAB_TOKEN_PASSWORD,
+            },
+            secret_name='ckan-migration-secrets',
+            interactive=interactive
+        )
+        config_manager.interactive_set(
+            {
+                'docker-server': ckan_infra.DOCKER_REGISTRY_SERVER,
+                'docker-username': ckan_infra.DOCKER_REGISTRY_USERNAME,
+                'docker-password': ckan_infra.DOCKER_REGISTRY_PASSWORD,
+                'docker-email': ckan_infra.DOCKER_REGISTRY_EMAIL,
+            },
+            secret_name='ckan-docker-registry',
+            interactive=interactive
+        )
     crds_manager.install_crd(INSTANCE_CRD_SINGULAR, INSTANCE_CRD_PLURAL_SUFFIX, INSTANCE_CRD_KIND_SUFFIX)
 
     from ckan_cloud_operator.datapushers import initialize as datapusher_initialize
@@ -52,7 +54,7 @@ def initialize(interactive=False):
 
     from ckan_cloud_operator.routers import manager as routers_manager
     router_name = get_default_instances_router_name()
-    wildcard_ssl_domain = 'ckan.io'
+    wildcard_ssl_domain = routers_manager.get_default_root_domain()
     allow_wildcard_ssl = (routers_manager.get_env_id() == 'p'
                           and routers_manager.get_default_root_domain() == wildcard_ssl_domain)
     router = routers_manager.get(router_name, required=False)
