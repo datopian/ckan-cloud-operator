@@ -19,7 +19,10 @@ COPY ckan_cloud_operator ./ckan-cloud-operator/ckan_cloud_operator
 COPY entrypoint-jnlp.sh setup.py ./ckan-cloud-operator/
 
 USER root
-RUN chown -R jenkins:jenkins /home/jenkins/ckan-cloud-operator
+ARG CKAN_CLOUD_OPERATOR_IMAGE_TAG
+RUN echo "${CKAN_CLOUD_OPERATOR_IMAGE_TAG}" > /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG
+RUN chown -R jenkins:jenkins /home/jenkins/ckan-cloud-operator &&\
+    chown jenkins:jenkins /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG
 
 USER jenkins
 RUN bash -c "source miniconda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
@@ -28,6 +31,3 @@ ENV PATH=/home/jenkins/miniconda/envs/ckan-cloud-operator/bin:/home/jenkins/mini
 ENV CKAN_CLOUD_OPERATOR_USE_PROXY=n
 WORKDIR /home/jenkins
 ENTRYPOINT ["./ckan-cloud-operator/entrypoint-jnlp.sh"]
-
-ARG CKAN_CLOUD_OPERATOR_IMAGE_TAG
-RUN echo "${CKAN_CLOUD_OPERATOR_IMAGE_TAG}" > /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG
