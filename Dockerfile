@@ -19,3 +19,6 @@ RUN . /opt/conda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&
     cd /usr/src/ckan-cloud-operator && python3 -m pip install -e .
 ENV EDITOR nano
 ENTRYPOINT ["/usr/src/ckan-cloud-operator/entrypoint.sh"]
+
+ARG CKAN_CLOUD_OPERATOR_IMAGE_TAG
+RUN echo "${CKAN_CLOUD_OPERATOR_IMAGE_TAG}" > /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG

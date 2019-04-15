@@ -28,3 +28,6 @@ ENV PATH=/home/jenkins/miniconda/envs/ckan-cloud-operator/bin:/home/jenkins/mini
 ENV CKAN_CLOUD_OPERATOR_USE_PROXY=n
 WORKDIR /home/jenkins
 ENTRYPOINT ["./ckan-cloud-operator/entrypoint-jnlp.sh"]
+
+ARG CKAN_CLOUD_OPERATOR_IMAGE_TAG
+RUN echo "${CKAN_CLOUD_OPERATOR_IMAGE_TAG}" > /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG

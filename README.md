@@ -2,38 +2,54 @@
 
 CKAN Cloud operator manages, provisions and configures Ckan Cloud instances and related infrastructure.
 
+**WARNING!** For regular maintenance / development / debugging of ckan-cloud-operator managed cluster 
+you should **not** use the operator directly as described in this README. You should use some automation
+tool for synchronized, centralized, audited interaction with the operator and the cluster. See [docs/JENKINS.md](/docs/JENKINS.md).   
+
 ## Install
 
-ckan-cloud-operator-env is used to install and manage CKAN Cloud operator environments on your local PC
+`ckan-cloud-operator-env` is used to install and manage CKAN Cloud operator environments on your local PC
 
-The only requirement is a .kube-config file with permissions to the relevant cluster
+**Prerequisites:**
 
-Install ckan-cloud-operator-env
+* `.kube-config` file with permissions to the relevant cluster
+
+Install latest ckan-cloud-operator-env
 
 ```
 curl -s https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/master/ckan-cloud-operator-env.sh \
 | sudo tee /usr/local/bin/ckan-cloud-operator-env >/dev/null && sudo chmod +x /usr/local/bin/ckan-cloud-operator-env
 ```
 
-Pull the latest Docker image
-
-```
-ckan-cloud-operator-env pull
-```
-
-Add an environment (to run on Minikube set PATH_TO_KUBECONFIG_FILE to minikube)
+Add an environment (sudo is required to install the executable)
 
 ```
 sudo ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE>
 ```
 
-Verify you are connected to the correct cluster
+**Important** re-run the following command before starting work on the operator to ensure correct version is installed.
+Once operator is installed you can verify correct version by running `ckan-cloud-operator cluster info`
+
+Switch to the compatible operator version (may take a while on first run)
+
+```
+sudo ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE> "$(ckan-cloud-operator config get --key ckan-cloud-operator-image --raw)"
+``` 
+
+Verify conection to the cluster and installed operator version (may take a while on first run or after upgrade of operator version)
 
 ```
 ckan-cloud-operator cluster info
 ```
 
+
 ## Usage
+
+Start an operator bash shell
+
+```
+ckan-cloud-operator bash
+```
 
 Use the CLI help messages for the reference documentation and usage examples.
 
@@ -44,13 +60,7 @@ ckan-cloud-operator deis-instance --help
 .
 ```
 
-Start a bash shell with completion
-
-```
-ckan-cloud-operator bash
-```
-
-This start a bash shell inside the ckan-cloud-operator Docker container, you can use bash completion inside this shell
+You can use bash completion inside this shell
 
 ```
 ckan-cloud-operator <TAB><TAB>

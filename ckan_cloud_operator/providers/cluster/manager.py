@@ -11,8 +11,26 @@ from ckan_cloud_operator.labels import manager as labels_manager
 from .constants import OPERATOR_NAMESPACE, OPERATOR_CONFIGMAP
 
 
+def get_operator_version(verify=False):
+    installed_image_tag = None
+    if os.path.exists('/etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG'):
+        with open('/etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG') as f:
+            installed_image_tag = f.read().strip()
+    if not installed_image_tag or len(installed_image_tag) < 2:
+        assert not verify, "Failed operator version verification, no version tag could be found in /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG"
+        return None
+    else:
+        if verify:
+            from ckan_cloud_operator.config import manager as config_manager
+            expected_image = config_manager.get('ckan-cloud-operator-image')
+            assert '@' not in expected_image and ':' in expected_image, f'invalid expected image: {expected_image}'
+            expected_image, expected_image_tag = expected_image.split(':')
+            assert installed_image_tag == expected_image_tag, f'installed tag mismatch (expected={expected_image_tag}, actual={installed_image_tag})'
+        return installed_image_tag
+
+
 def print_info(debug=False, minimal=False):
-    print(yaml.dump([dict(get_kubeconfig_info(), nodes=get_node_names())], default_flow_style=False))
+    print(yaml.dump([dict(get_kubeconfig_info(), nodes=get_node_names(), operator_version=get_operator_version(verify=True))], default_flow_style=False))
     if not minimal:
         print(yaml.dump([providers_manager.get_provider('cluster').get_info(debug=debug)], default_flow_style=False))
         if debug:
