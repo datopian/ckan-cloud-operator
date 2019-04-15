@@ -30,6 +30,14 @@ elif [ "${1}" == "deploy" ]; then
         docker push viderum/ckan-cloud-operator:jnlp-latest
         [ "$?" != "0" ] && echo Failed to tag and push jnlp latest image && exit 1
     fi
+    if [ "${TRAVIS_TAG}" != "" ]; then
+        DEPLOY_JNLP_IMAGE="viderum/ckan-cloud-operator:jnlp-${TAG}"
+        echo "Running Jenkins deploy jnlp job (JNLP_IMAGE=${DEPLOY_JNLP_IMAGE})"
+        STATUS_CODE=$(curl -X POST "${JENKINS_JNLP_DEPLOY_URL}" --user "${JENKINS_USER}:${JENKINS_TOKEN}" \
+                      --data-urlencode json='{"parameter":[{"name":"JNLP_IMAGE","value":"'${DEPLOY_JNLP_IMAGE}'"}]}' -s -o /dev/stderr -w "%{http_code}")
+        echo "jenkins jnlp deploy job status code: ${STATUS_CODE}"
+        [ "${STATUS_CODE}" != "200" ] && [ "${STATUS_CODE}" != "201" ] && echo Deploy failed && exit 1
+    fi
     echo Great Success! && exit 0
 
 else
