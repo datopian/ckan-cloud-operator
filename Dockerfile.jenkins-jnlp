@@ -23,7 +23,7 @@ ARG CKAN_CLOUD_OPERATOR_IMAGE_TAG
 RUN echo "${CKAN_CLOUD_OPERATOR_IMAGE_TAG}" > /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG
 RUN chown -R jenkins:jenkins /home/jenkins/ckan-cloud-operator &&\
     chown jenkins:jenkins /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG &&\
-    chmod +x /usr/src/ckan-cloud-operator/*.sh
+    chmod +x /home/jenkins/ckan-cloud-operator/*.sh
 
 USER jenkins
 RUN bash -c "source miniconda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
