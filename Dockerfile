@@ -14,9 +14,10 @@ RUN echo conda activate ckan-cloud-operator >> ~/.bashrc &&\
     echo 'while ! pg_isready -h localhost >/dev/null 2>&1; do sleep .1; done' >> ~/.bashrc &&\
     mkdir /usr/src/ckan-cloud-operator
 COPY ckan_cloud_operator /usr/src/ckan-cloud-operator/ckan_cloud_operator
-COPY entrypoint.sh setup.py /usr/src/ckan-cloud-operator/
+COPY *.sh *.py /usr/src/ckan-cloud-operator/
 RUN . /opt/conda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
-    cd /usr/src/ckan-cloud-operator && python3 -m pip install -e .
+    cd /usr/src/ckan-cloud-operator && python3 -m pip install -e . &&\
+    chmod +x /usr/src/ckan-cloud-operator/*.sh
 ENV EDITOR nano
 ENTRYPOINT ["/usr/src/ckan-cloud-operator/entrypoint.sh"]
 

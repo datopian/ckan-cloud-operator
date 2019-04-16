@@ -16,13 +16,14 @@ RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.s
     conda env create -f ./environment.yaml &&\
     conda clean -ya
 COPY ckan_cloud_operator ./ckan-cloud-operator/ckan_cloud_operator
-COPY entrypoint-jnlp.sh setup.py ./ckan-cloud-operator/
+COPY *.sh *.py ./ckan-cloud-operator/
 
 USER root
 ARG CKAN_CLOUD_OPERATOR_IMAGE_TAG
 RUN echo "${CKAN_CLOUD_OPERATOR_IMAGE_TAG}" > /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG
 RUN chown -R jenkins:jenkins /home/jenkins/ckan-cloud-operator &&\
-    chown jenkins:jenkins /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG
+    chown jenkins:jenkins /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG &&\
+    chmod +x /usr/src/ckan-cloud-operator/*.sh
 
 USER jenkins
 RUN bash -c "source miniconda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
