@@ -1,7 +1,7 @@
 FROM jenkins/jnlp-slave
 
 USER root
-RUN apt-get update && apt-get install -y gnupg bash-completion build-essential &&\
+RUN apt-get update && apt-get install -y gnupg bash-completion build-essential jq &&\
     echo "deb http://packages.cloud.google.com/apt cloud-sdk-stretch main" >> /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
     apt-get update -y && apt-get install -y google-cloud-sdk kubectl postgresql nano dnsutils &&\

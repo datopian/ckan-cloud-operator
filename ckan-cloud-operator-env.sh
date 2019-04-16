@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-help() {
+usage() {
     echo Manage CKAN Cloud operator environments
     echo
     echo Usage: ./ckan-cloud-operator-env.sh "<COMMAND> [ARGS..]"
@@ -25,7 +25,7 @@ help() {
     echo "    Installs a ckan-cloud-operator executable at /usr/local/bin/ckan-cloud-operator configured for the ENVIRONMENT_NAME"
 }
 
-( [ "${1}" == "" ] || [ "${1}" == "-h" ] || [ "${1}" == "--help" ] ) && help && exit 1
+( [ "${1}" == "" ] || [ "${1}" == "-h" ] || [ "${1}" == "--help" ] ) && usage && exit 1
 
 if [ "${1}" == "pull" ]; then
     if [ "${2}" == "latest" ]; then
@@ -60,10 +60,10 @@ elif [ "${1}" == "add" ]; then
             IMAGE="ckan-cloud-operator"
         else
             CMD=""
-            if [ "${BUILD}" != "" ]; then
-                IMAGE="${BUILD}"
+            if [ "${BUILD}" == "" ]; then
+                IMAGE=$(docker run --entrypoint bash -v ${KUBECONFIG_FILE}:/.kube-config -e KUBECONFIG=/.kube-config viderum/ckan-cloud-operator:minimal-20190416 -c "kubectl -n ckan-cloud get configmap/operator-conf -ojsonpath={.data.ckan-cloud-operator-image}")
             else
-                IMAGE="viderum/ckan-cloud-operator:latest"
+                IMAGE="${BUILD}"
             fi
         fi
         if [ "${KUBECONFIG_FILE}" == "minikube" ]; then

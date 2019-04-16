@@ -27,21 +27,13 @@ Add an environment (sudo is required to install the executable)
 sudo ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE>
 ```
 
-**Important** re-run the following command before starting work on the operator to ensure correct version is installed.
-Once operator is installed you can verify correct version by running `ckan-cloud-operator cluster info`
-
-Switch to the compatible operator version (may take a while on first run)
-
-```
-sudo ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE> "$(ckan-cloud-operator config get --key ckan-cloud-operator-image --raw)"
-``` 
-
 Verify conection to the cluster and installed operator version (may take a while on first run or after upgrade of operator version)
 
 ```
 ckan-cloud-operator cluster info
 ```
 
+**Important** Re-run the add command and cluster info to verify compatible version is installed.
 
 ## Usage
 

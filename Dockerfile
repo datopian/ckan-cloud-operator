@@ -1,7 +1,7 @@
 FROM continuumio/miniconda3
-RUN conda update -n base -c defaults conda
-RUN apt-get update && apt-get install -y gnupg bash-completion build-essential
-RUN echo "deb http://packages.cloud.google.com/apt cloud-sdk-stretch main" >> /etc/apt/sources.list.d/google-cloud-sdk.list && \
+RUN conda update -n base -c defaults conda &&\
+    apt-get update && apt-get install -y gnupg bash-completion build-essential &&\
+    echo "deb http://packages.cloud.google.com/apt cloud-sdk-stretch main" >> /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
     apt-get update -y && apt-get install -y google-cloud-sdk kubectl postgresql nano dnsutils
 COPY environment.yaml /environment.yaml
@@ -18,6 +18,7 @@ COPY *.sh *.py /usr/src/ckan-cloud-operator/
 RUN . /opt/conda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
     cd /usr/src/ckan-cloud-operator && python3 -m pip install -e . &&\
     chmod +x /usr/src/ckan-cloud-operator/*.sh
+RUN apt-get install -y jq
 ENV EDITOR nano
 ENTRYPOINT ["/usr/src/ckan-cloud-operator/entrypoint.sh"]
 
