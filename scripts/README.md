@@ -31,3 +31,24 @@ curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${C
   | tee /dev/stderr \
   | if [ "${SCRIPT_EXT}" == "py" ]; then python3; else bash; fi
 ```
+
+## Jenkins integration
+
+* Set job name the same as a script name
+* Define the args as parameters for the job
+
+For .sh scripts:
+
+```
+export CKAN_CLOUD_OPERATOR_VERSION="v0.2.2"
+curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${CKAN_CLOUD_OPERATOR_VERSION}/scripts/$(echo "$JOB_NAME" | sed 's/ /%20/g').sh" \
+  | tee /dev/stderr | bash
+```
+
+For .py scripts:
+
+```
+export CKAN_CLOUD_OPERATOR_VERSION="v0.2.2"
+curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${CKAN_CLOUD_OPERATOR_VERSION}/scripts/$(echo "$JOB_NAME" | sed 's/ /%20/g').py" \
+  | tee /dev/stderr | python3
+```
