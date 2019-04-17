@@ -7,7 +7,7 @@ export ARGS="${2}"
 ] else 1)" && echo invalid ACTION && exit 1
 
 if [ "${ACTION}" == "kubectl get secret" ]; then
-	ckan-cloud-operator kubectl -- get secret "$ARGS"
+	ckan-cloud-operator kubectl -- get secret ${ARGS}
 else
-	ckan-cloud-operator config "${ACTION}" "$ARGS"
+	ckan-cloud-operator config "${ACTION}" ${ARGS}
 fi
