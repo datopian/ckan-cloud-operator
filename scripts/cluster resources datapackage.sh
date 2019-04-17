@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 
-export DATAPACKAGE_PREFIX="${1}"
-export NON_CKAN_INSTANCES="${2}"
-export SKIP_CKAN_IMAGES="${3}"
+echo DATAPACKAGE_PREFIX="${DATAPACKAGE_PREFIX}"
+echo NON_CKAN_INSTANCES="${NON_CKAN_INSTANCES}"
+echo SKIP_CKAN_IMAGES="${SKIP_CKAN_IMAGES}"
+
 [ -z "${DATAPACKAGE_PREFIX}" ] && echo invalid args && exit 1
-echo DATAPACKAGE_PREFIX=$DATAPACKAGE_PREFIX
-echo NON_CKAN_INSTANCES=$NON_CKAN_INSTANCES
 
 rm -rf .checkpoints &&\
-rm -rf data/$DATAPACKAGE_PREFIX &&\
+rm -rf "data/${DATAPACKAGE_PREFIX}" &&\
 python3 /home/jenkins/ckan-cloud-operator/ckan_cloud_operator/dataflows/resources.py
 [ "$?" != "0" ] && exit 1
 ! python3 -c "
@@ -29,3 +28,5 @@ Flow(
 ).process()
 " > dockerfiles.html && exit 1
 fi
+
+exit 0

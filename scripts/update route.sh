@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-export ARGS="${1}"
+echo ARGS="${ARGS}"
 
 ckan-cloud-operator routers update ${ARGS}

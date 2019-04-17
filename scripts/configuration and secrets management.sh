@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-export ACTION="${1}"
-export ARGS="${2}"
+echo ACTION="${ACTION}"
+echo ARGS="${ARGS}"
+
 ! python3 -c "exit(0 if '${ACTION}' in [
     'get', 'set', 'list-configs', 'kubectl get secret'
 ] else 1)" && echo invalid ACTION && exit 1
