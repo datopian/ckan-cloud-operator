@@ -17,11 +17,13 @@ def storage():
 @click.option('--provider-id')
 @click.option('--storage-suffix')
 @click.option('--disk-name')
-def initialize(interactive, provider_id, storage_suffix, disk_name):
+@click.option('--dry-run', is_flag=True)
+def initialize(interactive, provider_id, storage_suffix, disk_name, dry_run):
     manager.initialize(interactive=interactive,
                        provider_id=provider_id,
                        storage_suffix=storage_suffix,
-                       use_existing_disk_name=disk_name)
+                       use_existing_disk_name=disk_name,
+                       dry_run=dry_run)
     logs.exit_great_success()
 
 @storage.command()

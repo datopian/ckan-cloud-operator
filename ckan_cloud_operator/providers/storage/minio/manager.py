@@ -21,12 +21,14 @@ def _config_interactive_set(default_values, namespace=None, is_secret=False, suf
 import os
 import binascii
 import yaml
+import json
 
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 from ckan_cloud_operator.routers import manager as routers_manager
 
 
-def initialize(interactive=False, storage_suffix=None, use_existing_disk_name=None):
+def initialize(interactive=False, storage_suffix=None, use_existing_disk_name=None, dry_run=False):
     _config_interactive_set({
         'disk-size-gb': None,
         **({} if storage_suffix else {'router-name': routers_manager.get_default_infra_router_name()})
@@ -37,11 +39,12 @@ def initialize(interactive=False, storage_suffix=None, use_existing_disk_name=No
             storage_suffix=storage_suffix,
             use_existing_disk_name=use_existing_disk_name
         ),
-        storage_suffix=storage_suffix
+        storage_suffix=storage_suffix,
+        dry_run=dry_run
     )
-    _apply_service(storage_suffix=storage_suffix)
+    _apply_service(storage_suffix=storage_suffix, dry_run=dry_run)
     if not storage_suffix:
-        _update_route(storage_suffix=storage_suffix)
+        _update_route(storage_suffix=storage_suffix, dry_run=dry_run)
         _set_provider()
 
 
@@ -76,12 +79,13 @@ def _apply_secret(storage_suffix=None):
     _config_set(values={'MINIO_ACCESS_KEY': access_key, 'MINIO_SECRET_KEY': secret_key}, is_secret=True, suffix=storage_suffix)
 
 
-def _apply_deployment(volume_spec, storage_suffix=None):
+def _apply_deployment(volume_spec, storage_suffix=None, dry_run=False):
     node_selector = volume_spec.pop('nodeSelector', None)
     if node_selector:
         pod_scheduling = {'nodeSelector': node_selector}
     else:
         pod_scheduling = {}
+    container_spec_overrides = _config_get('container-spec-overrides', required=False, default=None, suffix=storage_suffix)
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix=storage_suffix),
         _get_resource_labels(for_deployment=True, suffix=storage_suffix),
@@ -109,6 +113,7 @@ def _apply_deployment(volume_spec, storage_suffix=None):
                                     'mountPath': '/export',
                                 }
                             ],
+                            **(json.loads(container_spec_overrides) if container_spec_overrides else {})
                         }
                     ],
                     'volumes': [
@@ -117,10 +122,10 @@ def _apply_deployment(volume_spec, storage_suffix=None):
                 }
             }
         }
-    ))
+    ), dry_run=dry_run)
 
 
-def _apply_service(storage_suffix=None):
+def _apply_service(storage_suffix=None, dry_run=False):
     kubectl.apply(kubectl.get_resource(
         'v1', 'Service',
         _get_resource_name(suffix=storage_suffix),
@@ -133,7 +138,7 @@ def _apply_service(storage_suffix=None):
                 'app': _get_resource_labels(for_deployment=True, suffix=storage_suffix)['app']
             }
         }
-    ))
+    ), dry_run=dry_run)
 
 
 def _get_or_create_volume(storage_suffix=None, use_existing_disk_name=None):
@@ -152,21 +157,23 @@ def _get_or_create_volume(storage_suffix=None, use_existing_disk_name=None):
     return volume_spec
 
 
-def _update_route(storage_suffix=None):
+def _update_route(storage_suffix=None, dry_run=False):
     backend_url_target_id = _get_backend_url_target_id(storage_suffix=storage_suffix)
     router_name = _config_get('router-name', required=True, suffix=storage_suffix)
     if not routers_manager.get_backend_url_routes(backend_url_target_id):
         deployment_name = _get_resource_name(suffix=storage_suffix)
         namespace = _get_namespace()
-        routers_manager.create_subdomain_route(
-            router_name,
-            {
-                'target-type': 'backend-url',
-                'target-resource-id': backend_url_target_id,
-                'backend-url': f'http://{deployment_name}.{namespace}:9000',
-            }
-        )
-    routers_manager.update(router_name, wait_ready=True)
+        subdomain_route = {
+            'target-type': 'backend-url',
+            'target-resource-id': backend_url_target_id,
+            'backend-url': f'http://{deployment_name}.{namespace}:9000',
+        }
+        if dry_run:
+            logs.info('create_subdomain_route', router_name, subdomain_route)
+        else:
+            routers_manager.create_subdomain_route(router_name, subdomain_route)
+    if not dry_run:
+        routers_manager.update(router_name, wait_ready=True)
 
 
 def _get_namespace():
