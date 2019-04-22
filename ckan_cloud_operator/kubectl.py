@@ -4,6 +4,7 @@ import base64
 import traceback
 import datetime
 import json
+import sys
 
 
 ### disable yaml load warnings
@@ -220,10 +221,19 @@ def create(resource, is_yaml=False):
     subprocess.run('kubectl create -f -', input=yaml.dump(resource).encode(), shell=True, check=True)
 
 
-def apply(resource, is_yaml=False, reconcile=False):
+def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
     if is_yaml: resource = yaml.load(resource)
     cmd = 'auth reconcile' if reconcile else 'apply'
-    subprocess.run(f'kubectl {cmd} -f -', input=yaml.dump(resource).encode(), shell=True, check=True)
+    args = []
+    if dry_run:
+        args.append('--dry-run')
+    args = " ".join(args)
+    subprocess.run(
+        f'kubectl {cmd} {args} -f -',
+        input=yaml.dump(resource).encode(), shell=True, check=True
+    )
+    if dry_run:
+        print(yaml.dump(resource, default_flow_style=False))
 
 
 def install_crd(plural, singular, kind):
