@@ -10,7 +10,7 @@ from .constants import PROVIDER_SUBMODULE
 from .solrcloud.constants import PROVIDER_ID as solrcloud_provider_id
 
 
-def initialize(interactive=False):
+def initialize(interactive=False, dry_run=False):
     ckan_infra = CkanInfra(required=False)
     solr_config = config_manager.interactive_set(
         {
@@ -20,7 +20,7 @@ def initialize(interactive=False):
         interactive=interactive
     )
     if is_self_hosted(solr_config):
-        initialize_self_hosted(interactive=interactive)
+        initialize_self_hosted(interactive=interactive, dry_run=dry_run)
     else:
         config_manager.interactive_set(
             {
@@ -39,8 +39,8 @@ def initialize(interactive=False):
     )
 
 
-def initialize_self_hosted(interactive=False):
-    get_provider(default=solrcloud_provider_id, verbose=True).initialize(interactive=interactive)
+def initialize_self_hosted(interactive=False, dry_run=False):
+    get_provider(default=solrcloud_provider_id, verbose=True).initialize(interactive=interactive, dry_run=dry_run)
 
 
 def get_internal_http_endpoint():

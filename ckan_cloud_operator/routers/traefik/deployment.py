@@ -1,6 +1,7 @@
 import toml
 import time
 import hashlib
+import json
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.routers.traefik import config as traefik_router_config
@@ -8,6 +9,7 @@ from ckan_cloud_operator.routers.routes import manager as routes_manager
 from ckan_cloud_operator import cloudflare
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 from ckan_cloud_operator.labels import manager as labels_manager
+from ckan_cloud_operator.config import manager as config_manager
 
 
 def _get_deployment_spec(router_name, router_type, annotations, image=None, httpauth_secrets=None):
@@ -24,6 +26,12 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
             httpauth_secrets_volume_mounts.append({
                 'name': httpauth_secret, 'mountPath': f'/httpauth-{httpauth_secret}'
             })
+    container_spec_overrides = config_manager.get(
+        'container-spec-overrides',
+        configmap_name=f'traefik-router-{router_name}-deployment',
+        required=False,
+        default=None
+    )
     deployment_spec = {
         'replicas': 1,
         'revisionHistoryLimit': 5,
@@ -42,7 +50,8 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
                             {'name': 'traefik-acme', 'mountPath': '/traefik-acme', 'subPath': f'router-traefik-{router_name}'},
                             *httpauth_secrets_volume_mounts,
                         ],
-                        'args': ['--configFile=/etc-traefik/traefik.toml']
+                        'args': ['--configFile=/etc-traefik/traefik.toml'],
+                        **(json.loads(container_spec_overrides) if container_spec_overrides else {})
                     }
                 ],
                 'volumes': [

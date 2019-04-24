@@ -19,10 +19,11 @@ def _config_interactive_set(default_values, namespace=None, is_secret=False, suf
 
 import subprocess
 import yaml
+import json
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
-from ckan_cloud_operator.routers import manager as routers_manager
+from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 from .constants import LOG4J_PROPERTIES, SOLR_CONFIG_XML
@@ -69,31 +70,31 @@ def solr_curl(path, required=False, debug=False):
             return False
 
 
-def initialize(interactive=False):
-    zk_host_names = initialize_zookeeper(interactive)
+def initialize(interactive=False, dry_run=False):
+    zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 
     _config_set('zk-host-names', yaml.dump(zk_host_names, default_flow_style=False))
     logs.info(f'Initialized zookeeper: {zk_host_names}')
 
-    zoonavigator_deployment_name = _apply_zoonavigator_deployment()
+    zoonavigator_deployment_name = _apply_zoonavigator_deployment(dry_run=dry_run)
     logs.info(f'Initialized zoonavigator: {zoonavigator_deployment_name}')
 
-    sc_host_names = initialize_solrcloud(zk_host_names, pause_deployment=False, interactive=interactive)
+    sc_host_names = initialize_solrcloud(zk_host_names, pause_deployment=False, interactive=interactive, dry_run=dry_run)
     _config_set('sc-host-names', yaml.dump(sc_host_names, default_flow_style=False))
     logs.info(f'Initialized solrcloud: {sc_host_names}')
 
-    solrcloud_host_name = _apply_solrcloud_service()
+    solrcloud_host_name = _apply_solrcloud_service(dry_run=dry_run)
     _config_set('sc-main-host-name', solrcloud_host_name)
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
     _set_provider()
 
 
-def initialize_zookeeper(interactive=False):
-    headless_service_name = _apply_zookeeper_headless_service()
+def initialize_zookeeper(interactive=False, dry_run=False):
+    headless_service_name = _apply_zookeeper_headless_service(dry_run=dry_run)
     zk_instances = {suffix: {
         'host_name': suffix,
-        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=20),
+        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=20, dry_run=dry_run),
     } for suffix in _get_zk_suffixes()}
     zk_host_names = [zk['host_name'] for zk in zk_instances.values()]
     zk_configmap_name = _apply_zookeeper_configmap(zk_host_names)
@@ -102,19 +103,19 @@ def initialize_zookeeper(interactive=False):
         print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
         for zk_suffix, zk in zk_instances.items():
             if input(f'Update zookeeper deployment {zk_suffix}? [y/n]: ') == 'y':
-                _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name)
+                _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name, dry_run=dry_run)
     else:
         logs.warning('deployments are not updated in non-interactive mode')
     namespace = cluster_manager.get_operator_namespace_name()
     return [f'{h}.{headless_service_name}.{namespace}.svc.cluster.local:2181' for h in zk_host_names]
 
 
-def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False):
+def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False, dry_run=False):
     sc_logs_configmap_name = _apply_solrcloud_logs_configmap()
-    headless_service_name = _apply_solrcloud_headless_service()
+    headless_service_name = _apply_solrcloud_headless_service(dry_run=dry_run)
     sc_instances = {suffix: {
         'host_name': suffix,
-        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=100)
+        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=100, dry_run=dry_run)
     } for suffix in _get_sc_suffixes()}
     sc_host_names = [sc['host_name'] for sc in sc_instances.values()]
     sc_configmap_name = _apply_solrcloud_configmap(zk_host_names)
@@ -124,7 +125,7 @@ def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False):
         for sc_suffix, sc in sc_instances.items():
             if input(f'Update solrcloud deployment {sc_suffix}? [y/n]: ') == 'y':
                 _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
-                                            pause_deployment)
+                                            pause_deployment, dry_run=dry_run)
     else:
         logs.warning('deployments are not updated in non-interactive mode')
     return sc_host_names
@@ -204,7 +205,7 @@ def _get_volume_pod_scheduling(volume_spec, app_in):
     }
 
 
-def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, headless_service_name):
+def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, headless_service_name, dry_run=False):
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='zk'),
@@ -261,10 +262,10 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
             }
         },
         with_timestamp=False
-    ))
+    ), dry_run=dry_run)
 
 
-def _apply_zoonavigator_deployment():
+def _apply_zoonavigator_deployment(dry_run=False):
     suffix = 'zoonavigator'
     deployment_name = _get_resource_name(suffix)
     kubectl.apply(kubectl.get_deployment(
@@ -304,12 +305,15 @@ def _apply_zoonavigator_deployment():
                 }
             }
         }
-    ))
+    ), dry_run=dry_run)
     return deployment_name
 
 
-def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configmap_name, headless_service_name, pause_deployment):
+def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configmap_name, headless_service_name, pause_deployment, dry_run=False):
     namespace = cluster_manager.get_operator_namespace_name()
+    container_spec_overrides = config_manager.get('container-spec-overrides', configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config',
+                                                  required=False, default=None)
+    resources = {'requests': {'cpu': '1', 'memory': '4Gi'}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}} if not container_spec_overrides else {}
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='sc'),
@@ -383,11 +387,12 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
                                 {'containerPort': 7983, 'name': 'stop', 'protocol': 'TCP'},
                                 {'containerPort': 18983, 'name': 'rmi', 'protocol': 'TCP'}
                             ],
-                            'resources': {'requests': {'cpu': '1', 'memory': '4Gi'}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}},
                             'volumeMounts': [
                                 {'mountPath': '/data', 'name': 'datadir'},
                                 {'mountPath': '/logconfig', 'name': 'logconfig'}
                             ],
+                            **({'resources': resources} if resources else {}),
+                            **(json.loads(container_spec_overrides) if container_spec_overrides else {})
                         }
                     ],
                     'volumes': [
@@ -398,10 +403,10 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
             }
         },
         with_timestamp=False
-    ))
+    ), dry_run=dry_run)
 
 
-def _apply_zookeeper_headless_service():
+def _apply_zookeeper_headless_service(dry_run=False):
     headless_service_name = _get_resource_name('zk-headless')
     kubectl.apply(kubectl.get_resource(
         'v1', 'Service',
@@ -418,11 +423,11 @@ def _apply_zookeeper_headless_service():
                 'app': _get_resource_labels(for_deployment=True, suffix='zk')['app']
             }
         }
-    ))
+    ), dry_run=dry_run)
     return headless_service_name
 
 
-def _apply_solrcloud_headless_service():
+def _apply_solrcloud_headless_service(dry_run=False):
     headless_service_name = _get_resource_name('sc-headless')
     kubectl.apply(kubectl.get_resource(
         'v1', 'Service',
@@ -439,11 +444,11 @@ def _apply_solrcloud_headless_service():
                 'app': _get_resource_labels(for_deployment=True, suffix='sc')['app']
             }
         }
-    ))
+    ), dry_run=dry_run)
     return headless_service_name
 
 
-def _apply_solrcloud_service():
+def _apply_solrcloud_service(dry_run=False):
     service_name = _get_resource_name('sc')
     kubectl.apply(kubectl.get_resource(
         'v1', 'Service',
@@ -457,17 +462,20 @@ def _apply_solrcloud_service():
                 'app': _get_resource_labels(for_deployment=True, suffix='sc')['app']
             }
         }
-    ))
+    ), dry_run=dry_run)
     return service_name
 
 
-def _get_or_create_volume(suffix, disk_size_gb):
+def _get_or_create_volume(suffix, disk_size_gb, dry_run=False):
     volume_spec_config_key = f'volume-spec-{suffix}'
     volume_spec = _config_get(volume_spec_config_key, required=False)
     if volume_spec:
         volume_spec = yaml.load(volume_spec)
     else:
+        assert not dry_run, 'creating a new volume is not supported for dry_run'
         from ckan_cloud_operator.providers.cluster import manager as cluster_manager
         volume_spec = cluster_manager.create_volume(disk_size_gb, _get_resource_labels(suffix=suffix))
         _config_set(volume_spec_config_key, yaml.dump(volume_spec, default_flow_style=False))
+    if dry_run:
+        print(yaml.dump(volume_spec, default_flow_style=False))
     return volume_spec

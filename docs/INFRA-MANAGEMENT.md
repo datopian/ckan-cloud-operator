@@ -124,18 +124,6 @@ Depending on instance, some paths can be set to public download:
 mc policy download prod/ckan/instance/storage'*'
 ```
 
-### Setting minio deployment container spec overrides
+## Setting Infrastructure container spec overrides
 
-You can set overrides for the minio deployment container spec
-
-For example, set resources:
-
-```
-ckan-cloud-operator config set --configmap-name ckan-cloud-provider-storage-minio container-spec-overrides '{"resources":{"requests":{"cpu": "1", memory": "1Gi"},"limits":{"memory":"2Gi"}}'
-```
-
-Initialize the storage provider to update the deployment, first with dry-run to validate:
-
-```
-ckan-cloud-operator storage initialize --dry-run
-```
+See Jupyter Lab notebooks for setting solrcloud and minio resources

@@ -18,8 +18,9 @@ solr.add_command(proxy_cli.proxy)
 
 @solr.command()
 @click.option('--interactive', is_flag=True)
-def initialize(interactive):
-    manager.initialize(interactive=interactive)
+@click.option('--dry-run', is_flag=True)
+def initialize(interactive, dry_run):
+    manager.initialize(interactive=interactive, dry_run=dry_run)
     logs.exit_great_success()
 
 
