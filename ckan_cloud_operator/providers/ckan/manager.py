@@ -133,8 +133,11 @@ def deis_kubeconfig():
     return config_manager.get('deis-kubeconfig', secret_name='ckan-migration-secrets', required=True)
 
 
-def gitlab_token():
-    return config_manager.get('gitlab-token', secret_name='ckan-migration-secrets', required=True)
+def gitlab_token(token_name=None):
+    if token_name:
+        return config_manager.get(token_name, secret_name='ckan-gitlab-tokens', required=True)
+    else:
+        return config_manager.get('gitlab-token', secret_name='ckan-migration-secrets', required=True)
 
 
 def gitlab_search_replace(lines):

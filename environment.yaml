@@ -10,8 +10,9 @@ dependencies:
     - kubernetes
     - click
     - toml
-    - requests
     - dataflows>=0.0.37
     - dataflows-shell>=0.0.8
     - jupyterlab
     - awscli
+    - requests<2.22
+    - urllib3<1.25

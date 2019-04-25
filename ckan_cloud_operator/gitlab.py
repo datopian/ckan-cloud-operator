@@ -105,9 +105,9 @@ class CkanGitlab(object):
                 traceback.print_exc()
                 return None
 
-    def _curl(self, urlpart, postjson=None, method='POST'):
+    def _curl(self, urlpart, postjson=None, method='POST', token_name=None, download_filename=None):
         from ckan_cloud_operator.providers.ckan import manager as ckan_manager
-        gitlab_token = ckan_manager.gitlab_token()
+        gitlab_token = ckan_manager.gitlab_token(token_name)
         if postjson:
             r = requests.request(
                 method,
@@ -119,6 +119,9 @@ class CkanGitlab(object):
             )
             assert r.status_code == 200, r.text
             return r.text
+        elif download_filename:
+            cmd = f'curl -f -s --header "PRIVATE-TOKEN: {gitlab_token}" https://gitlab.com/api/v4/{urlpart} > {download_filename}'
+            subprocess.check_call(cmd, shell=True)
         else:
             cmd = ['curl', '-f', '-s',
                    '--header', f'PRIVATE-TOKEN: {gitlab_token}',
