@@ -5,7 +5,8 @@ hostname | tee -a /etc/ckan-cloud-operator-build-info
 
 (
   echo == system dependencies, gcloud-sdk &&\
-  apt-get update && apt-get install -y gnupg bash-completion build-essential jq &&\
+  apt-get update && apt-get install -y gnupg bash-completion build-essential jq python-pip &&\
+  /usr/bin/pip2 install pyopenssl &&\
   echo "deb http://packages.cloud.google.com/apt cloud-sdk-stretch main" >> /etc/apt/sources.list.d/google-cloud-sdk.list && \
   curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
   apt-get update -y && apt-get install -y google-cloud-sdk kubectl postgresql nano dnsutils &&\
