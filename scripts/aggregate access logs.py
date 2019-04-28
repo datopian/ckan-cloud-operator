@@ -86,7 +86,6 @@ def main(package_url):
     stats_rows = []
     Flow(
         load(package_url),
-        checkpoint('access_logs'),
         aggregate_stats(stats_rows),
         dump_to_path('data/aggregate_access_logs')
     ).process()
