@@ -16,3 +16,4 @@ dependencies:
     - awscli
     - requests<2.22
     - urllib3<1.25
+    - httpagentparser
