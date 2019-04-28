@@ -27,6 +27,7 @@ from ckan_cloud_operator.drivers.kubectl import cli as driver_kubectl_cli
 from ckan_cloud_operator.providers.storage import cli as storage_cli
 from ckan_cloud_operator.providers.solr import cli as solr_cli
 from ckan_cloud_operator.drivers.rancher import cli as driver_rancher_cli
+from ckan_cloud_operator.drivers.jenkins import cli as driver_jenkins_cli
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
 
@@ -64,6 +65,7 @@ def drivers():
 drivers.add_command(driver_postgres_cli.postgres)
 drivers.add_command(driver_kubectl_cli.kubectl)
 drivers.add_command(driver_rancher_cli.rancher)
+drivers.add_command(driver_jenkins_cli.jenkins)
 
 
 @main.command('kubectl')

@@ -140,6 +140,10 @@ def gitlab_token(token_name=None):
         return config_manager.get('gitlab-token', secret_name='ckan-migration-secrets', required=True)
 
 
+def get_jenkins_token(token_name=None):
+    return config_manager.get(secret_name='ckan-jenkins-tokens', key=token_name, required=True).split(',')
+
+
 def gitlab_search_replace(lines):
     values = config_manager.get('gitlab-search-replace', secret_name='ckan-migration-secrets', required=False)
     if values: values = json.loads(values)
