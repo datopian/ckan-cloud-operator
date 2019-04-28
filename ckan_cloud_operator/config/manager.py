@@ -1,3 +1,5 @@
+import base64
+
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
 
@@ -50,6 +52,24 @@ def set(key=None, value=None, values=None, secret_name=None, configmap_name=None
         values = {key: value}
     assert values, 'Invalid arguments: no values to save'
     return _save(cache_key, values, extra_operator_labels)
+
+
+def delete_key(key, secret_name=None, namespace=None):
+    kubectl.apply({
+        'apiVersion': 'v1',
+        'kind': 'Secret',
+        'metadata': {
+            'name': secret_name,
+            'namespace': namespace
+        },
+        'type': 'Opaque',
+        'data': {
+            k: base64.b64encode(v.encode()).decode()
+            for k, v
+            in kubectl.decode_secret(kubectl.get('secret', secret_name, namespace=namespace)).items()
+            if k != key and v
+        }
+    })
 
 
 def delete(secret_name=None, configmap_name=None, namespace=None, exists_ok=False):

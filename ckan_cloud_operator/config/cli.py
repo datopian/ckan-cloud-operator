@@ -49,6 +49,16 @@ def set(**kwargs):
 
 
 @config.command()
+@click.argument('KEY')
+@click.option('--secret-name')
+@click.option('--namespace')
+def delete_key(key, secret_name, namespace):
+    """Delete a configuration value"""
+    manager.delete_key(key, secret_name, namespace)
+    logs.exit_great_success()
+
+
+@config.command()
 @click.option('--full', is_flag=True)
 @click.option('--show-secrets', is_flag=True)
 def list_configs(full, show_secrets):
