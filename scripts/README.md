@@ -36,19 +36,14 @@ curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${C
 
 * Set job name the same as a script name
 * Define the args as parameters for the job
+* Source code management: git
+  * repository url: https://github.com/ViderumGlobal/ckan-cloud-operator.git
+  * branch specifier: `master` (or required commit / tag)
+* Execute shell scripts:
+  * For .sh scripts:
+    `bash "scripts/${JOB_NAME}.sh"`
+  * For .py scripts:
+    `python3 "scripts/${JOB_NAME}.py"`
 
-For .sh scripts:
-
-```
-export CKAN_CLOUD_OPERATOR_VERSION="v0.2.2"
-curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${CKAN_CLOUD_OPERATOR_VERSION}/scripts/$(echo "$JOB_NAME" | sed 's/ /%20/g').sh" \
-  | tee /dev/stderr | bash
-```
-
-For .py scripts:
-
-```
-export CKAN_CLOUD_OPERATOR_VERSION="v0.2.2"
-curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${CKAN_CLOUD_OPERATOR_VERSION}/scripts/$(echo "$JOB_NAME" | sed 's/ /%20/g').py" \
-  | tee /dev/stderr | python3
-```
+If you made changes to ckan-cloud-operator which the script depends on, you can update it with `python3 -m pip install -e .`.
+Bear in mind it updates the package to all jobs on the node
