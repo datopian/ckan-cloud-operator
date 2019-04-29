@@ -4,12 +4,17 @@ import yaml
 import traceback
 import time
 import json
+import tempfile
 
 from ckan_cloud_operator import logs
+from ckan_cloud_operator import kubectl
 
 from ckan_cloud_operator.crds import manager as crds_manager
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
+from ckan_cloud_operator.drivers.helm import driver as helm_driver
+from ckan_cloud_operator.providers.ckan.deployment import manager as deployment_manager
+from ckan_cloud_operator.labels import manager as labels_manager
 
 from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
@@ -17,6 +22,7 @@ from ckan_cloud_operator.deis_ckan.migrate import migrate_from_deis
 from .db import migration as ckan_db_migration_manager
 
 from .constants import INSTANCE_CRD_SINGULAR, INSTANCE_CRD_PLURAL_SUFFIX, INSTANCE_CRD_KIND_SUFFIX
+
 
 def initialize(interactive=False):
     ckan_db_migration_manager.initialize(interactive=interactive)
@@ -318,6 +324,83 @@ def update_deis_instance_envvars(deis_instance, envvars):
                            CKANEXT__ORGPORTALS__SMTP__PASSWORD=smtp_creds['password'])
 
 
+def create_instance(instance_id, instance_type, values=None, values_filename=None, exists_ok=False, dry_run=False):
+    if values_filename:
+        assert values is None
+        with open(values_filename) as f:
+            values = yaml.load(f.read())
+    if not exists_ok and crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False):
+        raise Exception('instance already exists')
+    return kubectl.apply(crds_manager.get_resource(
+        INSTANCE_CRD_SINGULAR, instance_id,
+        extra_label_suffixes={'instance-type': instance_type},
+        spec=values
+    ), dry_run=dry_run)
+
+
+def update_instance(instance_id, override_spec=None, persist_overrides=False,
+                    wait_ready=False, skip_deployment=False):
+    instance, instance_type = _get_instance_and_type(instance_id)
+    if override_spec:
+        for k, v in override_spec.items():
+            instance['spec'][k] = v
+    if persist_overrides:
+        kubectl.apply(instance)
+    if not skip_deployment:
+        deployment_manager.update(instance_id, instance_type, instance)
+    if wait_ready:
+        print('Waiting for ready status')
+        time.sleep(3)
+        while True:
+            data = get_instance(instance_id)
+            if data.get('ready'):
+                print(yaml.dump(data, default_flow_style=False))
+                break
+            else:
+                print(yaml.dump(
+                    {
+                        k: v for k, v in data.items()
+                        if (k not in ['ready'] and type(v) == dict and not v.get('ready')) or k == 'namespace'
+                    },
+                    default_flow_style=False)
+                )
+                time.sleep(2)
+
+
+def get_instance(instance_id, attr=None, exclude_attr=None):
+    """Get detailed information about the instance and related components"""
+    instance, instance_type = _get_instance_and_type(instance_id)
+    gets = {
+        # 'annotations': lambda: DeisCkanInstanceAnnotations(self).get(),
+        # 'db': lambda: DeisCkanInstanceDb(self, 'db').get(),
+        # 'datastore': lambda: DeisCkanInstanceDb(self, 'datastore').get(),
+        'deployment': lambda: deployment_manager.get(instance_id, instance_type, instance),
+        # 'envvars': lambda: DeisCkanInstanceEnvvars(self).get(),
+        # 'namespace': lambda: DeisCkanInstanceNamespace(self).get(),
+        # 'registry': lambda: DeisCkanInstanceRegistry(self).get(),
+        # 'solr': lambda: DeisCkanInstanceSolr(self).get(),
+        # 'storage': lambda: DeisCkanInstanceStorage(self).get(),
+    }
+    if exclude_attr:
+        gets = {k: v for k, v in gets.items() if k not in exclude_attr}
+    if attr:
+        return gets[attr]()
+    else:
+        ret = {'ready': True}
+        for k, v in gets.items():
+            ret[k] = v()
+            if type(ret[k]) == dict and not ret[k].get('ready'):
+                ret['ready'] = False
+        ret['id'] = instance_id
+        return ret
+
+
 def _generate_db_password(purpose):
     logs.info(f'Generating password for {purpose}')
     return binascii.hexlify(os.urandom(12)).decode()
+
+
+def _get_instance_and_type(instance_id):
+    instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False)
+    instance_type = instance['metadata']['labels'].get('{}/instance-type'.format(labels_manager.get_label_prefix()))
+    return instance, instance_type
