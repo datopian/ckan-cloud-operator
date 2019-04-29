@@ -64,15 +64,22 @@ def zk():
 @zk.command()
 @click.option('--config-name')
 @click.option('--output-dir')
-def get_configs(config_name, output_dir):
+@click.option('--filename')
+@click.option('--all', is_flag=True)
+def get_configs(config_name, output_dir, filename, all):
     if config_name:
         config_names = [config_name]
     else:
         config_names = manager.zk_list_configs()
+        if not all:
+            config_names = [cn for cn in config_names if 'ckan' in cn]
     for zk_config_name in config_names:
         print(f'-- {zk_config_name}')
-        config_files = []
-        manager.zk_list_config_files(zk_config_name, config_files)
+        if filename:
+            config_files = [filename]
+        else:
+            config_files = []
+            manager.zk_list_config_files(zk_config_name, config_files)
         for zk_filename in config_files:
             print(f'/{zk_config_name}{zk_filename}')
             if output_dir:
