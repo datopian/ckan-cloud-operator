@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 
-# to use this script, add a daemonset deployment of ubuntu:1804, running the following entrypoint:
-#
-# bash -c 'cp /home/ec2-user/.ssh/authorized_keys{,.bak} && echo "" > /home/ec2-user/.ssh/authorized_keys && for KEY_NAME in `ls /ec2-user-authorized-keys`; do echo $KEY_NAME && cat /ec2-user-authorized-keys/$KEY_NAME >> /home/ec2-user/.ssh/authorized_keys; done && cat /home/ec2-user/.ssh/authorized_keys && echo Great Success && while true; do sleep 86400; done'
-#
-# mount the relevant home directory from the node and the authorized keys secret which this script updates
-#
-# after updating the secret, redeploy the daemonset to apply the changes
+# requires the node-management DaemonSet, see node-management/README.md. after updating the secret, redeploy the daemonset to apply the changes
 
 export CMD
 export KEY_NAME
