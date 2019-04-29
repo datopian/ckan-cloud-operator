@@ -45,3 +45,40 @@ def collection_status(collection_name):
 @click.argument('PATH')
 def curl(path):
     print(manager.solr_curl(path, required=True, debug=True))
+
+
+@solr.command()
+def internal_http_endpoint():
+    print(manager.get_internal_http_endpoint())
+
+
+#### ZooKeeper
+
+
+@click.group()
+def zk():
+    """Manage ZooKeeper"""
+    pass
+
+
+@zk.command()
+@click.option('--config-name')
+@click.option('--output-dir')
+def get_configs(config_name, output_dir):
+    if config_name:
+        config_names = [config_name]
+    else:
+        config_names = manager.zk_list_configs()
+    for zk_config_name in config_names:
+        print(f'-- {zk_config_name}')
+        config_files = []
+        manager.zk_list_config_files(zk_config_name, config_files)
+        for zk_filename in config_files:
+            print(f'/{zk_config_name}{zk_filename}')
+            if output_dir:
+                output_filename = f'{output_dir}/{zk_config_name}{zk_filename}'
+                manager.zk_get_config_file(zk_config_name, zk_filename, output_filename)
+                print(f'--> {output_filename}')
+
+
+solr.add_command(zk)

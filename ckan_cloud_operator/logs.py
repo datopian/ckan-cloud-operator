@@ -57,5 +57,7 @@ def debug_yaml_dump(*args, **kwargs):
         debug(yaml.dump(args, default_flow_style=False), **kwargs)
 
 
-def print_yaml_dump(data):
+def print_yaml_dump(data, exit_success=False):
     print(yaml.dump(data, default_flow_style=False))
+    if exit_success:
+        exit_great_success(quiet=True)

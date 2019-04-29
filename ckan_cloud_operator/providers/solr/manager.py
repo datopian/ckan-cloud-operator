@@ -1,10 +1,12 @@
 import subprocess
 import json
+import os
 
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.infra import CkanInfra
 from ckan_cloud_operator.providers import manager as providers_manager
 from ckan_cloud_operator import logs
+from ckan_cloud_operator import kubectl
 
 from .constants import PROVIDER_SUBMODULE
 from .solrcloud.constants import PROVIDER_ID as solrcloud_provider_id
@@ -130,3 +132,39 @@ def solr_curl(path, required=False, debug=False):
             else:
                 logs.warning(output)
                 return False
+
+
+def zk_list_configs():
+    pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
+    lines = list(kubectl.check_output(f'exec {pod_name} zkCli.sh ls /configs').decode().splitlines())[5:]
+    assert len(lines) == 1
+    return [name.strip() for name in lines[0][1:-1].split(',')]
+
+
+def zk_list_config_files(config_name, config_files, base_path=''):
+    path = f'/configs/{config_name}{base_path}'
+    # print(f'path={path}')
+    pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
+    lines = list(kubectl.check_output(f'exec {pod_name} zkCli.sh ls {path}').decode().splitlines())[5:]
+    # print(f'lines={lines}')
+    assert len(lines) == 1
+    num_files = 0
+    for name in lines[0][1:-1].split(','):
+        name = name.strip()
+        if not name: continue
+        # print(f'name={name}')
+        if zk_list_config_files(config_name, config_files, base_path=f'{base_path}/{name}') == 0:
+            config_files.append(f'{base_path}/{name}')
+            num_files += 1
+    return num_files
+
+
+def zk_get_config_file(config_name, config_file, output_filename):
+    path = f'/configs/{config_name}{config_file}'
+    # print(f'path={path}')
+    pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
+    lines = list(kubectl.check_output(f'exec {pod_name} zkCli.sh get {path} 2>/dev/null').decode().splitlines())[5:]
+    assert len(lines) > 0
+    os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+    with open(output_filename, 'w') as f:
+        f.write('\n'.join(lines))
