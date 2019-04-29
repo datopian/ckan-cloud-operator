@@ -1,6 +1,7 @@
 import subprocess
 import json
 import os
+import glob
 
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.infra import CkanInfra
@@ -168,3 +169,29 @@ def zk_get_config_file(config_name, config_file, output_filename):
     os.makedirs(os.path.dirname(output_filename), exist_ok=True)
     with open(output_filename, 'w') as f:
         f.write('\n'.join(lines))
+
+
+def zk_put_configs(configs_dir):
+    pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
+    for input_filename in glob.glob(f'{configs_dir}/**/*', recursive=True):
+        if not os.path.isfile(input_filename): continue
+        output_filename = '/configs' + input_filename.replace(configs_dir, '')
+        print(f'{input_filename} --> {output_filename}')
+        output_filepath = ''
+        for output_filepart in output_filename.split('/')[:-1]:
+            output_filepart = output_filepart.strip()
+            if not output_filepart:
+                continue
+            output_filepath += f'/{output_filepart}'
+            print(f'create {output_filepath} null')
+            print(kubectl.call(
+                f'exec {pod_name} zkCli.sh create {output_filepath} null'
+            ))
+        print(f'copy {output_filename}')
+        print(kubectl.call(
+            f'cp {input_filename} {pod_name}:/tmp/zk_input'
+        ))
+        print(f'create {output_filename}')
+        print(kubectl.call(
+            f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'"
+        ))

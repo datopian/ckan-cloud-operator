@@ -88,4 +88,11 @@ def get_configs(config_name, output_dir, filename, all):
                 print(f'--> {output_filename}')
 
 
+@zk.command()
+@click.argument('CONFIGS_DIR')
+def put_configs(configs_dir):
+    manager.zk_put_configs(configs_dir)
+    logs.exit_great_success()
+
+
 solr.add_command(zk)
