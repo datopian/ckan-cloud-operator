@@ -1,9 +1,13 @@
 from ckan_cloud_operator import kubectl
 
-def update_service_account(service_account_name, labels):
-    kubectl.apply(kubectl.get_resource(
+
+def update_service_account(service_account_name, labels, namespace=None):
+    service_account = kubectl.get_resource(
         'v1', 'ServiceAccount', service_account_name, labels
-    ))
+    )
+    if namespace:
+        service_account['metadata']['namespace'] = namespace
+    kubectl.apply(service_account)
 
 
 def update_cluster_role(name, rules, labels):
