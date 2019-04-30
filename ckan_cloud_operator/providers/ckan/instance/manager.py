@@ -35,6 +35,7 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
     ), dry_run=dry_run)
     if instance_name:
         set_name(instance_id, instance_name, dry_run=dry_run)
+    return instance_id
 
 
 def update(instance_id_or_name, override_spec=None, persist_overrides=False, wait_ready=False, skip_deployment=False):
@@ -79,11 +80,16 @@ def wait_instance_ready(instance_id_or_name):
             time.sleep(2)
 
 
-def get(instance_id_or_name, attr=None, exclude_attr=None):
+def get(instance_id_or_name, attr=None, exclude_attr=None, with_spec=False):
     """Get detailed information about the instance and related components"""
     instance, instance_id, instance_type = _get_instance_id_and_type(instance_id_or_name)
+    if not exclude_attr:
+        exclude_attr = []
+    if not with_spec:
+        exclude_attr.append('spec')
     gets = {
         'deployment': lambda: deployment_manager.get(instance_id, instance_type, instance),
+        'spec': lambda: instance['spec']
     }
     if exclude_attr:
         gets = {k: v for k, v in gets.items() if k not in exclude_attr}

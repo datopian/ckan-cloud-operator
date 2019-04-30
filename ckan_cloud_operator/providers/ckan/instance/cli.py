@@ -50,12 +50,15 @@ def update(instance_id_or_name, override_spec_json, persist_overrides, wait_read
 @instance.command()
 @click.argument('INSTANCE_ID_OR_NAME')
 @click.argument('ATTR', required=False)
-def get(instance_id_or_name, attr):
+@click.option('--with-spec', is_flag=True)
+def get(instance_id_or_name, attr, with_spec):
     """Get detailed information about an instance, optionally returning only a single get attribute
 
     Example: ckan-cloud-operator ckan instance get <INSTANCE_ID_OR_NAME> deployment
     """
-    logs.print_yaml_dump(manager.get(instance_id_or_name, attr), exit_success=True)
+    if attr == 'spec':
+        with_spec = True
+    logs.print_yaml_dump(manager.get(instance_id_or_name, attr, with_spec=with_spec), exit_success=True)
 
 
 @instance.command('list')
