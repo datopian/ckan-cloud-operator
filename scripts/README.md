@@ -45,5 +45,14 @@ curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${C
   * For .py scripts:
     `python3 "scripts/${JOB_NAME}.py"`
 
-If you made changes to ckan-cloud-operator which the script depends on, you can update it with `python3 -m pip install -e .`.
+If you made changes to ckan-cloud-operator which the script depends on, you can update it with `python3 -m pip install -t /home/jenkins/ckan-cloud-operator --upgrade .`.
 Bear in mind it updates the package to all jobs on the node
+
+Use the following snippet for upgrading the operator + redirecting error logs properly:
+
+```
+python3 -m pip install -t /home/jenkins/ckan-cloud-operator --upgrade . >/dev/null 2>&1 &&\
+python3 "scripts/${JOB_NAME}.py" 2>stderr.log
+[ "$?" != "0" ] && cat stderr.log && exit 1
+exit 0
+```

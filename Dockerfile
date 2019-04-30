@@ -16,6 +16,7 @@ RUN . /opt/conda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&
     cd /usr/src/ckan-cloud-operator && python3 -m pip install -e . &&\
     chmod +x /usr/src/ckan-cloud-operator/*.sh
 COPY scripts /usr/src/ckan-cloud-operator/scripts
+ENV CKAN_CLOUD_OPERATOR_SCRIPTS=/usr/src/ckan-cloud-operator/scripts
 ENV EDITOR nano
 ENTRYPOINT ["/usr/src/ckan-cloud-operator/entrypoint.sh"]
 
