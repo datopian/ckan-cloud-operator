@@ -8,6 +8,7 @@ from ckan_cloud_operator.providers.ckan.db import migration as db_migration_mana
 from ckan_cloud_operator.providers.ckan import manager
 from .storage import cli as ckan_storage_cli
 from .deployment import cli as ckan_deployment_cli
+from .instance import cli as instance_cli
 
 
 @click.group()
@@ -18,6 +19,7 @@ def ckan():
 
 ckan.add_command(ckan_storage_cli.storage)
 ckan.add_command(ckan_deployment_cli.deployment)
+ckan.add_command(instance_cli.instance)
 
 
 @ckan.command()
@@ -121,45 +123,3 @@ def db_migration_import_urls(old_site_id, raw):
         print(' '.join(urls))
     else:
         logs.print_yaml_dump(list(urls))
-
-
-@ckan.command()
-@click.argument('INSTANCE_ID')
-@click.argument('INSTANCE_TYPE')
-@click.argument('VALUES_FILE')
-@click.option('--exists-ok', is_flag=True)
-@click.option('--dry-run', is_flag=True)
-def create_instance(instance_id, instance_type, values_file, exists_ok, dry_run):
-    manager.create_instance(instance_id, instance_type, values_filename=values_file, exists_ok=exists_ok, dry_run=dry_run)
-    logs.exit_great_success()
-
-
-@ckan.command()
-@click.argument('INSTANCE_ID')
-@click.argument('OVERRIDE_SPEC_JSON', required=False)
-@click.option('--persist-overrides', is_flag=True)
-@click.option('--wait-ready', is_flag=True)
-@click.option('--skip-deployment', is_flag=True)
-def update_instance(instance_id, override_spec_json, persist_overrides, wait_ready, skip_deployment):
-    """Update an instance to the latest resource spec, optionally applying the given json override to the resource spec
-
-    Examples:
-
-    ckan-cloud-operator ckan update-instance <INSTANCE_ID> '{"siteUrl": "http://localhost:5000"}' --wait-ready
-
-    ckan-cloud-operator ckan update-instance <INSTANCE_ID> '{"replicas": 3}' --persist-overrides
-    """
-    override_spec = json.loads(override_spec_json) if override_spec_json else None
-    manager.update_instance(instance_id, override_spec=override_spec, persist_overrides=persist_overrides,
-                            wait_ready=wait_ready, skip_deployment=skip_deployment)
-
-
-@ckan.command()
-@click.argument('INSTANCE_ID')
-@click.argument('ATTR', required=False)
-def get_instance(instance_id, attr):
-    """Get detailed information about an instance, optionally returning only a single get attribute
-
-    Example: ckan-cloud-operator ckan get-instance <INSTANCE_ID> deployment
-    """
-    print(yaml.dump(manager.get_instance(instance_id, attr), default_flow_style=False))

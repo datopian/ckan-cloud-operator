@@ -21,6 +21,8 @@ def _config_interactive_set(default_values, namespace=None, is_secret=False, suf
 import yaml
 import tempfile
 import subprocess
+import traceback
+
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.drivers.kubectl import rbac as kubectl_rbac_driver
 from ckan_cloud_operator import logs
@@ -51,6 +53,21 @@ def update(instance_id, instance):
         f.flush()
         helm_driver.deploy(tiller_namespace_name, ckan_helm_chart_repo, 'ckan-cloud/ckan', ckan_helm_chart_version,
                            ckan_helm_release_name, f.name, instance_id)
+
+
+def delete(instance_id, instance):
+    tiller_namespace_name = _get_resource_name()
+    ckan_helm_release_name = f'ckan-cloud-{instance_id}'
+    errors = []
+    try:
+        logs.info(f'Deleting helm release {ckan_helm_release_name}')
+        helm_driver.delete(tiller_namespace_name, ckan_helm_release_name)
+    except Exception as e:
+        logs.warning(traceback.format_exc())
+        errors.append(f'Failed to delete helm release')
+    if kubectl.call(f'delete --wait=false namespace {instance_id}') != 0:
+        errors.append(f'Failed to delete namespace')
+    assert len(errors) == 0, ', '.join(errors)
 
 
 def get(instance_id, instance):
@@ -144,8 +161,12 @@ def _init_namespace(instance_id):
 
 
 def _init_solr(instance_id):
-    solr_url = solr_manager.get_internal_http_endpoint()
-    solr_manager.create_collection(instance_id)
-    assert solr_url.startswith('https://') and solr_url.endswith('/solr')
-    host, port = solr_url.replace('https://', '').replace('/solr', '').split(':')
+    solr_status = solr_manager.get_collectoin_status(instance_id)
+    if not solr_status['ready']:
+        solr_manager.create_collection(instance_id, 'ckan_28_default')
+    else:
+        logs.info(f'collection already exists ({instance_id})')
+    solr_url = solr_status['solr_http_endpoint']
+    assert solr_url.startswith('http') and solr_url.endswith('/solr'), f'invalid solr_url ({solr_url})'
+    host, port = solr_url.replace('https://', '').replace('http://', '').replace('/solr', '').split(':')
     return host, port

@@ -52,3 +52,7 @@ def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name
           f' --install --namespace "{namespace}" -if {values_filename} {version_args}'
     subprocess.check_call(f'{cmd} {dry_run_args}', shell=True)
     subprocess.check_call(cmd, shell=True)
+
+
+def delete(tiller_namespace, release_name):
+    subprocess.check_call(f'helm --tiller-namespace {tiller_namespace} delete --purge --timeout 5 {release_name}', shell=True)

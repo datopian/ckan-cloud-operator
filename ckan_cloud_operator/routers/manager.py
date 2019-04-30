@@ -106,7 +106,8 @@ def get(router_name_or_values, required=False, only_dns=False, failfast=False):
                     'type': router_type,
                     'deployment': deployment_data,
                     'ready': deployment_data.get('ready', False),
-                    'dns': dns_data}
+                    'dns': dns_data,
+                    'spec': {'ready': True, **router_values['spec']}}
     else:
         return None
 
