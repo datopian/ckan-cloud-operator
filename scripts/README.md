@@ -72,5 +72,5 @@ Bear in mind it updates the ckan-cloud-operator Python package for all jobs on t
 Add the following snippet before the run snippet:
 
 ```
-python3 -m pip install -t ../ckan-cloud-operator-upgraded --upgrade . >/dev/null 2>&1 &&\
+python3 -m pip install . &&\
 ```
