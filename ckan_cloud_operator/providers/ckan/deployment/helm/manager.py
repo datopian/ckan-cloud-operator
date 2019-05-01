@@ -112,6 +112,10 @@ def get(instance_id, instance):
         return {'ready': False, 'error': output}
 
 
+def get_backend_url(instance_id, instance):
+    return f'http://nginx.{instance_id}:8080'
+
+
 def _init_ckan_infra_secret(instance_id):
     ckan_infra = config_manager.get(secret_name='ckan-infra', namespace=instance_id, required=False)
     if ckan_infra:

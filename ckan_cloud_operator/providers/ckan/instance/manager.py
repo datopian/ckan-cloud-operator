@@ -39,7 +39,7 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
 
 
 def update(instance_id_or_name, override_spec=None, persist_overrides=False, wait_ready=False, skip_deployment=False):
-    instance, instance_id, instance_type = _get_instance_id_and_type(instance_id_or_name)
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
     if override_spec:
         for k, v in override_spec.items():
             logs.info(f'Applying override spec {k}={v}')
@@ -55,7 +55,7 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
 
 def delete(instance_id):
     try:
-        instance, instance_id, instance_type = _get_instance_id_and_type(instance_id=instance_id)
+        instance_id, instance_type, instance = _get_instance_id_and_type(instance_id=instance_id)
     except Exception:
         logs.error(traceback.format_exc())
         instance, instance_type = None, None
@@ -82,7 +82,7 @@ def wait_instance_ready(instance_id_or_name):
 
 def get(instance_id_or_name, attr=None, exclude_attr=None, with_spec=False):
     """Get detailed information about the instance and related components"""
-    instance, instance_id, instance_type = _get_instance_id_and_type(instance_id_or_name)
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
     if not exclude_attr:
         exclude_attr = []
     if not with_spec:
@@ -103,6 +103,10 @@ def get(instance_id_or_name, attr=None, exclude_attr=None, with_spec=False):
                 ret['ready'] = False
         ret['id'] = instance_id
         return ret
+
+
+def get_backend_url(instance_id_or_name=None, instance_id=None):
+    return deployment_manager.get_backend_url(*_get_instance_id_and_type(instance_id_or_name, instance_id=instance_id))
 
 
 def get_all_instance_id_names():
@@ -180,7 +184,7 @@ def _get_instance_id_and_type(instance_id_or_name=None, instance_id=None):
         else:
             instance_id = None
     instance_type = instance['metadata']['labels'].get('{}/instance-type'.format(labels_manager.get_label_prefix())) if instance else None
-    return instance, instance_id, instance_type
+    return instance_id, instance_type, instance
 
 
 def _generate_password(length):

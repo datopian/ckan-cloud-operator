@@ -1,4 +1,5 @@
 from ckan_cloud_operator.routers.routes import deis_instance_subdomain
+from ckan_cloud_operator.routers.routes import ckan_instance_subdomain
 from ckan_cloud_operator.routers.routes import datapusher_subdomain
 from ckan_cloud_operator.routers.routes import backend_url_subdomain
 from ckan_cloud_operator import kubectl
@@ -9,6 +10,8 @@ def get_module(route):
     route_type = route['spec']['type']
     if route_type == 'deis-instance-subdomain':
         module = deis_instance_subdomain
+    elif route_type == 'ckan-instance-subdomain':
+        module = ckan_instance_subdomain
     elif route_type == 'datapusher-subdomain':
         module = datapusher_subdomain
     elif route_type == 'backend-url-subdomain':

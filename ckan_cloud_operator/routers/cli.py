@@ -72,6 +72,24 @@ def add_cli_commands(click, command_group, great_success):
         routers_manager.update(router_name, wait_ready)
         great_success()
 
+    @command_group.command('create-ckan-instance-subdomain-route')
+    @click.argument('ROUTER_NAME')
+    @click.argument('CKAN_INSTANCE_ID')
+    @click.argument('SUB_DOMAIN', required=False, default='default')
+    @click.argument('ROOT_DOMAIN', required=False, default='default')
+    @click.option('--wait-ready', is_flag=True)
+    def routers_create_ckan_instance_subdomain_route(router_name, ckan_instance_id,
+                                                     sub_domain, root_domain,
+                                                     wait_ready):
+        routers_manager.create_subdomain_route(router_name, {
+            'target-type': 'ckan-instance',
+            'ckan-instance-id': ckan_instance_id,
+            'root-domain': root_domain,
+            'sub-domain': sub_domain
+        })
+        routers_manager.update(router_name, wait_ready)
+        great_success()
+
     @command_group.command('create-datapusher-subdomain-route')
     @click.argument('ROUTER_NAME')
     @click.argument('DATAPUSHER_NAME')
@@ -115,20 +133,26 @@ def add_cli_commands(click, command_group, great_success):
     @command_group.command('get-routes')
     @click.option('-p', '--datapusher-name', required=False)
     @click.option('-d', '--deis-instance-id', required=False)
+    @click.option('--ckan-instance-id', required=False)
     @click.option('-b', '--backend-url-target-id', required=False)
     @click.option('-o', '--one', is_flag=True)
     @click.option('-e', '--external-domain', is_flag=True)
     @click.option('--edit', is_flag=True)
-    def get_routes(datapusher_name, deis_instance_id, backend_url_target_id, one, external_domain, edit):
+    def get_routes(datapusher_name, deis_instance_id, ckan_instance_id, backend_url_target_id, one, external_domain, edit):
         if datapusher_name:
-            assert not deis_instance_id
+            assert not deis_instance_id and not ckan_instance_id and not backend_url_target_id
             routes = routers_manager.get_datapusher_routes(datapusher_name, edit=edit)
         elif deis_instance_id:
+            assert not datapusher_name and not ckan_instance_id and not backend_url_target_id
             routes = routers_manager.get_deis_instance_routes(deis_instance_id, edit=edit)
+        elif ckan_instance_id:
+            assert not datapusher_name and not deis_instance_id and not backend_url_target_id
+            routes = routers_manager.get_ckan_instance_routes(ckan_instance_id, edit=edit)
         elif backend_url_target_id:
+            assert not datapusher_name and not deis_instance_id and not ckan_instance_id
             routes = routers_manager.get_backend_url_routes(backend_url_target_id, edit=edit)
         else:
-            raise Exception(f'invalid arguments')
+            routes = routers_manager.get_all_routes()
         if routes:
             if one: assert len(routes) == 1, 'too many routes!'
             for route in routes:
@@ -143,6 +167,7 @@ def add_cli_commands(click, command_group, great_success):
                         'name': route['metadata']['name'],
                         'backend-url': routes_manager.get_backend_url(route),
                         'frontend-hostname': routes_manager.get_frontend_hostname(route),
+                        'router-name': route['spec']['router_name']
                     }
                     if one:
                         print(yaml.dump(data, default_flow_style=False))

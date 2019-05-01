@@ -36,23 +36,41 @@ curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${C
 
 * Set job name the same as a script name
 * Define the args as parameters for the job
+
+Use the following snippet to run a script from the installed operator version + redirecting error logs properly:
+
+For .py scripts:
+
+```
+python3 "${CKAN_CLOUD_OPERATOR_SCRIPTS}/${JOB_NAME}.py"
+```
+
+For .sh scripts:
+
+```
+bash "${CKAN_CLOUD_OPERATOR_SCRIPTS}/${JOB_NAME}.sh"
+```
+
+To test development version of the scripts, you can just copy-paste the script to a Jenkins execute shell step
+
+Alternatively, to test a committed script, add the following to the job configuration: 
+
 * Source code management: git
   * repository url: https://github.com/ViderumGlobal/ckan-cloud-operator.git
   * branch specifier: `master` (or required commit / tag)
-* Execute shell scripts:
-  * For .sh scripts:
-    `bash "scripts/${JOB_NAME}.sh"`
-  * For .py scripts:
-    `python3 "scripts/${JOB_NAME}.py"`
 
-If you made changes to ckan-cloud-operator which the script depends on, you can update it with `python3 -m pip install -t /home/jenkins/ckan-cloud-operator --upgrade .`.
-Bear in mind it updates the package to all jobs on the node
-
-Use the following snippet for upgrading the operator + redirecting error logs properly:
+Append the following snippet before the last run snippet:
 
 ```
-python3 -m pip install -t /home/jenkins/ckan-cloud-operator --upgrade . >/dev/null 2>&1 &&\
-python3 "scripts/${JOB_NAME}.py" 2>stderr.log
-[ "$?" != "0" ] && cat stderr.log && exit 1
-exit 0
+CKAN_CLOUD_OPERATOR_SCRIPTS=`pwd`/scripts
+```
+
+If you made changes to the ckan-cloud-operator code which the script depends on, you can update it with the following snippet.
+
+Bear in mind it updates the ckan-cloud-operator Python package for all jobs on the node, so you should only upgrade with backwards compatible changes.
+
+Add the following snippet before the run snippet:
+
+```
+python3 -m pip install -t ../ckan-cloud-operator-upgraded --upgrade . >/dev/null 2>&1 &&\
 ```
