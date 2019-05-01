@@ -10,6 +10,7 @@ from ckan_cloud_operator import logs
 from ckan_cloud_operator.crds import manager as crds_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 from ..deployment import manager as deployment_manager
+from ckan_cloud_operator.routers import manager as routers_manager
 
 from ..constants import INSTANCE_NAME_CRD_SINGULAR
 from ..constants import INSTANCE_CRD_SINGULAR
@@ -38,19 +39,44 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
     return instance_id
 
 
-def update(instance_id_or_name, override_spec=None, persist_overrides=False, wait_ready=False, skip_deployment=False):
+def update(instance_id_or_name, override_spec=None, persist_overrides=False, wait_ready=False, skip_deployment=False, skip_route=False):
     instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
     if override_spec:
         for k, v in override_spec.items():
             logs.info(f'Applying override spec {k}={v}')
             instance['spec'][k] = v
+    assert instance['spec'].get('useCentralizedInfra'), 'non-centralized instances are not supported'
+    # full domain to route to the instance
+    instance_domain = instance['spec'].get('domain')
+    # instance is added to router only if this is true, as all routers must use SSL and may use sans SSL too
+    with_sans_ssl = instance['spec'].get('withSansSSL')
+    # subdomain to register on the default root domain
+    register_subdomain = instance['spec'].get('registerSubdomain')
     if persist_overrides:
         logs.info('Persisting overrides')
         kubectl.apply(instance)
     if not skip_deployment:
         deployment_manager.update(instance_id, instance_type, instance)
-    if wait_ready:
-        wait_instance_ready(instance_id_or_name)
+        if wait_ready:
+            wait_instance_ready(instance_id_or_name)
+    if not skip_route:
+        if instance_domain:
+            assert with_sans_ssl, 'withSansSSL must be set to true to add routes'
+            assert '.'.join(instance_domain.split('.')[1:]) == routers_manager.get_default_root_domain(), f'invalid root domain ({instance_domain})'
+            assert instance_domain.split('.')[0] == register_subdomain, f'invalid register_subdomain ({register_subdomain})'
+            logs.info(f'adding instance route to {instance_domain}')
+            routers_manager.create_subdomain_route('instances-default', {
+                'target-type': 'ckan-instance',
+                'ckan-instance-id': instance_id,
+                'root-domain': routers_manager.get_default_root_domain(),
+                'sub-domain': register_subdomain
+            })
+            routers_manager.update('instances-default', wait_ready)
+        else:
+            assert not register_subdomain, 'subdomain registration is only supported with instance_domain'
+
+
+
 
 
 def delete(instance_id):
@@ -78,6 +104,11 @@ def wait_instance_ready(instance_id_or_name):
                 }
             )
             time.sleep(2)
+
+
+def edit(instance_id_or_name):
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
+    crds_manager.edit(INSTANCE_CRD_SINGULAR, name=instance_id)
 
 
 def get(instance_id_or_name, attr=None, exclude_attr=None, with_spec=False):

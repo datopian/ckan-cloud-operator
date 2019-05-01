@@ -61,6 +61,12 @@ def get(instance_id_or_name, attr, with_spec):
     logs.print_yaml_dump(manager.get(instance_id_or_name, attr, with_spec=with_spec), exit_success=True)
 
 
+@instance.command()
+@click.argument('INSTANCE_ID_OR_NAME')
+def edit(instance_id_or_name):
+    manager.edit(instance_id_or_name)
+
+
 @instance.command('list')
 @click.option('-f', '--full', is_flag=True)
 @click.option('-q', '--quick', is_flag=True)

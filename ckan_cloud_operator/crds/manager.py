@@ -34,6 +34,16 @@ def get(singular, *args, name=None, required=True, get_cmd='get', **kwargs):
     return kubectl.get(f'{crd_prefix}{kind_suffix}', *args, required=required, get_cmd=get_cmd, **kwargs)
 
 
+def edit(singular, *edit_args, name=None, **edit_kwargs):
+    """Run kubectl.get for the given crd singular value and optional get args / kwargs"""
+    crd_prefix = get_crd_prefix()
+    _, kind_suffix = _get_plural_kind_suffix(singular)
+    what = f'{crd_prefix}{kind_suffix}'
+    if name:
+        what += '/' + get_resource_name(singular, name)
+    return kubectl.edit(what, *edit_args, **edit_kwargs)
+
+
 def delete(singular, name):
     config_delete(singular, name, by_labels=True)
     crd_prefix = get_crd_prefix()

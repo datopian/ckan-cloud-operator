@@ -83,7 +83,8 @@ def get(what, *args, required=True, namespace='ckan-cloud', get_cmd='get', **kwa
 def edit(what, *edit_args, namespace='ckan-cloud', **edit_kwargs):
     extra_edit_args = ' '.join(edit_args)
     extra_edit_kwargs = ' '.join([f'{k} {v}' for k, v in edit_kwargs.items()])
-    items = get(what, namespace=namespace, required=True)['items']
+    res = get(what, namespace=namespace, required=True)
+    items = res.get('items', [res])
     assert len(items) > 0, f'no items found to edit for: {what}'
     for item in items:
         name = item['metadata']['name']
@@ -92,8 +93,12 @@ def edit(what, *edit_args, namespace='ckan-cloud', **edit_kwargs):
 
 
 def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cloud'):
-    label_selector = ','.join([f'{k}={v}' for k,v in labels.items()])
-    res = get(f'{resource_kind} -l {label_selector}', required=required, namespace=namespace)
+    if labels:
+        label_selector = ','.join([f'{k}={v}' for k,v in labels.items()])
+        label_args = f'-l {label_selector}'
+    else:
+        label_args = ''
+    res = get(f'{resource_kind} {label_args}', required=required, namespace=namespace)
     return res['items'] if res else None
 
 
