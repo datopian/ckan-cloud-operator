@@ -111,22 +111,29 @@ def main(instance_id, old_db_prefix, new_db_prefix, down_time_approval_code, new
             logs.important_log(logs.INFO, datastore_backup_url=datastore_backup_url)
             logs.info('Creating parameters file to trigger copy instance job to create the new instance')
             with open('copy_instance_params', 'w') as f:
-                f.write(f'OLD_INSTANCE_ID={instance_id}\n'
-                        f'NEW_INSTANCE_ID={new_instance_id}\n'
-                        f'NEW_GITLAB_REPO={gitlab_repo}\n'
-                        f'NEW_DB_PREFIX={new_db_prefix}\n'
-                        f'IMPORT_DATE_PATH=\n'
-                        f'IMPORT_HOUR=\n'
-                        f'SKIP_MINIO_MIRROR=no\n'
-                        f'SKIP_CREATE=no\n'
-                        f'SKIP_ROUTER=no\n'
-                        f'USE_EXISTING_MIGRATION=no\n'
-                        f'NEW_SOLR_COLLECTION_NAME={solr_collection_name}\n'
-                        f'NEW_STORAGE_PATH={storage_path}\n'
-                        f'DATABASE_IMPORT_URL={db_backup_url}\n'
-                        f'DATASTORE_IMPORT_URL={datastore_backup_url}\n'
-                        f'DRY_RUN=yes\n'
-                        )
+                f.write(
+                    f'OLD_INSTANCE_ID={instance_id}\n'
+                    f'NEW_INSTANCE_ID={new_instance_id}\n'
+                    f'NEW_GITLAB_REPO={gitlab_repo}\n'
+                    f'NEW_DB_PREFIX={new_db_prefix}\n'
+                    f'IMPORT_DATE_PATH=\n'
+                    f'IMPORT_HOUR=\n'
+                    f'SKIP_MINIO_MIRROR=no\n'
+                    f'SKIP_CREATE=no\n'
+                    f'SKIP_ROUTER=no\n'
+                    f'USE_EXISTING_MIGRATION=no\n'
+                    f'NEW_SOLR_COLLECTION_NAME={solr_collection_name}\n'
+                    f'NEW_STORAGE_PATH={storage_path}\n'
+                    f'DATABASE_IMPORT_URL={db_backup_url}\n'
+                    f'DATASTORE_IMPORT_URL={datastore_backup_url}\n'
+                    f'DRY_RUN=yes\n'
+                )
+            with open('change_instance_routes_params', 'w') as f:
+                f.write(
+                    f'OLD_INSTANCE_ID={instance_id}\n'
+                    f'NEW_INSTANCE_ID={new_instance_id}\n'
+                    f'DRY_RUN=yes\n'
+                )
             logs.exit_great_success()
         else:
             down_time_approval_code = _create_down_time_approval_code(
