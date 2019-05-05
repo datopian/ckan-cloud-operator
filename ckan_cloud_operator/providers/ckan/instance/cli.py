@@ -1,8 +1,10 @@
 import click
 import yaml
 import json
+import traceback
 
 from ckan_cloud_operator import logs
+from ckan_cloud_operator import kubectl
 
 from . import manager
 
@@ -32,7 +34,8 @@ def create(instance_type, values_file, instance_id, instance_name, exists_ok, dr
 @click.option('--persist-overrides', is_flag=True)
 @click.option('--wait-ready', is_flag=True)
 @click.option('--skip-deployment', is_flag=True)
-def update(instance_id_or_name, override_spec_json, persist_overrides, wait_ready, skip_deployment):
+@click.option('--skip-route', is_flag=True)
+def update(instance_id_or_name, override_spec_json, persist_overrides, wait_ready, skip_deployment, skip_route):
     """Update an instance to the latest resource spec, optionally applying the given json override to the resource spec
 
     Examples:
@@ -43,7 +46,7 @@ def update(instance_id_or_name, override_spec_json, persist_overrides, wait_read
     """
     override_spec = json.loads(override_spec_json) if override_spec_json else None
     manager.update(instance_id_or_name, override_spec=override_spec, persist_overrides=persist_overrides,
-                   wait_ready=wait_ready, skip_deployment=skip_deployment)
+                   wait_ready=wait_ready, skip_deployment=skip_deployment, skip_route=skip_route)
     logs.exit_great_success()
 
 
@@ -94,7 +97,14 @@ def delete_name(instance_name):
 
 
 @instance.command()
-@click.argument('INSTANCE_ID')
-def delete(instance_id):
-    manager.delete(instance_id=instance_id)
-    logs.exit_great_success()
+@click.argument('INSTANCE_ID_OR_NAME', nargs=-1)
+@click.option('--no-dry-run', is_flag=True)
+def delete(instance_id_or_name, no_dry_run):
+    generator = manager.delete_instances(instance_ids_or_names=instance_id_or_name, dry_run=not no_dry_run)
+    while True:
+        try:
+            logs.info('Deleting instance', **next(generator))
+        except StopIteration:
+            break
+        logs.info(**next(generator))
+    logs.exit_great_success(quiet=True)

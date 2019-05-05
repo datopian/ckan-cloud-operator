@@ -28,6 +28,10 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
             values = yaml.load(f.read())
     if not exists_ok and crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False):
         raise Exception('instance already exists')
+    values_id = values.get('id')
+    if values_id:
+        assert values_id == instance_id, f'instance spec has conflicting instance_id ({values_id} != {instance_id})'
+    values['id'] = instance_id
     logs.info('Creating instance', instance_id=instance_id)
     kubectl.apply(crds_manager.get_resource(
         INSTANCE_CRD_SINGULAR, instance_id,
@@ -76,17 +80,60 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
             assert not register_subdomain, 'subdomain registration is only supported with instance_domain'
 
 
-
-
-
 def delete(instance_id):
     try:
         instance_id, instance_type, instance = _get_instance_id_and_type(instance_id=instance_id)
     except Exception:
         logs.error(traceback.format_exc())
         instance, instance_type = None, None
-    deployment_manager.delete(instance_id, instance_type, instance)
-    crds_manager.delete(INSTANCE_CRD_SINGULAR, instance_id)
+    try:
+        deployment_manager.delete(instance_id, instance_type, instance)
+    except Exception as e:
+        logs.error('error during deployment delete', error=str(e))
+    try:
+        crds_manager.delete(INSTANCE_CRD_SINGULAR, instance_id)
+    except Exception as e:
+        logs.error('error during crd delete', error=str(e))
+
+
+def delete_instances(instance_ids_or_names=None, dry_run=True, instance_ids=None):
+    if instance_ids:
+        assert not instance_ids_or_names
+        use_instance_ids = True
+    else:
+        assert not instance_ids
+        use_instance_ids = False
+    logs.info(use_instance_ids=use_instance_ids, instance_ids=instance_ids, instance_ids_or_names=instance_ids_or_names)
+    for instance_id_or_name in (instance_ids if use_instance_ids else instance_ids_or_names):
+        logs.info(instance_id_or_name=instance_id_or_name)
+        if use_instance_ids:
+            instance_id = instance_id_or_name
+        else:
+            instance_id, _, _ = _get_instance_id_and_type(instance_id_or_name)
+        instance_name = instance_id_or_name if instance_id != instance_id_or_name else None
+        yield {
+            'id': instance_id,
+            **({'name': instance_name} if instance_name else {})
+        }
+        errors = []
+        if instance_id:
+            if not dry_run:
+                try:
+                    delete(instance_id=instance_id)
+                except Exception as e:
+                    errors.append(str(e))
+                    logs.error('exception raised during instance deletion, '
+                               'this does not always indicate deletion was not successful',
+                               exception=str(e))
+        else:
+            errors.append(f'Failed to get instance_id for instance_id_or_name {instance_id_or_name}')
+        if instance_name:
+            try:
+                delete_name(instance_name)
+            except Exception as e:
+                errors.append(str(e))
+                logs.error('exception raised during instance name deletion.', exception=str(e))
+        yield {'errors': errors}
 
 
 def wait_instance_ready(instance_id_or_name):
