@@ -309,7 +309,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
         if not provider_id:
             return [solr_solrcloud_provider_id]
 
-        ## minio
+        ## solrcloud
 
         elif provider_id == solr_solrcloud_provider_id:
             from ckan_cloud_operator.providers.solr.solrcloud import manager as solr_solrcloud_manager

@@ -5,7 +5,6 @@ import os
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
-from ckan_cloud_operator.providers import manager as providers_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 
 from .constants import OPERATOR_NAMESPACE, OPERATOR_CONFIGMAP
@@ -30,6 +29,7 @@ def get_operator_version(verify=False):
 def print_info(debug=False, minimal=False):
     print(yaml.dump([dict(get_kubeconfig_info(), nodes=get_node_names(), operator_version=get_operator_version(verify=True))], default_flow_style=False))
     if not minimal:
+        from ckan_cloud_operator.providers import manager as providers_manager
         print(yaml.dump([providers_manager.get_provider('cluster').get_info(debug=debug)], default_flow_style=False))
         if debug:
             assert all([
@@ -50,6 +50,7 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
         assert default_cluster_provider in ['gcloud', 'aws'], f'invalid cluster provider: {default_cluster_provider}'
 
+    from ckan_cloud_operator.providers import manager as providers_manager
     from ckan_cloud_operator.labels import manager as labels_manager
     from ckan_cloud_operator.crds import manager as crds_manager
     from ckan_cloud_operator.providers.db import manager as db_manager
@@ -144,18 +145,22 @@ def get_operator_configmap_namespace_defaults(configmap_name=None, namespace=Non
 
 
 def get_cluster_name():
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider('cluster').get_name()
 
 
 def get_cluster_kubeconfig_spec():
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider('cluster').get_cluster_kubeconfig_spec()
 
 
 def get_provider():
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider('cluster')
 
 
 def get_provider_id():
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider_id('cluster', default='gcloud')
 
 
