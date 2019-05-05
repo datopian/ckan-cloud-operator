@@ -125,6 +125,7 @@ def main(instance_id, old_db_prefix, new_db_prefix, down_time_approval_code, new
                         f'NEW_STORAGE_PATH={storage_path}\n'
                         f'DATABASE_IMPORT_URL={db_backup_url}\n'
                         f'DATASTORE_IMPORT_URL={datastore_backup_url}\n'
+                        f'DRY_RUN=yes\n'
                         )
             logs.exit_great_success()
         else:
