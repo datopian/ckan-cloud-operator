@@ -2,7 +2,10 @@ from logging import CRITICAL, ERROR, WARNING, INFO, DEBUG, getLevelName
 import datetime
 from distutils.util import strtobool
 import os
-import yaml
+from ruamel import yaml
+from ruamel.yaml.serializer import Serializer as ruamelSerializer
+from ruamel.yaml.emitter import Emitter as ruamelEmitter
+import sys
 
 
 def info(*args, **kwargs):
@@ -39,10 +42,27 @@ def log(level, *args, **kwargs):
     print(msg)
 
 
+def important_log(level, *args, **kwargs):
+    if level == DEBUG and not strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG', 'n')): return
+    header = datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + ' ' + getLevelName(level)
+    print(f'\n{header}')
+    if len(kwargs) > 0:
+        metadata = '(' + ','.join([f'{k}="{v}"' for k, v in kwargs.items()]) + ')'
+        print(metadata)
+    print('\n')
+    if len(args) > 0:
+        title = args[0]
+        print(f'== {title}')
+        if len(args) > 1:
+            msg = ' '.join(args[1:])
+            print(msg)
+
+
 def exit_great_success(quiet=False):
     if not quiet:
         info('Great Success!')
     exit(0)
+
 
 def exit_catastrophic_failure(exitcode=1, quiet=False):
     if not quiet:
@@ -52,12 +72,25 @@ def exit_catastrophic_failure(exitcode=1, quiet=False):
 
 def debug_yaml_dump(*args, **kwargs):
     if len(args) == 1:
-        debug(yaml.dump(args[0], default_flow_style=False), **kwargs)
+        debug(yaml.dump(args[0], Dumper=YamlSafeDumper, default_flow_style=False), **kwargs)
     else:
-        debug(yaml.dump(args, default_flow_style=False), **kwargs)
+        debug(yaml.dump(args, Dumper=YamlSafeDumper, default_flow_style=False), **kwargs)
 
 
 def print_yaml_dump(data, exit_success=False):
-    print(yaml.dump(data, default_flow_style=False))
+    yaml.dump(data, sys.stdout, Dumper=YamlSafeDumper, default_flow_style=False)
     if exit_success:
         exit_great_success(quiet=True)
+
+
+def yaml_dump(data, *args, **kwargs):
+    return yaml.dump(data, *args, Dumper=YamlSafeDumper, default_flow_style=False, **kwargs)
+
+
+class YamlSafeDumper(yaml.SafeDumper):
+
+    def ignore_aliases(self, data):
+        return True
+
+    def represent_undefined(self, data):
+        return None

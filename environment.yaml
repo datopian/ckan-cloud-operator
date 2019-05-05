@@ -17,3 +17,4 @@ dependencies:
     - requests<2.22
     - urllib3<1.25
     - httpagentparser
+    - ruamel.yaml<1

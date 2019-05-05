@@ -12,21 +12,19 @@ from .constants import OPERATOR_NAMESPACE, OPERATOR_CONFIGMAP
 
 
 def get_operator_version(verify=False):
-    installed_image_tag = None
-    if os.path.exists('/etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG'):
-        with open('/etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG') as f:
-            installed_image_tag = f.read().strip()
-    if not installed_image_tag or len(installed_image_tag) < 2:
-        assert not verify, "Failed operator version verification, no version tag could be found in /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG"
-        return None
-    else:
-        if verify:
-            from ckan_cloud_operator.config import manager as config_manager
-            expected_image = config_manager.get('ckan-cloud-operator-image')
-            assert '@' not in expected_image and ':' in expected_image, f'invalid expected image: {expected_image}'
-            expected_image, expected_image_tag = expected_image.split(':')
-            assert installed_image_tag == expected_image_tag, f'installed tag mismatch (expected={expected_image_tag}, actual={installed_image_tag})'
-        return installed_image_tag
+    installed_image_tag = _get_installed_operator_image_tag()
+    if verify:
+        expected_image_tag = _get_expected_operator_image_tag()
+        if installed_image_tag and len(installed_image_tag) >= 2:
+            assert installed_image_tag == expected_image_tag, \
+                f'installed tag mismatch (expected={expected_image_tag}, actual={installed_image_tag})'
+        else:
+            logs.error("No version tag could be found. for local development, "
+                       "make sure you use correct version and run the following "
+                       "to create the file with correct version:\n\n"
+                       f"echo {expected_image_tag} | sudo tee /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG\n")
+            logs.exit_catastrophic_failure()
+    return installed_image_tag
 
 
 def print_info(debug=False, minimal=False):
@@ -103,9 +101,29 @@ def get_kube_version_info():
         'serverMajor': version['serverVersion']['major'],
         'serverMinor': version['serverVersion']['minor'],
     }
-    assert int(version['clientMajor']) == 1 and int(version['clientMinor']) >= 11, 'Invalid kubectl client version, ' \
-                                                                                   'minimal supported version: 1.11\n' \
-                                                                                   'If you are using GKE, run: gcloud components update'
+    try:
+        client_major = int(version['clientMajor'])
+    except Exception:
+        raise Exception(f'Failed to get kubectl client major version (clientMajor={version["clientMajor"]}')
+    client_minor = version['clientMinor']
+    if client_minor.endswith('+'):
+        client_minor = int(client_minor[:-1])
+    else:
+        client_minor = int(client_minor)
+    assert client_major == 1 and client_minor >= 11, 'Invalid kubectl client version, ' \
+                                                     'minimal supported version: 1.11\n' \
+                                                     'If you are using GKE, run: gcloud components update'
+    try:
+        server_major = int(version['serverMajor'])
+    except Exception:
+        raise Exception(f'Failed to get Kubernetes server major version (serverMajor={version["serverMajor"]}')
+    server_minor = version['serverMinor']
+    if server_minor.endswith('+'):
+        server_minor = int(server_minor[:-1])
+    else:
+        server_minor = int(server_minor)
+    assert server_major == 1 and server_minor >= 10, "Invalid Kubernetes server version, " \
+                                                     "minimal supported version: 1.10"
     return version
 
 
@@ -194,3 +212,19 @@ def _generate_password(l):
 
 def _get_cluster_volume_label_suffixes():
     return {'provider-cluster-volume': 'multi-user'}
+
+
+def _get_installed_operator_image_tag():
+    if os.path.exists('/etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG'):
+        with open('/etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG') as f:
+            return f.read().strip()
+    else:
+        return None
+
+
+def _get_expected_operator_image_tag():
+    from ckan_cloud_operator.config import manager as config_manager
+    expected_image = config_manager.get('ckan-cloud-operator-image')
+    assert '@' not in expected_image and ':' in expected_image, f'invalid expected image: {expected_image}'
+    _, expected_image_tag = expected_image.split(':')
+    return expected_image_tag
