@@ -76,32 +76,33 @@ def _add_route(config, domains, route, enable_ssl_redirect):
         extra_hostnames = ''
     logs.debug(route_name=route_name, backend_url=backend_url, frontend_hostname=frontend_hostname, root_domain=root_domain,
                sub_domain=sub_domain, domains=domains, extra_hostnames=extra_hostnames)
-    config['backends'][route_name] = {
-        'servers': {
-            'server1': {
-                'url': backend_url
-            }
-        }
-    }
-    config['frontends'][route_name] = {
-        'backend': route_name,
-        'passHostHeader': True,
-        'headers': {
-            'SSLRedirect': bool(enable_ssl_redirect)
-        },
-        'routes': {
-            'route1': {
-                'rule': f'Host:{frontend_hostname}{extra_hostnames}'
-            }
-        },
-        **({
-            'auth': {
-                'basic': {
-                    'usersFile': '/httpauth-' + route['spec']['httpauth-secret'] + '/.htpasswd'
+    if backend_url:
+        config['backends'][route_name] = {
+            'servers': {
+                'server1': {
+                    'url': backend_url
                 }
             }
-        } if route['spec'].get('httpauth-secret') else {}),
-    }
+        }
+        config['frontends'][route_name] = {
+            'backend': route_name,
+            'passHostHeader': True,
+            'headers': {
+                'SSLRedirect': bool(enable_ssl_redirect)
+            },
+            'routes': {
+                'route1': {
+                    'rule': f'Host:{frontend_hostname}{extra_hostnames}'
+                }
+            },
+            **({
+                'auth': {
+                    'basic': {
+                        'usersFile': '/httpauth-' + route['spec']['httpauth-secret'] + '/.htpasswd'
+                    }
+                }
+            } if route['spec'].get('httpauth-secret') else {}),
+        }
 
 
 def get(routes, letsencrypt_cloudflare_email, enable_access_log=False, wildcard_ssl_domain=None, external_domains=False):

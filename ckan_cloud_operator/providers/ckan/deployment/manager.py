@@ -15,12 +15,18 @@ def get(instance_id, instance_type, instance):
 
 
 def get_backend_url(instance_id, instance_type, instance):
-    return _get_deployment_provider(instance_type).get_backend_url(instance_id, instance)
+    deployment_provider = _get_deployment_provider(instance_type)
+    if deployment_provider:
+        return deployment_provider.get_backend_url(instance_id, instance)
+    else:
+        return None
 
 
-def _get_deployment_provider(instance_type):
+def _get_deployment_provider(instance_type, required=True):
     if instance_type == 'helm':
         from .helm import manager as helm_manager
         return helm_manager
-    else:
+    elif required:
         raise Exception(f'unknown instance_type ({instance_type})')
+    else:
+        return None
