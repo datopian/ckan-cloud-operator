@@ -117,7 +117,7 @@ class CkanGitlab(object):
                 },
                 json=postjson
             )
-            assert r.status_code == 200, r.text
+            assert r.status_code in [200, 201], r.text
             return r.text
         elif download_filename:
             cmd = f'curl -f -s --header "PRIVATE-TOKEN: {gitlab_token}" https://gitlab.com/api/v4/{urlpart} > {download_filename}'

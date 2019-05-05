@@ -34,6 +34,8 @@ curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${C
 
 ## Jenkins integration
 
+### Create job
+
 * Set job name the same as a script name
 * Define the args as parameters for the job
 
@@ -74,3 +76,17 @@ Add the following snippet before the run snippet:
 ```
 python3 -m pip install . &&\
 ```
+
+### trigger other jobs
+
+* Script should create an env file containing KEY=VALUE per line corresponding to the triggered job parameters
+* Add post-build actions:
+  * Archive file artifacts:
+    * Files to archive: relative path to the created env file
+  * Trigger parameterized build on other projects
+    * Builld triggers:
+      * projects to build: name of job to trigger
+      * trigger when build is stable
+      * parameters from properties file:
+        * use properties from file: name of the created env file
+        * don't trigger if any files are missing: check
