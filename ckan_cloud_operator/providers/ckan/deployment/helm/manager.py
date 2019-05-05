@@ -25,6 +25,8 @@ import traceback
 import datetime
 import time
 import json
+import binascii
+import os
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.drivers.kubectl import rbac as kubectl_rbac_driver
@@ -51,6 +53,7 @@ def update(instance_id, instance):
         "ckanHelmChartRepo",
         "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-helm/master/charts_repository"
     )
+    ckan_admin_email = instance['spec'].get('ckanAdminEmail', '')
     ckan_helm_chart_version = instance['spec'].get("ckanHelmChartVersion", "")
     ckan_helm_release_name = f'ckan-cloud-{instance_id}'
     instance['spec']['centralizedSolrHost'], instance['spec']['centralizedSolrPort'] = _init_solr(instance_id)
@@ -76,6 +79,24 @@ def update(instance_id, instance):
             instance['spec'], tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version,
             ckan_helm_release_name, instance_id
         )
+    if ckan_admin_email:
+        ckan_admin_password = config_manager.get(key='CKAN_ADMIN_PASSWORD', secret_name='ckan-admin-password', namespace=instance_id, required=False)
+        if ckan_admin_password:
+            logs.info('using existing ckan admin user')
+        else:
+            logs.info('Creating ckan admin user')
+            ckan_admin_password = binascii.hexlify(os.urandom(12)).decode()
+            ckan_pod_name = kubectl.get_deployment_pod_name(deployment_name='ckan', namespace=instance_id, use_first_pod=True)
+            subprocess.check_call(
+                'echo y | '
+                f'kubectl -n {instance_id} exec -it {ckan_pod_name} -- bash -c '
+                f'"ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add admin password={ckan_admin_password} email={ckan_admin_email}" '
+                ' > /dev/stderr',
+                shell=True
+            )
+    else:
+        ckan_admin_password = ''
+    logs.info(ckan_admin_password=ckan_admin_password)
 
 
 def _helm_deploy(values, tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version, ckan_helm_release_name, instance_id):

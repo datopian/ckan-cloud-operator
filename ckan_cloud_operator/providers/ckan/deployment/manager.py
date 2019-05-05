@@ -15,7 +15,7 @@ def get(instance_id, instance_type, instance):
 
 
 def get_backend_url(instance_id, instance_type, instance):
-    deployment_provider = _get_deployment_provider(instance_type)
+    deployment_provider = _get_deployment_provider(instance_type, required=False)
     if deployment_provider:
         return deployment_provider.get_backend_url(instance_id, instance)
     else:
