@@ -200,6 +200,16 @@ def get_backend_url(instance_id, instance):
     return f'http://nginx.{instance_id}:8080'
 
 
+def create_ckan_admin_user(instance_id, instance, user):
+    pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True)
+    assert pod_name
+    name, password, email = [user[k] for k in ['name', 'password', 'email']]
+    subprocess.check_call(
+        f'echo y | kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add {name} password={password} email={email}',
+        shell=True
+    )
+
+
 def _init_ckan_infra_secret(instance_id):
     ckan_infra = config_manager.get(secret_name='ckan-infra', namespace=instance_id, required=False)
     if ckan_infra:

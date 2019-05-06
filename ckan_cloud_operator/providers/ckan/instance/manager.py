@@ -4,6 +4,7 @@ import datetime
 import binascii
 import os
 import traceback
+import subprocess
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -246,22 +247,57 @@ def set_name(instance_id, instance_name, dry_run=False):
         kubectl.apply(resource)
 
 
-def _get_instance_id_and_type(instance_id_or_name=None, instance_id=None):
+def create_ckan_admin_user(instance_id_or_name, name, email=None, password=None, dry_run=False):
+    if not email:
+        default_root_domain = routers_manager.get_default_root_domain()
+        email = f'{name}@{instance_id_or_name}.{default_root_domain}'
+    if not password:
+        password = _generate_password(8)
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
+    user = {
+        'name': name,
+        'email': email,
+        'password': password
+    }
+    if not dry_run:
+        deployment_manager.create_ckan_admin_user(instance_id, instance_type, instance, user)
+    return {
+        'instance-id': instance_id,
+        'instance-type': instance_type,
+        **{f'admin-{k}': v for k, v in user.items()},
+        **({'dry-run': True} if dry_run else {}),
+    }
+
+
+def _get_instance_id_and_type(instance_id_or_name=None, instance_id=None, required=True):
     if instance_id:
+        logs.debug(f'Getting instance type using instance_id', instance_id=instance_id)
         instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False)
+        instance_name = None
     else:
+        logs.debug(f'Attempting to get instance type using id', instance_id_or_name=instance_id_or_name)
         instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id_or_name, required=False)
         if instance:
             instance_id = instance_id_or_name
-    if not instance:
-        assert not instance_id
-        instance_name = crds_manager.get(INSTANCE_NAME_CRD_SINGULAR, name=instance_id_or_name, required=False)
-        if instance_name:
-            instance_id = instance_name['spec'].get('latest-instance-id')
-            instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False)
+            instance_name = None
         else:
-            instance_id = None
-    instance_type = instance['metadata']['labels'].get('{}/instance-type'.format(labels_manager.get_label_prefix())) if instance else None
+            logs.debug(f'Attempting to get instance type from instance name', instance_id_or_name=instance_id_or_name)
+            instance_name = crds_manager.get(INSTANCE_NAME_CRD_SINGULAR, name=instance_id_or_name, required=False)
+            if instance_name:
+                instance_id = instance_name['spec'].get('latest-instance-id')
+                logs.debug(instance_id=instance_id)
+                instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False)
+                instance_name = instance_id_or_name
+            else:
+                instance_name = None
+    if instance:
+        instance_type = instance['metadata']['labels'].get('{}/instance-type'.format(labels_manager.get_label_prefix()))
+    else:
+        instance_type = None
+    logs.debug_yaml_dump(instance_name=instance_name, instance_id=instance_id, instance_type=instance_type,
+                         instance=bool(instance))
+    if required:
+        assert instance_id and instance_type and len(instance) > 2, f'Failed to find instance (instance_id_or_name={instance_id_or_name}, instance_id={instance_id})'
     return instance_id, instance_type, instance
 
 

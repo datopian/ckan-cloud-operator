@@ -108,3 +108,14 @@ def delete(instance_id_or_name, no_dry_run):
             break
         logs.info(**next(generator))
     logs.exit_great_success(quiet=True)
+
+
+@instance.command()
+@click.argument('INSTANCE_ID_OR_NAME')
+@click.argument('NAME')
+@click.argument('EMAIL', required=False)
+@click.argument('PASSWORD', required=False)
+@click.option('--dry-run', is_flag=True)
+def create_ckan_admin_user(instance_id_or_name, name, email, password, dry_run):
+    logs.print_yaml_dump(manager.create_ckan_admin_user(instance_id_or_name, name, email, password, dry_run))
+    logs.exit_great_success()

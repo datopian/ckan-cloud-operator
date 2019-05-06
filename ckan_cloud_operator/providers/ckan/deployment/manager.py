@@ -22,6 +22,10 @@ def get_backend_url(instance_id, instance_type, instance):
         return None
 
 
+def create_ckan_admin_user(instance_id, instance_type, instance, user):
+    _get_deployment_provider(instance_type).create_ckan_admin_user(instance_id, instance, user)
+
+
 def _get_deployment_provider(instance_type, required=True):
     if instance_type == 'helm':
         from .helm import manager as helm_manager
