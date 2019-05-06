@@ -35,7 +35,8 @@ def create(instance_type, values_file, instance_id, instance_name, exists_ok, dr
 @click.option('--wait-ready', is_flag=True)
 @click.option('--skip-deployment', is_flag=True)
 @click.option('--skip-route', is_flag=True)
-def update(instance_id_or_name, override_spec_json, persist_overrides, wait_ready, skip_deployment, skip_route):
+@click.option('--force', is_flag=True)
+def update(instance_id_or_name, override_spec_json, persist_overrides, wait_ready, skip_deployment, skip_route, force):
     """Update an instance to the latest resource spec, optionally applying the given json override to the resource spec
 
     Examples:
@@ -46,7 +47,8 @@ def update(instance_id_or_name, override_spec_json, persist_overrides, wait_read
     """
     override_spec = json.loads(override_spec_json) if override_spec_json else None
     manager.update(instance_id_or_name, override_spec=override_spec, persist_overrides=persist_overrides,
-                   wait_ready=wait_ready, skip_deployment=skip_deployment, skip_route=skip_route)
+                   wait_ready=wait_ready, skip_deployment=skip_deployment, skip_route=skip_route,
+                   force=force)
     logs.exit_great_success()
 
 

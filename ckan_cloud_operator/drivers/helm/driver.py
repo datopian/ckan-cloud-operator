@@ -50,7 +50,14 @@ def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name
     dry_run_args = '--dry-run --debug'
     cmd = f'helm --tiller-namespace {tiller_namespace} upgrade {release_name} {chart_name} ' \
           f' --install --namespace "{namespace}" -if {values_filename} {version_args}'
-    subprocess.check_call(f'{cmd} {dry_run_args}', shell=True)
+    logs.info('Running helm upgrade --dry-run')
+    if logs.CKAN_CLOUD_OPERATOR_DEBUG_FILE:
+        logs.info(f'helm dry run debug output is written to debug log file: {logs.CKAN_CLOUD_OPERATOR_DEBUG_FILE}')
+        with open(logs.CKAN_CLOUD_OPERATOR_DEBUG_FILE, 'a') as f:
+            subprocess.check_call(f'{cmd} {dry_run_args}', shell=True, stdout=f, stderr=subprocess.STDOUT)
+    else:
+        subprocess.check_call(f'{cmd} {dry_run_args}', shell=True)
+    logs.info('Running helm upgrade for real this time')
     subprocess.check_call(cmd, shell=True)
 
 

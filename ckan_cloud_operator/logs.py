@@ -8,6 +8,10 @@ from ruamel.yaml.emitter import Emitter as ruamelEmitter
 import sys
 
 
+CKAN_CLOUD_OPERATOR_DEBUG = strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG', 'n'))
+CKAN_CLOUD_OPERATOR_DEBUG_FILE = os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG_FILE', '').strip()
+
+
 def info(*args, **kwargs):
     log(INFO, *args, **kwargs)
 
@@ -34,12 +38,17 @@ def critical(*args, **kwargs):
 
 
 def log(level, *args, **kwargs):
-    if level == DEBUG and not strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG', 'n')): return
+    if level == DEBUG and not CKAN_CLOUD_OPERATOR_DEBUG and not CKAN_CLOUD_OPERATOR_DEBUG_FILE:
+        return
     msg = datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + ' ' + getLevelName(level) + ' '
     if len(kwargs) > 0:
         msg += '(' + ','.join([f'{k}="{v}"' for k, v in kwargs.items()]) + ') '
     msg += ' '.join(args)
-    print(msg)
+    if CKAN_CLOUD_OPERATOR_DEBUG_FILE:
+        with open(CKAN_CLOUD_OPERATOR_DEBUG_FILE, 'a') as f:
+            print(msg, file=f)
+    if CKAN_CLOUD_OPERATOR_DEBUG or level != DEBUG:
+        print(msg)
 
 
 def important_log(level, *args, **kwargs):

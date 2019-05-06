@@ -44,41 +44,38 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
     return instance_id
 
 
-def update(instance_id_or_name, override_spec=None, persist_overrides=False, wait_ready=False, skip_deployment=False, skip_route=False):
+def update(instance_id_or_name, override_spec=None, persist_overrides=False, wait_ready=False, skip_deployment=False,
+           skip_route=False, force=False):
     instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
-    if override_spec:
-        for k, v in override_spec.items():
-            logs.info(f'Applying override spec {k}={v}')
-            instance['spec'][k] = v
-    assert instance['spec'].get('useCentralizedInfra'), 'non-centralized instances are not supported'
-    # full domain to route to the instance
-    instance_domain = instance['spec'].get('domain')
-    # instance is added to router only if this is true, as all routers must use SSL and may use sans SSL too
-    with_sans_ssl = instance['spec'].get('withSansSSL')
-    # subdomain to register on the default root domain
-    register_subdomain = instance['spec'].get('registerSubdomain')
+    pre_update_hook_data = deployment_manager.pre_update_hook(instance_id, instance_type, instance, override_spec,
+                                                              skip_route)
     if persist_overrides:
         logs.info('Persisting overrides')
         kubectl.apply(instance)
     if not skip_deployment:
-        deployment_manager.update(instance_id, instance_type, instance)
+        deployment_manager.update(instance_id, instance_type, instance, force=force)
         if wait_ready:
             wait_instance_ready(instance_id_or_name)
-    if not skip_route:
-        if instance_domain:
-            assert with_sans_ssl, 'withSansSSL must be set to true to add routes'
-            assert '.'.join(instance_domain.split('.')[1:]) == routers_manager.get_default_root_domain(), f'invalid root domain ({instance_domain})'
-            assert instance_domain.split('.')[0] == register_subdomain, f'invalid register_subdomain ({register_subdomain})'
-            logs.info(f'adding instance route to {instance_domain}')
-            routers_manager.create_subdomain_route('instances-default', {
-                'target-type': 'ckan-instance',
-                'ckan-instance-id': instance_id,
-                'root-domain': routers_manager.get_default_root_domain(),
-                'sub-domain': register_subdomain
-            })
-            routers_manager.update('instances-default', wait_ready)
-        else:
-            assert not register_subdomain, 'subdomain registration is only supported with instance_domain'
+    if not skip_route and pre_update_hook_data.get('sub-domain'):
+        root_domain = pre_update_hook_data.get('root-domain')
+        sub_domain = pre_update_hook_data['sub-domain']
+        assert root_domain == routers_manager.get_default_root_domain(), 'invalid domain, must use default root domain'
+        logs.info(f'adding instance default route to {sub_domain}.{root_domain}')
+        routers_manager.create_subdomain_route('instances-default', {
+            'target-type': 'ckan-instance',
+            'ckan-instance-id': instance_id,
+            'root-domain': root_domain,
+            'sub-domain': sub_domain
+        })
+        routers_manager.update('instances-default', wait_ready)
+    else:
+        logs.info('skipping route creation', skip_route=skip_route, sub_domain=pre_update_hook_data.get('sub-domain'))
+    ckan_admin_email = pre_update_hook_data.get('ckan-admin-email')
+    ckan_admin_password = pre_update_hook_data.get('ckan-admin-password')
+    ckan_admin_name = pre_update_hook_data.get('ckan-admin-name', 'admin')
+    res = create_ckan_admin_user(instance_id, ckan_admin_name, ckan_admin_email, ckan_admin_password)
+    logs.info(**res)
+    logs.info('Instance is ready', instance_id=instance_id, instance_name=(instance_id_or_name if instance_id_or_name != instance_id else None))
 
 
 def delete(instance_id):
