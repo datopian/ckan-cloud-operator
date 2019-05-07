@@ -44,7 +44,8 @@ def init(tiller_namespace_name):
     )
 
 
-def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name, values_filename, namespace):
+def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name, values_filename, namespace,
+           dry_run=False):
     subprocess.check_call(f'helm repo add ckan-cloud "{chart_repo}"', shell=True)
     version_args = f'--version "{chart_version}"' if chart_version else ''
     dry_run_args = '--dry-run --debug'
@@ -57,8 +58,9 @@ def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name
             subprocess.check_call(f'{cmd} {dry_run_args}', shell=True, stdout=f, stderr=subprocess.STDOUT)
     else:
         subprocess.check_call(f'{cmd} {dry_run_args}', shell=True)
-    logs.info('Running helm upgrade for real this time')
-    subprocess.check_call(cmd, shell=True)
+    if not dry_run:
+        logs.info('Running helm upgrade for real this time')
+        subprocess.check_call(cmd, shell=True)
 
 
 def delete(tiller_namespace, release_name):

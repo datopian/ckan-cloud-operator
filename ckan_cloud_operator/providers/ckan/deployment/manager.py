@@ -1,5 +1,5 @@
-def update(instance_id, instance_type, instance, force=False):
-    return _get_deployment_provider(instance_type).update(instance_id, instance, force=force)
+def update(instance_id, instance_type, instance, force=False, dry_run=False):
+    return _get_deployment_provider(instance_type).update(instance_id, instance, force=force, dry_run=dry_run)
 
 
 def delete(instance_id, instance_type, instance):
@@ -22,8 +22,9 @@ def get_backend_url(instance_id, instance_type, instance):
         return None
 
 
-def pre_update_hook(instance_id, instance_type, instance, override_spec, skip_route):
-    return _get_deployment_provider(instance_type).pre_update_hook(instance_id, instance, override_spec, skip_route)
+def pre_update_hook(instance_id, instance_type, instance, override_spec, skip_route, dry_run=False):
+    return _get_deployment_provider(instance_type).pre_update_hook(instance_id, instance, override_spec, skip_route,
+                                                                   dry_run=dry_run)
 
 
 def create_ckan_admin_user(instance_id, instance_type, instance, user):

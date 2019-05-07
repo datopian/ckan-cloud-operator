@@ -46,19 +46,18 @@ def initialize():
     helm_driver.init(tiller_namespace_name)
 
 
-def update(instance_id, instance, force=False):
+def update(instance_id, instance, force=False, dry_run=False):
     tiller_namespace_name = _get_resource_name()
     logs.debug('Updating helm-based instance deployment',
                instance_id=instance_id, tiller_namespace_name=tiller_namespace_name)
-    _init_namespace(instance_id)
-    _init_ckan_infra_secret(instance_id)
+    _init_ckan_infra_secret(instance_id, dry_run=dry_run)
     ckan_helm_chart_repo = instance['spec'].get(
         "ckanHelmChartRepo",
         "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-helm/master/charts_repository"
     )
     ckan_helm_chart_version = instance['spec'].get("ckanHelmChartVersion", "")
     ckan_helm_release_name = f'ckan-cloud-{instance_id}'
-    solr_host, solr_port = _init_solr(instance_id)
+    solr_host, solr_port = _init_solr(instance_id, dry_run=dry_run)
     logs.debug(ckan_helm_chart_repo=ckan_helm_chart_repo,
                ckan_helm_chart_version=ckan_helm_chart_version, ckan_helm_release_name=ckan_helm_release_name,
                solr_host=solr_host, solr_port=solr_port)
@@ -77,25 +76,27 @@ def update(instance_id, instance, force=False):
         }
     _helm_deploy(
         values, tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version,
-        ckan_helm_release_name, instance_id
+        ckan_helm_release_name, instance_id, dry_run=dry_run
     )
-    _wait_instance_events(instance_id, force_update_events=force)
-    instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id)
-    if not annotations_manager.get_status(instance, 'helm', 'created'):
-        annotations_manager.set_status(instance, 'helm', 'created')
-        _helm_deploy(
-            instance['spec'], tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version,
-            ckan_helm_release_name, instance_id
-        )
+    if not dry_run:
+        _wait_instance_events(instance_id, force_update_events=force)
+        instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id)
+        if not annotations_manager.get_status(instance, 'helm', 'created'):
+            annotations_manager.set_status(instance, 'helm', 'created')
+            _helm_deploy(
+                instance['spec'], tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version,
+                ckan_helm_release_name, instance_id
+            )
 
 
-def _helm_deploy(values, tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version, ckan_helm_release_name, instance_id):
+def _helm_deploy(values, tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version, ckan_helm_release_name,
+                 instance_id, dry_run=False):
     logs.debug(f'Deploying helm chart {ckan_helm_chart_repo} {ckan_helm_chart_version} to release {ckan_helm_release_name} (instance_id={instance_id})')
     with tempfile.NamedTemporaryFile('w') as f:
         yaml.dump(values, f, default_flow_style=False)
         f.flush()
         helm_driver.deploy(tiller_namespace_name, ckan_helm_chart_repo, 'ckan-cloud/ckan', ckan_helm_chart_version,
-                           ckan_helm_release_name, f.name, instance_id)
+                           ckan_helm_release_name, f.name, instance_id, dry_run=dry_run)
 
 
 def delete(instance_id, instance):
@@ -198,43 +199,16 @@ def get_backend_url(instance_id, instance):
     return f'http://nginx.{instance_id}:8080'
 
 
-def pre_update_hook(instance_id, instance, override_spec, skip_route=False):
-    if override_spec:
-        for k, v in override_spec.items():
-            logs.info(f'Applying override spec {k}={v}')
-            instance['spec'][k] = v
-    assert instance['spec'].get('useCentralizedInfra'), 'non-centralized instances are not supported'
-    # full domain to route to the instance
-    instance_domain = instance['spec'].get('domain')
-    # instance is added to router only if this is true, as all routers must use SSL and may use sans SSL too
-    with_sans_ssl = instance['spec'].get('withSansSSL')
-    # subdomain to register on the default root domain
-    register_subdomain = instance['spec'].get('registerSubdomain')
+def pre_update_hook(instance_id, instance, override_spec, skip_route=False, dry_run=False):
+    _init_namespace(instance_id, dry_run=dry_run)
+    _pre_update_hook_override_spec(override_spec, instance)
+    if not instance['spec'].get('useCentralizedInfra'):
+        logs.warning('Forcing centralized infra even though useCentralizedInfra is disabled')
+        _pre_update_hook_modify_spec(instance_id, instance, lambda i: i['spec'].update(useCentralizedInfra=True),
+                                     dry_run=dry_run)
     res = {}
-    if not skip_route:
-        if instance_domain:
-            assert with_sans_ssl, 'withSansSSL must be set to true to add routes'
-            assert '.'.join(instance_domain.split('.')[
-                            1:]) == routers_manager.get_default_root_domain(), f'invalid root domain ({instance_domain})'
-            assert instance_domain.split('.')[0] == register_subdomain, f'invalid register_subdomain ({register_subdomain})'
-            res.update(**{
-                'root-domain': routers_manager.get_default_root_domain(),
-                'sub-domain': register_subdomain
-            })
-        else:
-            assert not register_subdomain, 'subdomain registration is only supported with instance_domain'
-    ckan_admin_email = instance['spec'].get('ckanAdminEmail', '')
-    if ckan_admin_email:
-        ckan_admin_password = config_manager.get(key='CKAN_ADMIN_PASSWORD', secret_name='ckan-admin-password', namespace=instance_id, required=False)
-        if ckan_admin_password:
-            logs.info('using existing ckan admin user')
-        else:
-            logs.info('Will create new ckan admin user', ckan_admin_email=ckan_admin_email)
-            res['ckan-admin-email'] = ckan_admin_email
-            res['ckan-admin-password'] = ckan_admin_password = binascii.hexlify(os.urandom(8)).decode()
-            config_manager.set(key='CKAN_ADMIN_PASSWORD', value=ckan_admin_password, secret_name='ckan-admin-password', namespace=instance_id)
-    else:
-        logs.info('skipping ckan admin user creation', ckan_admin_email=ckan_admin_email)
+    sub_domain, root_domain = _pre_update_hook_route(instance_id, skip_route, instance, res, dry_run=dry_run)
+    _pre_update_hook_admin_user(instance, sub_domain, root_domain, instance_id, res, dry_run=dry_run)
     return res
 
 
@@ -248,7 +222,7 @@ def create_ckan_admin_user(instance_id, instance, user):
     )
 
 
-def _init_ckan_infra_secret(instance_id):
+def _init_ckan_infra_secret(instance_id, dry_run=False):
     logs.debug('Initializing ckan infra secret', instance_id=instance_id)
     ckan_infra = config_manager.get(secret_name='ckan-infra', namespace=instance_id, required=False)
     if ckan_infra:
@@ -266,50 +240,55 @@ def _init_ckan_infra_secret(instance_id):
                 'POSTGRES_USER': admin_user
             },
             secret_name='ckan-infra',
-            namespace=instance_id
+            namespace=instance_id,
+            dry_run=dry_run
         )
 
 
-def _init_namespace(instance_id):
+def _init_namespace(instance_id, dry_run=False):
     logs.debug('Initializing helm-based instance deployment namespace', namespace=instance_id)
     if kubectl.get('ns', instance_id, required=False):
         logs.info(f'instance namespace already exists ({instance_id})')
     else:
         logs.info(f'creating instance namespace ({instance_id})')
-        kubectl.apply(kubectl.get_resource('v1', 'Namespace', instance_id, {}))
+        kubectl.apply(kubectl.get_resource('v1', 'Namespace', instance_id, {}), dry_run=dry_run)
         service_account_name = f'ckan-{instance_id}-operator'
         logs.debug('Creating service account', service_account_name=service_account_name)
-        kubectl_rbac_driver.update_service_account(f'ckan-{instance_id}-operator', {}, namespace=instance_id)
+        if not dry_run:
+            kubectl_rbac_driver.update_service_account(f'ckan-{instance_id}-operator', {}, namespace=instance_id)
         role_name = f'ckan-{instance_id}-operator-role'
         logs.debug('Creating role and binding to the service account', role_name=role_name)
-        kubectl_rbac_driver.update_role(role_name, {}, [
-            {
-                "apiGroups": [
-                    "*"
-                ],
-                "resources": [
-                    'secrets', 'pods', 'pods/exec', 'pods/portforward'
-                ],
-                "verbs": [
-                    "list", "get", "create"
-                ]
-            }
-        ], namespace=instance_id)
-        kubectl_rbac_driver.update_role_binding(
-            name=f'ckan-{instance_id}-operator-rolebinding',
-            role_name=f'ckan-{instance_id}-operator-role',
-            namespace=instance_id,
-            service_account_name=f'ckan-{instance_id}-operator',
-            labels={}
-        )
+        if not dry_run:
+            kubectl_rbac_driver.update_role(role_name, {}, [
+                {
+                    "apiGroups": [
+                        "*"
+                    ],
+                    "resources": [
+                        'secrets', 'pods', 'pods/exec', 'pods/portforward'
+                    ],
+                    "verbs": [
+                        "list", "get", "create"
+                    ]
+                }
+            ], namespace=instance_id)
+            kubectl_rbac_driver.update_role_binding(
+                name=f'ckan-{instance_id}-operator-rolebinding',
+                role_name=f'ckan-{instance_id}-operator-role',
+                namespace=instance_id,
+                service_account_name=f'ckan-{instance_id}-operator',
+                labels={}
+            )
 
 
-def _init_solr(instance_id):
+def _init_solr(instance_id, dry_run=False):
     logs.debug('Initializing solr', instance_id=instance_id)
     solr_status = solr_manager.get_collectoin_status(instance_id)
     logs.debug_yaml_dump(solr_status)
     if not solr_status['ready']:
-        solr_manager.create_collection(instance_id, 'ckan_28_default')
+        logs.info('Creating solr collection', collection_name=instance_id, solr_config='ckan_28_default')
+        if not dry_run:
+            solr_manager.create_collection(instance_id, 'ckan_28_default')
     else:
         logs.info(f'collection already exists ({instance_id})')
     solr_url = solr_status['solr_http_endpoint']
@@ -367,3 +346,73 @@ def _wait_instance_events(instance_id, force_update_events=False):
             break
         if (datetime.datetime.now() - start_time).total_seconds() > 600:
             raise Exception('time out waiting for instance events')
+
+
+def _pre_update_hook_admin_user(instance, sub_domain, root_domain, instance_id, res, dry_run=False):
+    ckan_admin_email = instance['spec'].get('ckanAdminEmail')
+    if not ckan_admin_email:
+        ckan_admin_email = f'admin@{sub_domain}.{root_domain}'
+    ckan_admin_password = config_manager.get(key='CKAN_ADMIN_PASSWORD', secret_name='ckan-admin-password',
+                                             namespace=instance_id, required=False)
+    if ckan_admin_password:
+        logs.info('using existing ckan admin user')
+    else:
+        logs.info('Will create new ckan admin user', ckan_admin_email=ckan_admin_email)
+        res['ckan-admin-email'] = ckan_admin_email
+        res['ckan-admin-password'] = ckan_admin_password = binascii.hexlify(os.urandom(8)).decode()
+        config_manager.set(key='CKAN_ADMIN_PASSWORD', value=ckan_admin_password, secret_name='ckan-admin-password',
+                           namespace=instance_id,
+                           dry_run=dry_run)
+
+
+def _pre_update_hook_route(instance_id, skip_route, instance, res, dry_run=False):
+    root_domain = routers_manager.get_default_root_domain()
+    sub_domain = f'ckan-cloud-{instance_id}'
+    if not skip_route:
+        # full domain to route to the instance
+        instance_domain = instance['spec'].get('domain')
+        if instance_domain and instance_domain != f'{sub_domain}.{root_domain}':
+            logs.warning(f'instance domain was changed from {instance_domain} to {sub_domain}.{root_domain}')
+            _pre_update_hook_modify_spec(instance_id, instance,
+                                         lambda i: i.update(domain=f'{sub_domain}.{root_domain}'),
+                                         dry_run=dry_run)
+        # instance is added to router only if this is true, as all routers must use SSL and may use sans SSL too
+        with_sans_ssl = instance['spec'].get('withSansSSL')
+        if not with_sans_ssl:
+            logs.warning(f'forcing with_sans_ssl, even though withSansSSL is disabled')
+            _pre_update_hook_modify_spec(instance_id, instance,
+                                         lambda i: i.update(withSansSSL=True),
+                                         dry_run=dry_run)
+        # subdomain to register on the default root domain
+        register_subdomain = instance['spec'].get('registerSubdomain')
+        if register_subdomain != sub_domain:
+            logs.warning(f'instance register sub domain was changed from {register_subdomain} to {sub_domain}')
+            _pre_update_hook_modify_spec(instance_id, instance,
+                                         lambda i: i.update(registerSubdomain=sub_domain),
+                                         dry_run=dry_run)
+        res.update(**{'root-domain': root_domain, 'sub-domain': sub_domain})
+        site_url = instance['spec'].get('siteUrl')
+        if site_url != f'https://{sub_domain}.{root_domain}':
+            logs.warning(f'instance siteUrl was changed from {site_url} to https://{sub_domain}.{root_domain}')
+            _pre_update_hook_modify_spec(instance_id, instance,
+                                         lambda i: i.update(siteUrl=f'https://{sub_domain}.{root_domain}'),
+                                         dry_run=dry_run)
+    return sub_domain, root_domain
+
+
+def _pre_update_hook_override_spec(override_spec, instance):
+    # applies override spec, but doesn't persist
+    if override_spec:
+        for k, v in override_spec.items():
+            logs.info(f'Applying override spec {k}={v}')
+            instance['spec'][k] = v
+
+
+def _pre_update_hook_modify_spec(instance_id, instance, callback, dry_run=False):
+    # applies changes to both the non-persistent spec and persists the changes on latest instance spec
+    latest_instance = crds_manager.get(INSTANCE_CRD_SINGULAR, crds_manager.get_resource_name(
+        INSTANCE_CRD_SINGULAR, instance_id
+    ), required=True)
+    callback(instance)
+    callback(latest_instance)
+    kubectl.apply(latest_instance, dry_run=dry_run)

@@ -108,7 +108,7 @@ def decode_secret(secret, attr=None, required=False):
         }
 
 
-def update_secret(name, values, namespace='ckan-cloud', labels=None):
+def update_secret(name, values, namespace='ckan-cloud', labels=None, dry_run=False):
     for k, v in values.items():
         v_type = type(v)
         assert v_type == str, f'Invalid type ({v_type}) for {k}: {v}'
@@ -128,18 +128,18 @@ def update_secret(name, values, namespace='ckan-cloud', labels=None):
         },
         'type': 'Opaque',
         'data': {k: base64.b64encode(v.encode()).decode() for k, v in data.items() if v}
-    })
+    }, dry_run=dry_run)
     return data
 
 
-def update_configmap(name, values, namespace='ckan-cloud', labels=None):
+def update_configmap(name, values, namespace='ckan-cloud', labels=None, dry_run=False):
     for k, v in values.items():
         v_type = type(v)
         assert v_type == str, f'Invalid type ({v_type}) for {k}: {v}'
     configmap = get(f'configmap {name}', required=False, namespace=namespace)
     data = configmap['data'] if configmap else {}
     data.update(**values)
-    apply(get_configmap(name, labels, data, namespace=namespace))
+    apply(get_configmap(name, labels, data, namespace=namespace), dry_run=dry_run)
     return data
 
 

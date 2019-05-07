@@ -22,9 +22,16 @@ def instance():
 @click.option('--instance-name')
 @click.option('--exists-ok', is_flag=True)
 @click.option('--dry-run', is_flag=True)
-def create(instance_type, values_file, instance_id, instance_name, exists_ok, dry_run):
+@click.option('--update', 'update_', is_flag=True)
+@click.option('--wait-ready', is_flag=True)
+@click.option('--skip-deployment', is_flag=True)
+@click.option('--skip-route', is_flag=True)
+@click.option('--force', is_flag=True)
+def create(instance_type, values_file, instance_id, instance_name, exists_ok, dry_run, update_, wait_ready,
+           skip_deployment, skip_route, force):
     manager.create(instance_id=instance_id, instance_type=instance_type, instance_name=instance_name,
-                   values_filename=values_file, exists_ok=exists_ok, dry_run=dry_run)
+                   values_filename=values_file, exists_ok=exists_ok, dry_run=dry_run, update_=update_,
+                   wait_ready=wait_ready, skip_deployment=skip_deployment, skip_route=skip_route, force=force)
     logs.exit_great_success()
 
 

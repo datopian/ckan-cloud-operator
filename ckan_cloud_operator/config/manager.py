@@ -28,7 +28,8 @@ def get(key=None, default=None, secret_name=None, configmap_name=None, namespace
         return value
 
 
-def set(key=None, value=None, values=None, secret_name=None, configmap_name=None, namespace=None, extra_operator_labels=None, from_file=False):
+def set(key=None, value=None, values=None, secret_name=None, configmap_name=None, namespace=None, extra_operator_labels=None,
+        from_file=False, dry_run=False):
     log_kwargs = {'func': 'config/set', 'secret': secret_name, 'configmap': configmap_name, 'namespace': namespace}
     cache_key = _get_cache_key(secret_name, configmap_name, namespace)
     if secret_name is None and configmap_name is None and namespace is None:
@@ -51,7 +52,7 @@ def set(key=None, value=None, values=None, secret_name=None, configmap_name=None
         assert key and value and not values, 'Invalid arguments: must specify both key and value args and not specify values arg'
         values = {key: value}
     assert values, 'Invalid arguments: no values to save'
-    return _save(cache_key, values, extra_operator_labels)
+    return _save(cache_key, values, extra_operator_labels, dry_run=dry_run)
 
 
 def delete_key(key, secret_name=None, namespace=None):
@@ -173,30 +174,32 @@ def _fetch_configmap(configmap_name, namespace):
     return configmap['data'] if configmap else None
 
 
-def _save(cache_key, values, extra_operator_labels):
+def _save(cache_key, values, extra_operator_labels, dry_run=False):
     config_type, namespace, config_name = _parse_cache_key(cache_key)
     save_func = {
-        'secret': lambda: _save_secret(values, config_name, namespace, extra_operator_labels),
-        'configmap': lambda: _save_configmap(values, config_name, namespace, extra_operator_labels),
+        'secret': lambda: _save_secret(values, config_name, namespace, extra_operator_labels, dry_run=dry_run),
+        'configmap': lambda: _save_configmap(values, config_name, namespace, extra_operator_labels, dry_run=dry_run),
     }.get(config_type)
     assert save_func, f'Invalid config type: {config_type}'
     __CACHED_VALUES[cache_key] = res = save_func()
     return res
 
 
-def _save_secret(values, secret_name, namespace, extra_operator_labels):
+def _save_secret(values, secret_name, namespace, extra_operator_labels, dry_run=False):
     return kubectl.update_secret(
         secret_name,
         values,
         namespace=namespace,
-        labels=_get_labels(secret_name=secret_name, namespace=namespace, extra_operator_labels=extra_operator_labels)
+        labels=_get_labels(secret_name=secret_name, namespace=namespace, extra_operator_labels=extra_operator_labels),
+        dry_run=dry_run
     )
 
 
-def _save_configmap(values, configmap_name, namespace, extra_operator_labels):
+def _save_configmap(values, configmap_name, namespace, extra_operator_labels, dry_run=False):
     return kubectl.update_configmap(
         configmap_name, values, namespace=namespace,
-        labels=_get_labels(configmap_name=configmap_name, namespace=namespace, extra_operator_labels=extra_operator_labels)
+        labels=_get_labels(configmap_name=configmap_name, namespace=namespace, extra_operator_labels=extra_operator_labels),
+        dry_run=dry_run
     )
 
 

@@ -17,7 +17,8 @@ from ..constants import INSTANCE_NAME_CRD_SINGULAR
 from ..constants import INSTANCE_CRD_SINGULAR
 
 
-def create(instance_type, instance_id=None, instance_name=None, values=None, values_filename=None, exists_ok=False, dry_run=False):
+def create(instance_type, instance_id=None, instance_name=None, values=None, values_filename=None, exists_ok=False,
+           dry_run=False, update_=False, wait_ready=False, skip_deployment=False, skip_route=False, force=False):
     if not instance_id:
         if instance_name:
             instance_id = '{}-{}'.format(instance_name, _generate_password(6))
@@ -30,8 +31,8 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
     if not exists_ok and crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False):
         raise Exception('instance already exists')
     values_id = values.get('id')
-    if values_id:
-        assert values_id == instance_id, f'instance spec has conflicting instance_id ({values_id} != {instance_id})'
+    if values_id and values_id != instance_id:
+        logs.warning(f'changing instance id in spec from {values_id} to the instance id {instance_id}')
     values['id'] = instance_id
     logs.info('Creating instance', instance_id=instance_id)
     kubectl.apply(crds_manager.get_resource(
@@ -41,41 +42,50 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
     ), dry_run=dry_run)
     if instance_name:
         set_name(instance_id, instance_name, dry_run=dry_run)
+    if update_:
+        update(instance_id, wait_ready=wait_ready, skip_deployment=skip_deployment, skip_route=skip_route, force=force,
+               dry_run=dry_run)
+
     return instance_id
 
 
 def update(instance_id_or_name, override_spec=None, persist_overrides=False, wait_ready=False, skip_deployment=False,
-           skip_route=False, force=False):
-    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
-    pre_update_hook_data = deployment_manager.pre_update_hook(instance_id, instance_type, instance, override_spec,
-                                                              skip_route)
-    if persist_overrides:
-        logs.info('Persisting overrides')
-        kubectl.apply(instance)
-    if not skip_deployment:
-        deployment_manager.update(instance_id, instance_type, instance, force=force)
-        if wait_ready:
-            wait_instance_ready(instance_id_or_name)
-    if not skip_route and pre_update_hook_data.get('sub-domain'):
-        root_domain = pre_update_hook_data.get('root-domain')
-        sub_domain = pre_update_hook_data['sub-domain']
-        assert root_domain == routers_manager.get_default_root_domain(), 'invalid domain, must use default root domain'
-        logs.info(f'adding instance default route to {sub_domain}.{root_domain}')
-        routers_manager.create_subdomain_route('instances-default', {
-            'target-type': 'ckan-instance',
-            'ckan-instance-id': instance_id,
-            'root-domain': root_domain,
-            'sub-domain': sub_domain
-        })
-        routers_manager.update('instances-default', wait_ready)
+           skip_route=False, force=False, dry_run=False):
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name, required=not dry_run)
+    if dry_run:
+        logs.info('update instance', instance_id=instance_id, instance_id_or_name=instance_id_or_name,
+                  override_spec=override_spec, persist_overrides=persist_overrides, wait_ready=wait_ready,
+                  skip_deployment=skip_deployment, skip_route=skip_route, force=force, dry_run=dry_run)
     else:
-        logs.info('skipping route creation', skip_route=skip_route, sub_domain=pre_update_hook_data.get('sub-domain'))
-    ckan_admin_email = pre_update_hook_data.get('ckan-admin-email')
-    ckan_admin_password = pre_update_hook_data.get('ckan-admin-password')
-    ckan_admin_name = pre_update_hook_data.get('ckan-admin-name', 'admin')
-    res = create_ckan_admin_user(instance_id, ckan_admin_name, ckan_admin_email, ckan_admin_password)
-    logs.info(**res)
-    logs.info('Instance is ready', instance_id=instance_id, instance_name=(instance_id_or_name if instance_id_or_name != instance_id else None))
+        pre_update_hook_data = deployment_manager.pre_update_hook(instance_id, instance_type, instance, override_spec,
+                                                                  skip_route)
+        if persist_overrides:
+            logs.info('Persisting overrides')
+            kubectl.apply(instance)
+        if not skip_deployment:
+            deployment_manager.update(instance_id, instance_type, instance, force=force)
+            if wait_ready:
+                wait_instance_ready(instance_id_or_name)
+        if not skip_route and pre_update_hook_data.get('sub-domain'):
+            root_domain = pre_update_hook_data.get('root-domain')
+            sub_domain = pre_update_hook_data['sub-domain']
+            assert root_domain == routers_manager.get_default_root_domain(), 'invalid domain, must use default root domain'
+            logs.info(f'adding instance default route to {sub_domain}.{root_domain}')
+            routers_manager.create_subdomain_route('instances-default', {
+                'target-type': 'ckan-instance',
+                'ckan-instance-id': instance_id,
+                'root-domain': root_domain,
+                'sub-domain': sub_domain
+            })
+            routers_manager.update('instances-default', wait_ready)
+        else:
+            logs.info('skipping route creation', skip_route=skip_route, sub_domain=pre_update_hook_data.get('sub-domain'))
+        ckan_admin_email = pre_update_hook_data.get('ckan-admin-email')
+        ckan_admin_password = pre_update_hook_data.get('ckan-admin-password')
+        ckan_admin_name = pre_update_hook_data.get('ckan-admin-name', 'admin')
+        res = create_ckan_admin_user(instance_id, ckan_admin_name, ckan_admin_email, ckan_admin_password)
+        logs.info(**res)
+        logs.info('Instance is ready', instance_id=instance_id, instance_name=(instance_id_or_name if instance_id_or_name != instance_id else None))
 
 
 def delete(instance_id):
