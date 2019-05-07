@@ -74,6 +74,14 @@ def get_info(debug=False):
         }
 
 
+def get_aws_credentials():
+    return {
+        'access': _config_get('aws-access-key-id', is_secret=True),
+        'secret': _config_get('aws-secret-access-key', is_secret=True),
+        'region': _config_get('aws-default-region', is_secret=True)
+    }
+
+
 def aws_check_output(cmd):
     access = _config_get('aws-access-key-id', is_secret=True)
     secret = _config_get('aws-secret-access-key', is_secret=True)
@@ -151,3 +159,43 @@ def get_name():
         name = get_info()['name']
         _config_set('cluster-name', name)
     return name
+
+
+def get_boto3_client(service_name):
+    import boto3
+    access = _config_get('aws-access-key-id', is_secret=True)
+    secret = _config_get('aws-secret-access-key', is_secret=True)
+    return boto3.client(service_name, aws_access_key_id=access, aws_secret_access_key=secret)
+
+
+def get_dns_hosted_zone_id(root_domain):
+    client = get_boto3_client('route53')
+    return client.list_hosted_zones_by_name(DNSName=f'{root_domain}.', MaxItems='1')['HostedZones'][0]['Id']
+
+
+def update_dns_record(sub_domain, root_domain, load_balancer_hostname):
+    logs.info('updating Route53 DNS record', sub_domain=sub_domain, root_domain=root_domain, load_balancer_hostname=load_balancer_hostname)
+    hosted_zone_id = get_dns_hosted_zone_id(root_domain)
+    logs.info(hosted_zone_id=hosted_zone_id)
+    response = get_boto3_client('route53').change_resource_record_sets(
+        HostedZoneId=hosted_zone_id,
+        ChangeBatch={
+            'Comment': 'ckan-cloud-operator',
+            'Changes': [
+                {
+                    'Action': 'UPSERT',
+                    'ResourceRecordSet': {
+                        'Name': f'{sub_domain}.{root_domain}.',
+                        'Type': 'CNAME',
+                        'TTL': 300,
+                        'ResourceRecords': [
+                            {
+                                'Value': load_balancer_hostname
+                            },
+                        ],
+                    }
+                },
+            ]
+        }
+    )
+    assert response['ResponseMetadata']['HTTPStatusCode'] == 200

@@ -55,8 +55,9 @@ def initialize(interactive=False):
     crds_manager.install_crd(INSTANCE_CRD_SINGULAR, INSTANCE_CRD_PLURAL_SUFFIX, INSTANCE_CRD_KIND_SUFFIX)
     crds_manager.install_crd(INSTANCE_NAME_CRD_SINGULAR, INSTANCE_NAME_CRD_PLURAL_SUFFIX, INSTANCE_NAME_CRD_KIND_SUFFIX)
 
-    from ckan_cloud_operator.datapushers import initialize as datapusher_initialize
-    datapusher_initialize()
+    if config_manager.get('disable-centralized-datapushers', configmap_name='global-ckan-config', required=False) != 'yes':
+        from ckan_cloud_operator.datapushers import initialize as datapusher_initialize
+        datapusher_initialize()
 
     from ckan_cloud_operator.routers import manager as routers_manager
     router_name = get_default_instances_router_name()

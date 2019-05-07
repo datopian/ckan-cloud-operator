@@ -12,15 +12,25 @@ def create(router):
     cloudflare_email = cloudflare_spec.get('email')
     cloudflare_api_key = cloudflare_spec.get('api-key')
     default_root_domain = router_spec.get('default-root-domain')
-    assert all([cloudflare_email, cloudflare_api_key, default_root_domain]), f'invalid traefik router spec: {router_spec}'
+    dns_provider = router_spec.get('dns-provider')
+    from ckan_cloud_operator.providers.cluster import manager as cluster_manager
+    default_dns_provider = 'route53' if cluster_manager.get_provider_id() == 'aws' else 'cloudflare'
+    logs.info(dns_provider=dns_provider, default_dns_provider=default_dns_provider)
+    if not dns_provider:
+        dns_provider = default_dns_provider
+    router_spec['dns-provider'] = dns_provider
+    assert all([default_root_domain, dns_provider]), f'invalid traefik router spec: {router_spec}'
+    if dns_provider == 'cloudflare':
+        assert cloudflare_email and cloudflare_api_key, 'invalid traefik router spec for cloudflare dns provider'
     # cloudflare credentials are stored in a secret, not in the spec
     del router_spec['cloudflare']
     kubectl.apply(router)
     annotations = CkanRoutersAnnotations(router_name, router)
-    annotations.update_flag('letsencryptCloudflareEnabled', lambda: annotations.set_secrets({
-        'LETSENCRYPT_CLOUDFLARE_EMAIL': cloudflare_email,
-        'LETSENCRYPT_CLOUDFLARE_API_KEY': cloudflare_api_key
-    }), force_update=True)
+    if dns_provider == 'cloudflare':
+        annotations.update_flag('letsencryptCloudflareEnabled', lambda: annotations.set_secrets({
+            'LETSENCRYPT_CLOUDFLARE_EMAIL': cloudflare_email,
+            'LETSENCRYPT_CLOUDFLARE_API_KEY': cloudflare_api_key
+        }), force_update=True)
     return router
 
 
@@ -70,10 +80,10 @@ def get(router_name, attr='deployment', router=None, failfast=False):
         return {'deployment': deployment_data(), 'dns': dns_data()}
 
 
-def update(router_name, wait_ready, spec, annotations, routes):
+def update(router_name, wait_ready, spec, annotations, routes, dry_run=False):
     logs.debug(f'updating traefik router: {router_name}')
     logs.debug_verbose(router_name=router_name, spec=spec, routes=routes)
-    return traefik_deployment.update(router_name, wait_ready, spec, annotations, routes)
+    return traefik_deployment.update(router_name, wait_ready, spec, annotations, routes, dry_run=dry_run)
 
 
 def _init_router(router_name):

@@ -35,7 +35,7 @@ def create(router_name, router_spec):
 
 
 def get_traefik_router_spec(default_root_domain=None, cloudflare_email=None, cloudflare_api_key=None,
-                            wildcard_ssl_domain=None, external_domains=False):
+                            wildcard_ssl_domain=None, external_domains=False, dns_provider=None):
     if not default_root_domain: default_root_domain = 'default'
     if not cloudflare_email: cloudflare_email = 'default'
     if not cloudflare_api_key: cloudflare_api_key = 'default'
@@ -49,15 +49,16 @@ def get_traefik_router_spec(default_root_domain=None, cloudflare_email=None, clo
             'api-key': cloudflare_api_key
         },
         'wildcard-ssl-domain': wildcard_ssl_domain,
-        'external-domains': bool(external_domains)
+        'external-domains': bool(external_domains),
+        'dns-provider': dns_provider
     }
 
 
-def update(router_name, wait_ready=False):
+def update(router_name, wait_ready=False, dry_run=False):
     router, spec, router_type, annotations, labels, router_type_config = _init_router(router_name)
     print(f'Updating CkanCloudRouter {router_name} (type={router_type})')
     routes = routes_manager.list(labels)
-    router_type_config['manager'].update(router_name, wait_ready, spec, annotations, routes)
+    router_type_config['manager'].update(router_name, wait_ready, spec, annotations, routes, dry_run=dry_run)
 
 
 def list(full=False, values_only=False, async_print=True):
@@ -111,7 +112,8 @@ def get(router_name_or_values, required=False, only_dns=False, failfast=False):
     else:
         return None
 
-def create_subdomain_route(router_name, route_spec):
+
+def create_subdomain_route(router_name, route_spec, dry_run=False):
     target_type = route_spec['target-type']
     sub_domain = route_spec.get('sub-domain')
     root_domain = route_spec.get('root-domain')
@@ -154,9 +156,8 @@ def create_subdomain_route(router_name, route_spec):
         spec['backend-url'] = route_spec['backend-url']
     elif target_type == 'ckan-instance':
         labels['ckan-cloud/route-ckan-instance-id'] = spec['ckan-instance-id'] = route_spec['ckan-instance-id']
-
     route = kubectl.get_resource('stable.viderum.com/v1', 'CkanCloudRoute', route_name, labels, spec=spec)
-    kubectl.apply(route)
+    kubectl.apply(route, dry_run=dry_run)
 
 
 def install_crds():
