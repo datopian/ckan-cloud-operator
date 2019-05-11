@@ -9,14 +9,17 @@ def initialize(log_kwargs=None):
     config_manager.set('label-prefix', 'ckan-cloud')
 
 
-def get_label_prefix():
+def get_label_prefix(short=False):
     """Returns a global label prefix which should be used to namespace operator objects"""
-    return config_manager.get('label-prefix', required=True)
+    return config_manager.get('short-label-prefix' if short else 'label-prefix', required=True)
 
 
-def get_resource_name(suffix):
-    label_prefix = get_label_prefix()
-    return f'{label_prefix}-{suffix}'
+def get_resource_name(suffix, short=False):
+    label_prefix = get_label_prefix(short=short)
+    if short:
+        return f'{label_prefix}{suffix}'
+    else:
+        return f'{label_prefix}-{suffix}'
 
 
 def get_resource_labels(label_suffixes, extra_labels=None):

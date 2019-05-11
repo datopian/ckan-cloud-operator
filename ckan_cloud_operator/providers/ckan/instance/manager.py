@@ -232,7 +232,7 @@ def delete_name(instance_name):
 
 
 def set_name(instance_id, instance_name, dry_run=False):
-    resource = crds_manager.get(INSTANCE_NAME_CRD_SINGULAR, instance_name, required=False)
+    resource = crds_manager.get(INSTANCE_NAME_CRD_SINGULAR, name=instance_name, required=False)
     if resource:
         resource['spec']['latest-instance-id'] = instance_id
         if not resource['spec']['instance-ids'].get(instance_id):

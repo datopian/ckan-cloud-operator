@@ -135,7 +135,6 @@ def migrate_deis_instance(old_site_id, new_instance_id=None, router_name=None, s
     post_create_checks(new_instance_id)
 
 
-
 def deis_kubeconfig():
     return config_manager.get('deis-kubeconfig', secret_name='ckan-migration-secrets', required=True)
 
