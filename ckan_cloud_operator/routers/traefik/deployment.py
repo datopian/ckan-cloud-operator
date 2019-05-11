@@ -111,7 +111,8 @@ def _update(router_name, spec, annotations, routes):
             enable_access_log=bool(spec.get('enable-access-log')),
             wildcard_ssl_domain=spec.get('wildcard-ssl-domain'),
             external_domains=external_domains,
-            dns_provider=dns_provider
+            dns_provider=dns_provider,
+            force=True
         ))}
     ))
     domains = {}

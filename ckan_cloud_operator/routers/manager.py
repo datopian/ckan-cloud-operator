@@ -125,6 +125,8 @@ def create_subdomain_route(router_name, route_spec, dry_run=False):
         target_resource_id = route_spec['target-resource-id']
     elif target_type == 'ckan-instance':
         target_resource_id = route_spec['ckan-instance-id']
+    elif target_type == 'app-instance':
+        target_resource_id = route_spec['app-instance-id']
     else:
         raise Exception(f'Invalid route spec: {route_spec}')
     sub_domain, root_domain = _get_default_sub_root_domain(sub_domain, root_domain, target_resource_id)
@@ -156,6 +158,8 @@ def create_subdomain_route(router_name, route_spec, dry_run=False):
         spec['backend-url'] = route_spec['backend-url']
     elif target_type == 'ckan-instance':
         labels['ckan-cloud/route-ckan-instance-id'] = spec['ckan-instance-id'] = route_spec['ckan-instance-id']
+    elif target_type == 'app-instance':
+        labels['ckan-cloud/route-app-instance-id'] = spec['app-instance-id'] = route_spec['app-instance-id']
     route = kubectl.get_resource('stable.viderum.com/v1', 'CkanCloudRoute', route_name, labels, spec=spec)
     kubectl.apply(route, dry_run=dry_run)
 
@@ -194,6 +198,12 @@ def get_deis_instance_routes(deis_instance_id, edit=False):
 
 def get_ckan_instance_routes(ckan_instance_id, edit=False):
     labels = {'ckan-cloud/route-ckan-instance-id': ckan_instance_id}
+    if edit: kubectl.edit_items_by_labels('CkanCloudRoute', labels)
+    else: return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
+
+
+def get_app_instance_routes(app_instance_id, edit=False):
+    labels = {'ckan-cloud/route-app-instance-id': app_instance_id}
     if edit: kubectl.edit_items_by_labels('CkanCloudRoute', labels)
     else: return kubectl.get_items_by_labels('CkanCloudRoute', labels, required=False)
 

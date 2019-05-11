@@ -1,3 +1,5 @@
+import traceback
+
 from ckan_cloud_operator import logs
 
 import ckan_cloud_operator.routers.routes.manager as routes_manager
@@ -111,7 +113,7 @@ def _add_route(config, domains, route, enable_ssl_redirect):
 
 
 def get(routes, letsencrypt_cloudflare_email, enable_access_log=False, wildcard_ssl_domain=None, external_domains=False,
-        dns_provider=None):
+        dns_provider=None, force=False):
     if not dns_provider:
         dns_provider = 'cloudflare'
     logs.info('Generating traefik configuration', routes_len=len(routes) if routes else 0,
@@ -140,10 +142,21 @@ def get(routes, letsencrypt_cloudflare_email, enable_access_log=False, wildcard_
     logs.info(enable_ssl_redirect=enable_ssl_redirect)
     logs.info('Adding routes')
     i = 0
+    errors = 0
     for route in routes:
-        _add_route(config, domains, route, enable_ssl_redirect)
-        i += 1
+        try:
+            _add_route(config, domains, route, enable_ssl_redirect)
+            i += 1
+        except Exception as e:
+            if force:
+                logs.error(traceback.format_exc())
+                logs.error(str(e))
+                errors += 1
+            else:
+                raise
     logs.info(f'Added {i} routes')
+    if errors > 0:
+        logs.warning(f'Encountered {errors} errors')
     if (
         (dns_provider == 'cloudflare' and letsencrypt_cloudflare_email)
         or (dns_provider == 'route53')

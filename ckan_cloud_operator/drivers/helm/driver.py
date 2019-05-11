@@ -45,8 +45,12 @@ def init(tiller_namespace_name):
 
 
 def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name, values_filename, namespace,
-           dry_run=False):
-    subprocess.check_call(f'helm repo add ckan-cloud "{chart_repo}"', shell=True)
+           dry_run=False, chart_repo_name=None):
+    if not chart_repo_name:
+        chart_repo_name = 'ckan-cloud'
+        logs.info(chart_repo_name=chart_repo_name)
+    if chart_repo:
+        subprocess.check_call(f'helm repo add "{chart_repo_name}" "{chart_repo}"', shell=True)
     version_args = f'--version "{chart_version}"' if chart_version else ''
     dry_run_args = '--dry-run --debug'
     cmd = f'helm --tiller-namespace {tiller_namespace} upgrade {release_name} {chart_name} ' \

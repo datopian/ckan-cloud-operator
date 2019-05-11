@@ -90,6 +90,24 @@ def add_cli_commands(click, command_group, great_success):
         routers_manager.update(router_name, wait_ready)
         great_success()
 
+    @command_group.command('create-app-instance-subdomain-route')
+    @click.argument('ROUTER_NAME')
+    @click.argument('APP_INSTANCE_ID')
+    @click.argument('SUB_DOMAIN', required=False, default='default')
+    @click.argument('ROOT_DOMAIN', required=False, default='default')
+    @click.option('--wait-ready', is_flag=True)
+    def routers_create_app_instance_subdomain_route(router_name, app_instance_id,
+                                                    sub_domain, root_domain,
+                                                    wait_ready):
+        routers_manager.create_subdomain_route(router_name, {
+            'target-type': 'app-instance',
+            'app-instance-id': app_instance_id,
+            'root-domain': root_domain,
+            'sub-domain': sub_domain
+        })
+        routers_manager.update(router_name, wait_ready)
+        great_success()
+
     @command_group.command('create-datapusher-subdomain-route')
     @click.argument('ROUTER_NAME')
     @click.argument('DATAPUSHER_NAME')
