@@ -132,22 +132,36 @@ In case of extreme disasters the entire DB cluster can be restored via the Gclou
 
 ### Scheduled DB backups
 
-Scheduled DB backups are run using a Kubernetes cronjob running a ckan-cloud-operator pod.
+Scheduled DB backups can run using Jenkins or similiar CI / job scheduler
 
-To create a ckan-cloud-operator pod:
+Following script can be used to created a scheduled job using the [jenkins integration](https://github.com/ViderumGlobal/ckan-cloud-operator/blob/master/docs/JENKINS.md):
 
-* Create a kubeconfig file for the operator and set in a secret:
-  * `kubectl -n ckan-cloud create secret generic operator-db-backups --from-file=.kubeconfig=/path/to/.kube-config`
-* Deploy a cronjob using rancher:
-  * scheduing: minimum of once every hour (as backups are created with hourly timestamp)
-  * image: `viderum/ckan-cloud-operator` (recommended to use a specific image hash, see the ckan-cloud-operator travis job on GitHub)
-  * volumes: mount the kubeconfig secret on any path, refer to it in the KUBECONFIG environment variable
-  * environment variables: `KUBECONFIG=/path/to/.kubeconfig`
-  * command: `db gcloudsql create-all-backups`
-  * parallelism: 1
-  * completions: 1
+Build triggers:
 
-Create an additional cronjob for each instance, use the following command: `db gcloudsql create-all-backups --db-prefix PREFIX`
+* Build periodically: `H H/6 * * *`
+  * The interval of backups depends on how long it takes to make the backups
+  * Jenkins won't run concurrent builds but it's better to make sure there is no queue of jobs
+  * The backup files are created with a 2-hourly timestamp, so jobs should not be schedled in less then 2 hour intervals
+
+Parameters:
+
+* `DRY_RUN`: choices (yes/no)
+* `CREATE_BACKUPS_AFTER_DRY_RUN`: choices (yes/no)
+
+Execute shell:
+
+```
+#!/usr/bin/env bash
+
+if [ "${DRY_RUN}" == "yes" ]; then
+  echo Dry Run &&\
+  ckan-cloud-operator db gcloudsql create-all-backups --dry-run
+fi &&\
+if [ "${DRY_RUN}" == "no" ] || [ "${CREATE_BACKUPS_AFTER_DRY_RUN}" == "yes" ]; then
+  echo Creating all backups. This may take a while.. &&\
+  ckan-cloud-operator db gcloudsql create-all-backups
+fi
+```
 
 
 ### Kubernetes and volume snapshots
