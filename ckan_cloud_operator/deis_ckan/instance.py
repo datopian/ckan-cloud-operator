@@ -119,7 +119,7 @@ class DeisCkanInstance(object):
                                              force, recreate_dbs, db_prefix):
             """Create and update a new instance from a GitLab repo containing Dockerfile and .env
 
-            Example: ckan-cloud-operator deis-isntance create --from-gitlab viderum/cloud-demo2 ckan_27_default <NEW_INSTANCE_ID>
+            Example: ckan-cloud-operator deis-instance create from-gitlab viderum/cloud-demo2 ckan_27_default <NEW_INSTANCE_ID>
             """
             cls.create('from-gitlab', gitlab_repo_name, solr_config_name, new_instance_id,
                        no_db_proxy=no_db_proxy, storage_path=storage_path,
