@@ -37,12 +37,6 @@ ckan-cloud-operator cluster info
 
 ## Usage
 
-Start an operator bash shell
-
-```
-ckan-cloud-operator bash
-```
-
 Use the CLI help messages for the reference documentation and usage examples.
 
 ```
