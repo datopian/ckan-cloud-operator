@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 usage() {
     echo Manage CKAN Cloud operator environments
     echo
@@ -20,9 +22,26 @@ usage() {
     echo "    which runs using the ckan-cloud-operator Docker image"
     echo "    To use with Minikube set PATH_TO_KUBECONFIG_FILE to 'minikube'"
     echo "    If --build is set, a docker build will run on current working directory before each run"
+    echo "    If --dev is set, the ckan-cloud-operator binary from local miniconda3 environment will be used instead of docker image"
     echo
     echo "  activate <ENVIRONMENT_NAME>"
     echo "    Installs a ckan-cloud-operator executable at /usr/local/bin/ckan-cloud-operator configured for the ENVIRONMENT_NAME"
+}
+
+check_namespace() {
+    NAMESPACES=$(kubectl get namespaces)
+    if [[ $NAMESPACES != *"ckan-cloud"* ]]
+    then
+        kubectl create namespace ckan-cloud
+    fi
+}
+
+check_configmap() {
+    NAMESPACES=$(kubectl get -n ckan-cloud configmaps)
+    if [[ $NAMESPACES != *"operator-conf"* ]]
+    then
+        kubectl create -n ckan-cloud configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix=ckan-cloud
+    fi
 }
 
 ( [ "${1}" == "" ] || [ "${1}" == "-h" ] || [ "${1}" == "--help" ] ) && usage && exit 1
@@ -53,6 +72,8 @@ elif [ "${1}" == "add" ]; then
     echo "#!/usr/bin/env bash" > "/usr/local/bin/ckan-cloud-operator-${ENVIRONMENT_NAME}"
     [ "$?" != "0" ] && echo Failed to create executable, try running with sudo >/dev/stderr && exit 1
     if [ "${BUILD}" == "--dev" ]; then
+        check_namespace
+        check_configmap
         CMD="KUBECONFIG=\"${KUBECONFIG_FILE}\" ~/miniconda3/envs/ckan-cloud-operator/bin/ckan-cloud-operator \""'$@'"\""
     else
         if [ "${BUILD}" == "--build" ]; then
