@@ -117,6 +117,8 @@ class DeisCkanInstanceSpec(object):
                         assert type(vv) == int and vv > 0, f'invalid target-port: {vv}'
                     else:
                         raise ValueError(f'Invalid routers spec attribute: {kk}={vv}')
+            elif k == 'imagePullSecrets':
+                assert type(v) == list
             else:
                 raise ValueError(f'Invalid spec attribute: {k}={v}')
         assert spec['db']['name'] != spec['datastore']['name']
