@@ -13,6 +13,7 @@ from ckan_cloud_operator.crds import manager as crds_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 from ..deployment import manager as deployment_manager
 from ckan_cloud_operator.routers import manager as routers_manager
+from ckan_cloud_operator.config import manager as config_manager
 
 from ..constants import INSTANCE_NAME_CRD_SINGULAR
 from ..constants import INSTANCE_CRD_SINGULAR
@@ -214,21 +215,41 @@ def get_all_instance_id_names():
         yield {'id': instance_id, 'name': instance_name}
 
 
-def list_instances(full=False, quick=False, name=None):
-    for instance in get_all_instance_id_names():
-        if name is not None and instance['name'] != name: continue
-        if quick:
+def get_all_instances():
+    return crds_manager.get(INSTANCE_CRD_SINGULAR)['items']
+
+
+def list_instances(full=False, quick=False, withCredentials=False, name=None):
+    if quick:
+        for instance in get_all_instance_id_names():
+            if name is not None and instance['name'] != name: continue
             yield {**instance, 'ready': None}
-        else:
+    else:
+        for instance_data in get_all_instances():
+            metadata_keys = ('name',)
+            spec_keys = ('id', 'siteUrl', 'siteTitle', 'domain', 'registerSubdomain')
             try:
-                instance_data = get(instance['id'])
+                spec = instance_data['spec']
+                for k in spec_keys:
+                    instance_data[k] = spec.get(k)
+                metadata = instance_data['metadata']
+                for k in metadata_keys:
+                    instance_data[k] = metadata.get(k)
             except Exception:
-                instance_data = {}
-            if full:
-                instance_data['name'] = instance['name']
-                yield instance_data
-            else:
-                yield {**instance, 'ready': instance_data.get('ready')}
+                pass
+            if not full:
+                instance_data = dict(
+                    (k, v)
+                    for k, v in instance_data.items()
+                    if k in ('ready', *spec_keys, *metadata_keys)
+                )
+            if withCredentials:
+                instance_data['admin_password'] = config_manager.get(
+                    'CKAN_ADMIN_PASSWORD',
+                    secret_name='ckan-admin-password',
+                    namespace=instance_data['id']
+                )
+            yield instance_data
 
 
 def delete_name(instance_name):

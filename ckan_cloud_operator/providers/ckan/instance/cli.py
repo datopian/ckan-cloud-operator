@@ -82,10 +82,15 @@ def edit(instance_id_or_name):
 @instance.command('list')
 @click.option('-f', '--full', is_flag=True)
 @click.option('-q', '--quick', is_flag=True)
+@click.option('-c', '--credentials', is_flag=True)
 @click.option('--name')
-def list_instances(full, quick, name):
-    for instance in manager.list_instances(full=full, quick=quick, name=name):
-        logs.print_yaml_dump([instance])
+def list_instances(full, quick, name, credentials):
+    instances = list(
+        manager.list_instances(full=full, quick=quick, 
+                               name=name, withCredentials=credentials)
+    )
+    print('---')
+    logs.print_yaml_dump(instances)
     logs.exit_great_success(quiet=True)
 
 
