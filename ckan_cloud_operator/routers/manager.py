@@ -56,7 +56,7 @@ def get_traefik_router_spec(default_root_domain=None, cloudflare_email=None, clo
 
 def update(router_name, wait_ready=False, dry_run=False):
     router, spec, router_type, annotations, labels, router_type_config = _init_router(router_name)
-    print(f'Updating CkanCloudRouter {router_name} (type={router_type})')
+    print(f'Updating CkanCloudRouter {router_name} (type={router_type}) (labels={labels})')
     routes = routes_manager.list(labels)
     router_type_config['manager'].update(router_name, wait_ready, spec, annotations, routes, dry_run=dry_run)
 

@@ -75,6 +75,7 @@ def _add_route(config, domains, route, enable_ssl_redirect):
     logs.debug_verbose(config=config, domains=domains, route=route, enable_ssl_redirect=enable_ssl_redirect)
     backend_url = routes_manager.get_backend_url(route)
     frontend_hostname = routes_manager.get_frontend_hostname(route)
+    print(f'F/B = {frontend_hostname} {backend_url}')
     root_domain, sub_domain = routes_manager.get_domain_parts(route)
     domains.setdefault(root_domain, []).append(sub_domain)
     if route['spec'].get('extra-no-dns-subdomains'):

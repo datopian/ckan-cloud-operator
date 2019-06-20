@@ -5,6 +5,7 @@ import binascii
 import os
 import traceback
 import subprocess
+import sys
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -26,8 +27,11 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
             instance_id = _generate_password(12)
     if values_filename:
         assert values is None
-        with open(values_filename) as f:
-            values = yaml.load(f.read())
+        if values_filename != '-':
+            with open(values_filename) as f:
+                values = yaml.load(f.read())
+        else:
+            values = yaml.load(sys.stdin.read())
     if not exists_ok and crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False):
         raise Exception('instance already exists')
     values_id = values.get('id')

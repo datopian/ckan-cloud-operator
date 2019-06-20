@@ -181,12 +181,16 @@ def add_cli_commands(click, command_group, great_success):
                     else:
                         print(yaml.dump([data], default_flow_style=False))
                 else:
-                    data = {
-                        'name': route['metadata']['name'],
-                        'backend-url': routes_manager.get_backend_url(route),
-                        'frontend-hostname': routes_manager.get_frontend_hostname(route),
-                        'router-name': route['spec']['router_name']
-                    }
+                    try:
+                        data = {
+                            'name': route['metadata']['name'],
+                            'backend-url': routes_manager.get_backend_url(route),
+                            'frontend-hostname': routes_manager.get_frontend_hostname(route),
+                            'router-name': route['spec']['router_name']
+                        }
+                    except Exception as e:
+                        print('Warning: %s' % repr(e))
+                        continue
                     if one:
                         print(yaml.dump(data, default_flow_style=False))
                     else:

@@ -9,7 +9,7 @@ DEFAULT_CHART_VALUES = {
 }
 
 DEFAULT_VALUES = {
-    'apiImage': 'viderum/ckan-cloud-provisioning-api:latest',
+    'apiImage': 'viderum/datagov-ckan-cloud-provisioning-api:latest',
     'apiDbImage': 'postgres',
     'apiResources': '{"requests": {"cpu": "50m", "memory": "200Mi"}, "limits": {"memory": "800Mi"}}',
     'apiDbResources': '{"requests": {"cpu": "50m", "memory": "200Mi"}, "limits": {"memory": "800Mi"}}',

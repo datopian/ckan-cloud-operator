@@ -216,7 +216,7 @@ def _init_namespace(instance_id, instance, dry_run=False):
 
 def _pre_update_hook_route(instance_id, skip_route, instance, res, dry_run=False):
     root_domain = routers_manager.get_default_root_domain()
-    sub_domain = f'ckan-cloud-app-{instance_id}'
+    sub_domain = instance['spec'].get('sub-domain', f'ckan-cloud-app-{instance_id}')
     if not skip_route:
         # full domain to route to the instance
         instance_domain = instance['spec'].get('domain')
