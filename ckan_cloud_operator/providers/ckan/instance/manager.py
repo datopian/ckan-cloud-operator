@@ -235,7 +235,10 @@ def list_instances(full=False, quick=False, withCredentials=False, name=None):
                 metadata = instance_data['metadata']
                 for k in metadata_keys:
                     instance_data[k] = metadata.get(k)
-            except Exception:
+                instance_type = instance_data['metadata']['labels'].get('{}/instance-type'.format(labels_manager.get_label_prefix()))
+                deployment = deployment_manager.get(instance_data['id'], instance_type, instance_data)
+                instance_data['ready'] = deployment.get('ready')
+            except Exception as e:
                 pass
             if not full:
                 instance_data = dict(
