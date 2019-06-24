@@ -357,6 +357,7 @@ def _pre_update_hook_admin_user(instance, sub_domain, root_domain, instance_id, 
                                              namespace=instance_id, required=False)
     if ckan_admin_password:
         logs.info('using existing ckan admin user')
+        res['ckan-admin-password'] = ckan_admin_password
     else:
         logs.info('Will create new ckan admin user', ckan_admin_email=ckan_admin_email)
         res['ckan-admin-email'] = ckan_admin_email
