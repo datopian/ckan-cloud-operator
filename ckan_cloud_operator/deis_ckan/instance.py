@@ -114,9 +114,11 @@ class DeisCkanInstance(object):
         @click.option('--force', is_flag=True)
         @click.option('--recreate-dbs', is_flag=True)
         @click.option('--db-prefix')
+        @click.option('--use-private-gitlab-repo', is_flag=True)
         def deis_instance_create_from_gitlab(gitlab_repo_name, solr_config_name, new_instance_id, no_db_proxy,
                                              from_db_backups, storage_path, solr_collection, rerun,
-                                             force, recreate_dbs, db_prefix):
+                                             force, recreate_dbs, db_prefix,
+                                             use_private_gitlab_repo):
             """Create and update a new instance from a GitLab repo containing Dockerfile and .env
 
             Example: ckan-cloud-operator deis-instance create from-gitlab viderum/cloud-demo2 ckan_27_default <NEW_INSTANCE_ID>
@@ -125,7 +127,8 @@ class DeisCkanInstance(object):
                        no_db_proxy=no_db_proxy, storage_path=storage_path,
                        from_db_backups=from_db_backups, solr_collection=solr_collection,
                        rerun=rerun, force=force, recreate_dbs=recreate_dbs,
-                       db_prefix=db_prefix).update()
+                       db_prefix=db_prefix,
+                       use_private_gitlab_repo=use_private_gitlab_repo).update()
             great_success()
 
         #### deis-instance ckan
@@ -444,6 +447,14 @@ class DeisCkanInstance(object):
             logs.info(f'Creating Deis CKAN instance {instance_id}', gitlab_repo=gitlab_repo, solr_config=solr_config,
                       db_name=db_name, datastore_name=datastore_name, storage_path=storage_path,
                       from_db_backups=from_db_backups)
+
+            if kwargs.get('use_private_gitlab_repo'):
+                deploy_token_server = input('Gitlab registry url [default: registry.gitlab.com]: ') or 'registry.gitlab.com'
+                deploy_token_username = input('Gitlab deploy token username: ')
+                deploy_token_password = input('Gitlab deploy token password: ')
+                kubectl.call('delete secret private-gitlab-registry', namespace=instance_id)
+                kubectl.call(f'create secret docker-registry private-gitlab-registry --docker-server={deploy_token_server} --docker-username={deploy_token_username} --docker-password={deploy_token_password}', namespace=instance_id)
+
             if from_db_backups:
                 db_import_url, datastore_import_url = from_db_backups.split(',')
                 migration_name = None
@@ -488,6 +499,8 @@ class DeisCkanInstance(object):
                     'path': storage_path,
                 }
             }
+            if kwargs.get('use_private_gitlab_repo'):
+                spec['ckanContainerSpec']['imagePullSecrets'] = [{'name': 'private-gitlab-registry'}]
         elif create_type == 'from-gcloud-envvars':
             print(f'Creating Deis CKAN instance {instance_id} from gcloud envvars import')
             instance_env_yaml, image, solr_config, storage_path, instance_id = args[1:]

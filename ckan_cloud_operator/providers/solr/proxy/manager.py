@@ -11,11 +11,12 @@ def deploy():
     """Deploys a proxy inside the cluster which allows to access the centralized solr without authentication"""
     labels = {'app': 'ckan-cloud-solrcloud-proxy'}
     solr_url = parse_url(solr_manager.get_internal_http_endpoint())
-
     scheme = solr_url.scheme
     hostname = solr_url.hostname
     port = solr_url.port
-    solr_user, solr_password = solr_url.auth.split(':')
+    solr_user, solr_password = '', ''
+    if solr_url.auth:
+        solr_user, solr_password = solr_url.auth.split(':')
     if not port:
         port = '443' if scheme == 'https' else '8983'
     kubectl.update_secret('solrcloud-proxy', {

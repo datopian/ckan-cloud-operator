@@ -20,6 +20,9 @@ DEFAULT_ROUTER_TYPE = [k for k,v in ROUTER_TYPES.items() if v.get('default')][0]
 
 
 def create(router_name, router_spec):
+    from ckan_cloud_operator.providers.cluster.manager import get_or_create_multi_user_volume_claim
+    from ckan_cloud_operator.routers.traefik.deployment import get_label_suffixes
+
     router_type = router_spec.get('type')
     default_root_domain = router_spec.get('default-root-domain')
     assert router_type in ROUTER_TYPES and default_root_domain, f'Invalid router spec: {router_spec}'
@@ -30,6 +33,7 @@ def create(router_name, router_spec):
                                   spec=dict(router_spec, **{'type': router_type}))
     router_manager = ROUTER_TYPES[router_type]['manager']
     router = router_manager.create(router)
+    get_or_create_multi_user_volume_claim(get_label_suffixes(router_name, router_type))
     annotations = CkanRoutersAnnotations(router_name, router)
     annotations.json_annotate('default-root-domain', default_root_domain)
 
@@ -129,6 +133,7 @@ def create_subdomain_route(router_name, route_spec):
     route_name = 'cc' + hashlib.sha3_224(f'{target_type} {target_resource_id} {root_domain} {sub_domain}'.encode()).hexdigest()
     router, spec, router_type, annotations, labels, router_type_config = _init_router(router_name)
     route_type = f'{target_type}-subdomain'
+    labels = labels or {}
     labels.update(**{
         'ckan-cloud/route-type': route_type,
         'ckan-cloud/route-root-domain': root_domain,

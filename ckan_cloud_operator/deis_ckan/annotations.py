@@ -162,7 +162,7 @@ class DeisCkanInstanceAnnotations(object):
         ans.append(f"{key}='{value}'")
         self._annotate(*ans, overwrite=overwrite)
 
-    def _annotate(self, *annotations, overwrite=False):
+    def _annotate(self, *annotations, overwrite=True):
         cmd = f'kubectl -n ckan-cloud annotate {self.instance.kind} {self.instance.id}'
         for annotation in annotations:
             cmd += f' ckan-cloud/{annotation}'

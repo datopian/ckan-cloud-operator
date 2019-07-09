@@ -18,11 +18,18 @@ def initialize(default_provider=None, interactive=False):
 
 def create(name, role):
     logs.info(f'Creating user {name} (role={role})')
+    try:
+        extra_label_suffixes = get_user_labels(name, role)
+    except AssertionError:
+        logs.info('No user labels found, initializing and retrying')
+        initialize()
+        extra_label_suffixes = get_user_labels(name, role)
+
     kubectl.apply(crds_manager.get_resource(
         CRD_SINGULAR,
         name,
         spec=_get_spec(name, role),
-        extra_label_suffixes=get_user_labels(name, role)
+        extra_label_suffixes=extra_label_suffixes
     ))
 
 

@@ -86,10 +86,14 @@ class DeisCkanInstanceDeployment(object):
         ckanContainerSpec.update(self.instance.spec.spec['ckanContainerSpec'])
         if 'imageFromGitlab' in ckanContainerSpec:
             ckanContainerSpec['image'] = 'registry.gitlab.com/{}:latest'.format(ckanContainerSpec.pop('imageFromGitlab'))
+        imagePullSecrets = ckanContainerSpec.pop('imagePullSecrets', None)
         ckanPodSpec = dict(self.instance.spec.spec['ckanPodSpec'],
                            serviceAccountName=f'ckan-{self.instance.id}-operator',
-                           containers=[ckanContainerSpec],
-                           imagePullSecrets=[{'name': f'{self.instance.id}-registry'}])
+                           containers=[ckanContainerSpec])
+        if imagePullSecrets:
+            ckanPodSpec['imagePullSecrets'] = imagePullSecrets
+        else:
+            ckanPodSpec['imagePullSecrets'] = [{'name': f'{self.instance.id}-registry'}]
         deployment = {'apiVersion': 'apps/v1beta1',
                       'kind': 'Deployment',
                       'metadata': {

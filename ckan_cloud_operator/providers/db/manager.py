@@ -186,12 +186,15 @@ def get_internal_proxy_host_port(db_prefix=None):
 
 def get_external_proxy_host_port(db_prefix=None):
     """Returns connection details for access from outside the cluster, via proxy if enabled"""
+    from .gcloudsql.manager import _credentials_get
+
+    is_private_ip = _credentials_get(db_prefix, key='is-private-ip', required=False) == 'y'
+    if not is_private_ip:
+        return get_provider().get_postgres_external_host_port(db_prefix=db_prefix)
     db_proxy_provider = db_proxy_manager.get_provider(required=False)
-    if db_proxy_provider:
-        host, port = db_proxy_provider.get_external_proxy_host_port(db_prefix=db_prefix)
-        if host and port:
-            return host, port
-    return get_provider().get_postgres_external_host_port(db_prefix=db_prefix)
+    assert db_proxy_provider, "SQL instance has private IP, so direct access to the DB is not supported, please enable the db proxy"
+    host, port = db_proxy_provider.get_external_proxy_host_port(db_prefix=db_prefix)
+    return (host, port) or get_provider().get_postgres_external_host_port(db_prefix=db_prefix)
 
 
 def get_internal_unproxied_db_host_port(db_prefix=None):

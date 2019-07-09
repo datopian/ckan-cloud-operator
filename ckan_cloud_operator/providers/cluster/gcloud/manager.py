@@ -124,10 +124,11 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
         logs.info(f'using existing persistent disk {disk_id}')
     else:
         logs.info(f'creating persistent disk {disk_id} with size {disk_size_gb}')
+        _, zone = get_project_zone()
         labels = ','.join([
             '{}={}'.format(k.replace('/', '_'), v.replace('/', '_')) for k, v in labels.items()
         ])
-        gcloud_driver.check_call(*get_project_zone(), f'compute disks create {disk_id} --size={disk_size_gb}GB --labels={labels}')
+        gcloud_driver.check_call(*get_project_zone(), f'compute disks create {disk_id} --size={disk_size_gb}GB --zone={zone} --labels={labels}')
     kubectl.apply({
         'apiVersion': 'v1', 'kind': 'PersistentVolume',
         'metadata': {'name': disk_id, 'namespace': 'ckan-cloud'},
