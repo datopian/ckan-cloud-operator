@@ -42,3 +42,10 @@ ckan-cloud-operator users get-kubeconfig your.name > /path/to/your.kube-config
 Replace the kube-config file for your environment with the newly created kube-config.
 
 You should use the ckan-cloud-operator generated kube-config for increased security and audit logs.
+
+
+## Optional: enable autoscaling
+Read help and install `stable/cluster-autoscaler` help package on cluster if needed:
+```
+ckan-cloud-operator cluster setup-autoscaler --help
+```

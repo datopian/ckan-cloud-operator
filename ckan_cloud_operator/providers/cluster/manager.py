@@ -211,6 +211,45 @@ def provider_exec(cmd):
     get_provider().exec(cmd)
 
 
+def setup_autoscaler(expander='random', min_nodes=1, max_nodes=10, zone='', node_pool='default-pool'):
+    from ckan_cloud_operator.drivers.helm import driver as helm_driver
+    from ckan_cloud_operator.providers import manager as providers_manager
+
+    cloud_provider = get_provider_id()
+    cluster_name = kubectl.check_output('config current-context').decode().replace('\n', '')
+
+    if cloud_provider == 'gcloud':
+        """GKE has built-in autoscaler"""
+        from ckan_cloud_operator import gcloud
+
+        gcloud.check_call(f'container clusters update {cluster_name} --enable-autoscaling --min-nodes {min_nodes} --max-nodes {max_nodes} --zone {zone} --node_pool {node_pool}')
+        return
+
+    values = {
+        'image.tag': 'v1.13.1',
+        'autoDiscovery.clusterName': cluster_name,
+        'extraArgs.balance-similar-node-groups': 'false',
+        'extraArgs.expander': expander,
+        'cloudProvider': cloud_provider,
+        'rbac.create': 'true'
+    }
+    if values['cloudProvider'] == 'aws':
+        zone = providers_manager.get_provider('cluster').get_info().get('zone')
+        while not zone:
+            zone = input('Enter the AWS cluster region: ')
+        values['awsRegion'] = zone.strip()
+
+    helm_driver.deploy(
+        tiller_namespace='kube-system',
+        chart_repo='https://kubernetes-charts.storage.googleapis.com',
+        chart_name='stable/cluster-autoscaler',
+        chart_version='',
+        release_name='cluster-autoscaler',
+        namespace='kube-system',
+        chart_repo_name='stable',
+        values=values
+    )
+
 def _generate_password(l):
     return binascii.hexlify(os.urandom(l)).decode()
 
