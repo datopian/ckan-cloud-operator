@@ -5,7 +5,6 @@ import glob
 
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.infra import CkanInfra
-from ckan_cloud_operator.providers import manager as providers_manager
 from ckan_cloud_operator import logs
 from ckan_cloud_operator import kubectl
 
@@ -74,6 +73,7 @@ def config_get(key, required=False):
 
 
 def get_provider(default=None, verbose=False):
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider(PROVIDER_SUBMODULE, default=default, verbose=verbose)
 
 

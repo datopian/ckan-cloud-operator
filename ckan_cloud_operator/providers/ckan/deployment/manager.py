@@ -1,5 +1,5 @@
-def update(instance_id, instance_type, instance):
-    return _get_deployment_provider(instance_type).update(instance_id, instance)
+def update(instance_id, instance_type, instance, force=False, dry_run=False):
+    return _get_deployment_provider(instance_type).update(instance_id, instance, force=force, dry_run=dry_run)
 
 
 def delete(instance_id, instance_type, instance):
@@ -15,12 +15,27 @@ def get(instance_id, instance_type, instance):
 
 
 def get_backend_url(instance_id, instance_type, instance):
-    return _get_deployment_provider(instance_type).get_backend_url(instance_id, instance)
+    deployment_provider = _get_deployment_provider(instance_type, required=False)
+    if deployment_provider:
+        return deployment_provider.get_backend_url(instance_id, instance)
+    else:
+        return None
 
 
-def _get_deployment_provider(instance_type):
+def pre_update_hook(instance_id, instance_type, instance, override_spec, skip_route, dry_run=False):
+    return _get_deployment_provider(instance_type).pre_update_hook(instance_id, instance, override_spec, skip_route,
+                                                                   dry_run=dry_run)
+
+
+def create_ckan_admin_user(instance_id, instance_type, instance, user):
+    _get_deployment_provider(instance_type).create_ckan_admin_user(instance_id, instance, user)
+
+
+def _get_deployment_provider(instance_type, required=True):
     if instance_type == 'helm':
         from .helm import manager as helm_manager
         return helm_manager
-    else:
+    elif required:
         raise Exception(f'unknown instance_type ({instance_type})')
+    else:
+        return None

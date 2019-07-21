@@ -117,17 +117,25 @@ def config_interactive_set(submodule, provider_id=None, default_values=None, nam
     )
 
 
-def get_resource_name(submodule, provider_id=None, suffix=None):
-    return labels_manager.get_resource_name(get_resource_suffix(submodule, provider_id=provider_id, suffix=suffix))
+def get_resource_name(submodule, provider_id=None, suffix=None, short=False):
+    return labels_manager.get_resource_name(get_resource_suffix(submodule, provider_id=provider_id, suffix=suffix,
+                                                                short=short), short=short)
 
 
-def get_resource_suffix(submodule, provider_id=None, suffix=None):
-    parts = ['provider', submodule]
-    if provider_id:
-        parts.append(provider_id)
-    if suffix:
-        parts.append(suffix)
-    return '-'.join(parts)
+def get_resource_suffix(submodule, provider_id=None, suffix=None, short=False):
+    if short:
+        res = _get_submodule_provider_config(submodule, provider_id).get('short-resource-suffix')
+        assert res, f'Failed to get short-resource-suffix ({submodule}={provider_id})'
+        if suffix:
+            res += suffix
+        return res
+    else:
+        parts = ['provider', submodule]
+        if provider_id:
+            parts.append(provider_id)
+        if suffix:
+            parts.append(suffix)
+        return '-'.join(parts)
 
 
 def get_resource_labels(submodule, provider_id, extra_label_suffixes=None, for_deployment=False, suffix=None):
@@ -149,6 +157,16 @@ def get_deployment_app_label(submodule, provider_id, suffix=None):
 
 def get_resource_annotations(submodule, provider_id=None, suffix=None, with_timestamp=True):
     return annotations_manager.get_global_annotations(with_timestamp=with_timestamp)
+
+
+def _get_submodule_provider_config(submodule, provider_id):
+    return {
+        'apps-deployment': {
+            'helm': {
+                'short-resource-suffix': 'app-helm'
+            }
+        }
+    }.get(submodule, {}).get(provider_id, {})
 
 
 def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None):
@@ -309,7 +327,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
         if not provider_id:
             return [solr_solrcloud_provider_id]
 
-        ## minio
+        ## solrcloud
 
         elif provider_id == solr_solrcloud_provider_id:
             from ckan_cloud_operator.providers.solr.solrcloud import manager as solr_solrcloud_manager

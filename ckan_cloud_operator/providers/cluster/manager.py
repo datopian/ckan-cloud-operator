@@ -5,7 +5,6 @@ import os
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
-from ckan_cloud_operator.providers import manager as providers_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 
 from .constants import OPERATOR_NAMESPACE, OPERATOR_CONFIGMAP
@@ -30,6 +29,7 @@ def get_operator_version(verify=False):
 def print_info(debug=False, minimal=False):
     print(yaml.dump([dict(get_kubeconfig_info(), nodes=get_node_names(), operator_version=get_operator_version(verify=True))], default_flow_style=False))
     if not minimal:
+        from ckan_cloud_operator.providers import manager as providers_manager
         print(yaml.dump([providers_manager.get_provider('cluster').get_info(debug=debug)], default_flow_style=False))
         if debug:
             assert all([
@@ -50,6 +50,7 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
         assert default_cluster_provider in ['gcloud', 'aws'], f'invalid cluster provider: {default_cluster_provider}'
 
+    from ckan_cloud_operator.providers import manager as providers_manager
     from ckan_cloud_operator.labels import manager as labels_manager
     from ckan_cloud_operator.crds import manager as crds_manager
     from ckan_cloud_operator.providers.db import manager as db_manager
@@ -144,18 +145,22 @@ def get_operator_configmap_namespace_defaults(configmap_name=None, namespace=Non
 
 
 def get_cluster_name():
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider('cluster').get_name()
 
 
 def get_cluster_kubeconfig_spec():
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider('cluster').get_cluster_kubeconfig_spec()
 
 
 def get_provider():
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider('cluster')
 
 
 def get_provider_id():
+    from ckan_cloud_operator.providers import manager as providers_manager
     return providers_manager.get_provider_id('cluster', default='gcloud')
 
 
@@ -205,6 +210,45 @@ def get_multi_user_storage_class_name():
 def provider_exec(cmd):
     get_provider().exec(cmd)
 
+
+def setup_autoscaler(expander='random', min_nodes=1, max_nodes=10, zone='', node_pool='default-pool'):
+    from ckan_cloud_operator.drivers.helm import driver as helm_driver
+    from ckan_cloud_operator.providers import manager as providers_manager
+
+    cloud_provider = get_provider_id()
+    cluster_name = kubectl.check_output('config current-context').decode().replace('\n', '')
+
+    if cloud_provider == 'gcloud':
+        """GKE has built-in autoscaler"""
+        from ckan_cloud_operator import gcloud
+
+        gcloud.check_call(f'container clusters update {cluster_name} --enable-autoscaling --min-nodes {min_nodes} --max-nodes {max_nodes} --zone {zone} --node_pool {node_pool}')
+        return
+
+    values = {
+        'image.tag': 'v1.13.1',
+        'autoDiscovery.clusterName': cluster_name,
+        'extraArgs.balance-similar-node-groups': 'false',
+        'extraArgs.expander': expander,
+        'cloudProvider': cloud_provider,
+        'rbac.create': 'true'
+    }
+    if values['cloudProvider'] == 'aws':
+        zone = providers_manager.get_provider('cluster').get_info().get('zone')
+        while not zone:
+            zone = input('Enter the AWS cluster region: ')
+        values['awsRegion'] = zone.strip()
+
+    helm_driver.deploy(
+        tiller_namespace='kube-system',
+        chart_repo='https://kubernetes-charts.storage.googleapis.com',
+        chart_name='stable/cluster-autoscaler',
+        chart_version='',
+        release_name='cluster-autoscaler',
+        namespace='kube-system',
+        chart_repo_name='stable',
+        values=values
+    )
 
 def _generate_password(l):
     return binascii.hexlify(os.urandom(l)).decode()

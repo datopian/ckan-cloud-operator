@@ -44,14 +44,34 @@ def init(tiller_namespace_name):
     )
 
 
-def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name, values_filename, namespace):
-    subprocess.check_call(f'helm repo add ckan-cloud "{chart_repo}"', shell=True)
+def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name, values_filename=None, namespace=None,
+           dry_run=False, chart_repo_name=None, values=None, service_account=None):
+    if not chart_repo_name:
+        chart_repo_name = 'ckan-cloud'
+        logs.info(chart_repo_name=chart_repo_name)
+    if chart_repo:
+        subprocess.check_call(f'helm repo add "{chart_repo_name}" "{chart_repo}"', shell=True)
+    assert not (values_filename and values), 'Only one of `values_filename` or `values` should be passed'
+
     version_args = f'--version "{chart_version}"' if chart_version else ''
     dry_run_args = '--dry-run --debug'
     cmd = f'helm --tiller-namespace {tiller_namespace} upgrade {release_name} {chart_name} ' \
-          f' --install --namespace "{namespace}" -if {values_filename} {version_args}'
-    subprocess.check_call(f'{cmd} {dry_run_args}', shell=True)
-    subprocess.check_call(cmd, shell=True)
+          f' --install --namespace "{namespace}" -i {version_args}'
+    if values_filename:
+        cmd += f' -f {values_filename}'
+    elif values:
+        for key, value in values.items():
+            cmd += f' --set {key}={value}'
+    logs.info('Running helm upgrade --dry-run')
+    if logs.CKAN_CLOUD_OPERATOR_DEBUG_FILE:
+        logs.info(f'helm dry run debug output is written to debug log file: {logs.CKAN_CLOUD_OPERATOR_DEBUG_FILE}')
+        with open(logs.CKAN_CLOUD_OPERATOR_DEBUG_FILE, 'a') as f:
+            subprocess.check_call(f'{cmd} {dry_run_args}', shell=True, stdout=f, stderr=subprocess.STDOUT)
+    else:
+        subprocess.check_call(f'{cmd} {dry_run_args}', shell=True)
+    if not dry_run:
+        logs.info('Running helm upgrade for real this time')
+        subprocess.check_call(cmd, shell=True)
 
 
 def delete(tiller_namespace, release_name):

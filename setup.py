@@ -19,7 +19,7 @@ setup(
     author='''Viderum''',
     license='MIT',
     packages=find_packages(exclude=['examples', 'tests', '.tox']),
-    install_requires=['pyyaml', 'httpagentparser', 'requests', 'ruamel.yaml'],
+    install_requires=['pyyaml', 'httpagentparser', 'requests', 'ruamel.yaml', 'boto3'],
     entry_points={
       'console_scripts': [
         'ckan-cloud-operator = ckan_cloud_operator.cli:main',

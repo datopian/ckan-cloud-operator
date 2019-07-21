@@ -8,6 +8,13 @@ from ruamel.yaml.emitter import Emitter as ruamelEmitter
 import sys
 
 
+CKAN_CLOUD_OPERATOR_DEBUG = strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG', 'n'))
+CKAN_CLOUD_OPERATOR_DEBUG_FILE = os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG_FILE', '').strip()
+CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE = strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE', 'n'))
+
+DEBUG_VERBOSE = 'verbose debug'
+
+
 def info(*args, **kwargs):
     log(INFO, *args, **kwargs)
 
@@ -17,8 +24,7 @@ def debug(*args, **kwargs):
 
 
 def debug_verbose(*args, **kwargs):
-    if strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE', 'n')):
-        debug(yaml.dump([args, kwargs], default_flow_style=False))
+    log(DEBUG_VERBOSE, yaml.dump([args, kwargs], default_flow_style=False))
 
 
 def warning(*args, **kwargs):
@@ -34,28 +40,13 @@ def critical(*args, **kwargs):
 
 
 def log(level, *args, **kwargs):
-    if level == DEBUG and not strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG', 'n')): return
-    msg = datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + ' ' + getLevelName(level) + ' '
-    if len(kwargs) > 0:
-        msg += '(' + ','.join([f'{k}="{v}"' for k, v in kwargs.items()]) + ') '
-    msg += ' '.join(args)
-    print(msg)
+    if not _skip_log_level(level):
+        _print_log_msg(level, _get_log_msg(level, *args, **kwargs))
 
 
 def important_log(level, *args, **kwargs):
-    if level == DEBUG and not strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG', 'n')): return
-    header = datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + ' ' + getLevelName(level)
-    print(f'\n{header}')
-    if len(kwargs) > 0:
-        metadata = '(' + ','.join([f'{k}="{v}"' for k, v in kwargs.items()]) + ')'
-        print(metadata)
-    print('\n')
-    if len(args) > 0:
-        title = args[0]
-        print(f'== {title}')
-        if len(args) > 1:
-            msg = ' '.join(args[1:])
-            print(msg)
+    if not _skip_log_level(level):
+        _print_log_msg(level, _get_important_log_msg(level, *args, **kwargs))
 
 
 def exit_great_success(quiet=False):
@@ -68,6 +59,9 @@ def exit_catastrophic_failure(exitcode=1, quiet=False):
     if not quiet:
         critical('Catastrophic Failure!')
     exit(exitcode)
+
+
+# yaml dumping
 
 
 def debug_yaml_dump(*args, **kwargs):
@@ -94,3 +88,57 @@ class YamlSafeDumper(yaml.SafeDumper):
 
     def represent_undefined(self, data):
         return None
+
+
+# private functions
+
+
+def _get_log_msg(level, *args, **kwargs):
+    msg = datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + ' ' + _get_level_name(level) + ' '
+    if len(kwargs) > 0:
+        msg += '(' + ','.join([f'{k}="{v}"' for k, v in kwargs.items()]) + ') '
+    msg += ' '.join(args)
+    return msg
+
+
+def _get_important_log_msg(level, *args, **kwargs):
+    msg = ''
+    header = datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + ' ' + _get_level_name(level)
+    msg += f'\n{header}\n'
+    if len(kwargs) > 0:
+        metadata = '(' + ','.join([f'{k}="{v}"' for k, v in kwargs.items()]) + ')'
+        msg += metadata + '\n'
+    msg += '\n\n'
+    if len(args) > 0:
+        title = args[0]
+        msg += f'== {title}\n'
+        if len(args) > 1:
+            msg += ' '.join(args[1:])
+            msg += '\n'
+    return msg
+
+
+def _get_level_name(level):
+    if level == DEBUG_VERBOSE:
+        return getLevelName(DEBUG)
+    else:
+        return getLevelName(level)
+
+
+def _skip_log_level(level):
+    return (
+           (level == DEBUG and not CKAN_CLOUD_OPERATOR_DEBUG and not CKAN_CLOUD_OPERATOR_DEBUG_FILE)
+        or (level == DEBUG_VERBOSE and not CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE and not CKAN_CLOUD_OPERATOR_DEBUG_FILE)
+    )
+
+
+def _print_log_msg(level, msg):
+    if CKAN_CLOUD_OPERATOR_DEBUG_FILE:
+        with open(CKAN_CLOUD_OPERATOR_DEBUG_FILE, 'a') as f:
+            print(msg, file=f)
+    if (
+        (level == DEBUG and (CKAN_CLOUD_OPERATOR_DEBUG or CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE))
+        or (level == DEBUG_VERBOSE and CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE)
+        or level not in [DEBUG, DEBUG_VERBOSE]
+    ):
+        print(msg)

@@ -141,6 +141,13 @@ Replace the kube-config file for your environment with the newly created kube-co
 
 You should use the ckan-cloud-operator generated kube-config for increased security and audit logs.
 
+## Optional: enable autoscaling
+First, read the docs [here](https://cloud.google.com/kubernetes-engine/docs/how-to/cluster-autoscaler).
+
+Read help and enable built-in autoscaler if needed:
+```
+ckan-cloud-operator cluster setup-autoscaler --help
+```
 
 ## Optional: install sample CKAN instance
 ### Put SOLR schema configs:

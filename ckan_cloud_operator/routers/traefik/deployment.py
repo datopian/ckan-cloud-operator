@@ -4,6 +4,7 @@ import hashlib
 import json
 
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator import logs
 from ckan_cloud_operator.routers.traefik import config as traefik_router_config
 from ckan_cloud_operator.routers.routes import manager as routes_manager
 from ckan_cloud_operator import cloudflare
@@ -12,7 +13,7 @@ from ckan_cloud_operator.labels import manager as labels_manager
 from ckan_cloud_operator.config import manager as config_manager
 
 
-def _get_deployment_spec(router_name, router_type, annotations, image=None, httpauth_secrets=None):
+def _get_deployment_spec(router_name, router_type, annotations, image=None, httpauth_secrets=None, dns_provider=None):
     volume_spec = cluster_manager.get_or_create_multi_user_volume_claim(get_label_suffixes(router_name, router_type))
     httpauth_secrets_volume_mounts, httpauth_secrets_volumes = [], []
     if httpauth_secrets:
@@ -62,7 +63,20 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
             }
         }
     }
-    if annotations.get_flag('letsencryptCloudflareEnabled'):
+    if dns_provider == 'route53':
+        logs.info('Traefik deployment: adding SSL support using AWS Route53')
+        container = deployment_spec['template']['spec']['containers'][0]
+        container['ports'].append({'containerPort': 443})
+        aws_credentials = cluster_manager.get_provider().get_aws_credentials()
+        secret_name = f'ckancloudrouter-{router_name}-route53'
+        kubectl.update_secret(secret_name, {
+            'AWS_ACCESS_KEY_ID': aws_credentials['access'],
+            'AWS_SECRET_ACCESS_KEY': aws_credentials['secret'],
+            'AWS_REGION': aws_credentials['region']
+        }, labels=get_labels(router_name, router_type))
+        container['envFrom'] = [{'secretRef': {'name': secret_name}}]
+    elif annotations.get_flag('letsencryptCloudflareEnabled'):
+        logs.info('Traefik deployment: adding SSL support using Cloudflare')
         container = deployment_spec['template']['spec']['containers'][0]
         container['ports'].append({'containerPort': 443})
         cloudflare_email, cloudflare_api_key = get_cloudflare_credentials()
@@ -72,6 +86,8 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
             'CLOUDFLARE_API_KEY': cloudflare_api_key,
         }, labels=get_labels(router_name, router_type))
         container['envFrom'] = [{'secretRef': {'name': secret_name}}]
+    else:
+        logs.info('Not configuring SSL support for Traefik deployment')
     return deployment_spec
 
 
@@ -84,13 +100,19 @@ def _update(router_name, spec, annotations, routes):
     router_type = spec['type']
     cloudflare_email, cloudflare_auth_key = get_cloudflare_credentials()
     external_domains = spec.get('external-domains')
+    dns_provider = spec.get('dns-provider', 'cloudflare')
+    logs.info('updating traefik deployment', resource_name=resource_name, router_type=router_type,
+              cloudflare_email=cloudflare_email, cloudflare_auth_key_len=len(cloudflare_auth_key) if cloudflare_auth_key else 0,
+              external_domains=external_domains, dns_provider=dns_provider)
     kubectl.apply(kubectl.get_configmap(
         resource_name, get_labels(router_name, router_type),
         {'traefik.toml': toml.dumps(traefik_router_config.get(
             routes, cloudflare_email,
             enable_access_log=bool(spec.get('enable-access-log')),
             wildcard_ssl_domain=spec.get('wildcard-ssl-domain'),
-            external_domains=external_domains
+            external_domains=external_domains,
+            dns_provider=dns_provider,
+            force=True
         ))}
     ))
     domains = {}
@@ -118,25 +140,31 @@ def _update(router_name, spec, annotations, routes):
     kubectl.apply(load_balancer)
     load_balancer_ip = get_load_balancer_ip(router_name)
     print(f'load balancer ip: {load_balancer_ip}')
+    from ckan_cloud_operator.providers.routers import manager as routers_manager
     if external_domains:
         from ckan_cloud_operator.providers.routers import manager as routers_manager
         external_domains_router_root_domain = routers_manager.get_default_root_domain()
         env_id = routers_manager.get_env_id()
         assert router_name.startswith('prod-'), f'invalid external domains router name: {router_name}'
         external_domains_router_sub_domain = f'cc-{env_id}-{router_name}'
-        cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, external_domains_router_root_domain,
-                                   f'{external_domains_router_sub_domain}.{external_domains_router_root_domain}', load_balancer_ip)
+        routers_manager.update_dns_record(
+            dns_provider, external_domains_router_sub_domain, external_domains_router_root_domain,
+            load_balancer_ip, cloudflare_email, cloudflare_auth_key
+        )
     else:
         for root_domain, sub_domains in domains.items():
             for sub_domain in sub_domains:
-                cloudflare.update_a_record(cloudflare_email, cloudflare_auth_key, root_domain,
-                                           f'{sub_domain}.{root_domain}', load_balancer_ip)
+                routers_manager.update_dns_record(
+                    dns_provider, sub_domain, root_domain,
+                    load_balancer_ip, cloudflare_email, cloudflare_auth_key
+                )
     kubectl.apply(kubectl.get_deployment(
         resource_name, get_labels(router_name, router_type, for_deployment=True),
         _get_deployment_spec(
             router_name, router_type, annotations,
             image=('traefik:1.7' if (external_domains or len(httpauth_secrets) > 0) else None),
-            httpauth_secrets=httpauth_secrets
+            httpauth_secrets=httpauth_secrets,
+            dns_provider=dns_provider
         )
     ))
 
@@ -170,7 +198,7 @@ def get_cloudflare_credentials():
     return cloudflare_email, cloudflare_auth_key
 
 
-def update(router_name, wait_ready, spec, annotations, routes):
+def update(router_name, wait_ready, spec, annotations, routes, dry_run=False):
     old_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
     old_generation = old_deployment.get('metadata', {}).get('generation') if old_deployment else None
     expected_new_generation = old_generation + 1 if old_generation else None
@@ -178,28 +206,29 @@ def update(router_name, wait_ready, spec, annotations, routes):
         print(f'old deployment generation: {old_generation}')
     else:
         print('Creating new deployment')
-    annotations.update_status(
-        'router', 'created',
-        lambda: _update(router_name, spec, annotations, routes),
-        force_update=True
-    )
-    if expected_new_generation:
-        while True:
-            time.sleep(.2)
-            new_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
-            if not new_deployment: continue
-            new_generation = new_deployment.get('metadata', {}).get('generation')
-            if not new_generation: continue
-            if new_generation == old_generation: continue
-            if new_generation != expected_new_generation:
-                raise Exception(f'Invalid generation: {new_generation} (expected: {expected_new_generation})')
-            print(f'new deployment generation: {new_generation}')
-            break
-    if wait_ready:
-        print('Waiting for instance to be ready...')
-        while time.sleep(2):
-            if get(router_name)['ready']: break
-            print('.')
+    if not dry_run:
+        annotations.update_status(
+            'router', 'created',
+            lambda: _update(router_name, spec, annotations, routes),
+            force_update=True
+        )
+        if expected_new_generation:
+            while True:
+                time.sleep(.2)
+                new_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
+                if not new_deployment: continue
+                new_generation = new_deployment.get('metadata', {}).get('generation')
+                if not new_generation: continue
+                if new_generation == old_generation: continue
+                if new_generation != expected_new_generation:
+                    raise Exception(f'Invalid generation: {new_generation} (expected: {expected_new_generation})')
+                print(f'new deployment generation: {new_generation}')
+                break
+        if wait_ready:
+            print('Waiting for instance to be ready...')
+            while time.sleep(2):
+                if get(router_name)['ready']: break
+                print('.')
 
 
 def get(router_name):

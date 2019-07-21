@@ -18,3 +18,4 @@ dependencies:
     - urllib3<1.25
     - httpagentparser
     - ruamel.yaml<1
+    - boto3

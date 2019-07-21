@@ -49,3 +49,14 @@ def create_volume(disk_size_gb):
 @click.argument('COMMAND', nargs=-1)
 def provider_exec(command):
     manager.provider_exec(' '.join(command))
+
+
+@cluster.command()
+@click.option('--expander', default='random', help='random|most-pods|least-waste|price (default: random)')
+@click.option('--min-nodes', type=int, help='specifies the minimum number of nodes for the node pool [gcloud provider only]')
+@click.option('--max-nodes', type=int, help='specifies the maximum number of nodes for the node pool [gcloud provider only]')
+@click.option('--zone', help='specifies the cluster\'s compute zone [gcloud provider only]')
+@click.option('--node-pool', help='specifies the desired node pool. If you have only one node pool, supply default-pool to this flag. [gcloud provider only]')
+def setup_autoscaler(expander, min_nodes, max_nodes, zone, node_pool):
+    """Set up the cluster autoscaler from stable/cluster-autoscaler helm package"""
+    manager.setup_autoscaler(expander, min_nodes, max_nodes, zone, node_pool)
