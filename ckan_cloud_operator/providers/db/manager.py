@@ -194,7 +194,7 @@ def get_external_proxy_host_port(db_prefix=None):
     db_proxy_provider = db_proxy_manager.get_provider(required=False)
     assert db_proxy_provider, "SQL instance has private IP, so direct access to the DB is not supported, please enable the db proxy"
     host, port = db_proxy_provider.get_external_proxy_host_port(db_prefix=db_prefix)
-    return (host, port) or get_provider().get_postgres_external_host_port(db_prefix=db_prefix)
+    return (host, port) if host and port else get_provider().get_postgres_external_host_port(db_prefix=db_prefix)
 
 
 def get_internal_unproxied_db_host_port(db_prefix=None):
