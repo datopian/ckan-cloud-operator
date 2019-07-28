@@ -100,6 +100,7 @@ First,
 ```
 kubectl create namespace ckan-cloud
 kubectl -n ckan-cloud create secret generic ckan-cloud-provider-cluster-gcloud
+kubectl -n ckan-cloud create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix=ckan-cloud
 ```
 
 After that create `uptime-statuscake-api` secrets with keys "user", "key", "group" populated from StatusCake account:
