@@ -11,7 +11,7 @@ from ckan_cloud_operator import logs
 
 class CkanGitlab(object):
 
-    def initialize(self, project):
+    def initialize(self, project, git_branch='master'):
         project_id = self._get_project_id(project)
         print({k: v for k, v in json.loads(self._curl(
             f'projects/{project_id}',
@@ -19,9 +19,9 @@ class CkanGitlab(object):
             method='PUT'
         )).items() if k in ['id', 'path_with_namespace', 'container_registry_enabled']})
         for fname in ['.env', 'Dockerfile', '.gitlab-ci.yml']:
-            data = self._get_file(project, fname, required=False)
+            data = self._get_file(project, fname, ref=git_branch, required=False)
             if fname == 'Dockerfile':
-                self._update_dockerfile(project_id, data)
+                self._update_dockerfile(project_id, data, git_branch)
             if data:
                 size_b = len(data)
                 assert size_b > 0
@@ -30,13 +30,12 @@ class CkanGitlab(object):
                 print(f'Creating {project}/.gitlab-ci.yml')
                 project_id = self._get_project_id(project)
                 self._curl(f'projects/{project_id}/repository/files/.gitlab-ci.yml', postjson={
-                    'branch': 'master', 'author_email': 'admin@ckan-cloud-operator',
+                    'branch': git_branch, 'author_email': 'admin@ckan-cloud-operator',
                     'author_name': 'ckan-cloud-operator',
-                    'content': self._get_gitlab_ci_yml(), 'commit_message': 'Add .gitlab-ci.yml'
+                    'content': self._get_gitlab_ci_yml(git_branch=git_branch), 'commit_message': 'Add .gitlab-ci.yml'
                 })
             else:
                 print(f'Repository is missing {project}/{fname}')
-                exit(1)
 
     def is_ready(self, project):
         project_id = self._get_project_id(project)
@@ -59,8 +58,8 @@ class CkanGitlab(object):
         else:
             return False
 
-    def get_envvars(self, project):
-        return self._parse_dotenv(self._get_file(project, '.env'))
+    def get_envvars(self, project, git_branch='master'):
+        return self._parse_dotenv(self._get_file(project, '.env', ref=git_branch))
 
     def _get_updated_dockerfile(self, data):
         needs_update = False
@@ -81,14 +80,14 @@ class CkanGitlab(object):
         else:
             return False, False, None
 
-    def _update_dockerfile(self, project_id, data):
+    def _update_dockerfile(self, project_id, data, git_branch='master'):
         pip_update, gitlab_search_replace_update, updated_data = self._get_updated_dockerfile(data)
         if updated_data:
             commit_messages = []
             if pip_update: commit_messages.append('Add pip install --upgrade pip to Dockerfile')
             if gitlab_search_replace_update: commit_messages.append('replace values for migration')
             self._curl(f'projects/{project_id}/repository/files/Dockerfile', postjson={
-                'branch': 'master', 'author_email': 'admin@ckan-cloud-operator',
+                'branch': git_branch, 'author_email': 'admin@ckan-cloud-operator',
                 'author_name': 'ckan-cloud-operator',
                 'content': updated_data, 'commit_message': ', '.join(commit_messages)
             }, method='PUT')
@@ -152,7 +151,7 @@ class CkanGitlab(object):
                 env.setdefault(key, value)
         return env
 
-    def _get_gitlab_ci_yml(self):
+    def _get_gitlab_ci_yml(self, git_branch='master'):
         return """image: docker:latest
 
 services:
@@ -161,13 +160,13 @@ services:
 before_script:
   - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
 
-build-master:
+build-{git_branch}:
   stage: build
   script:
     - docker build --pull -t "$CI_REGISTRY_IMAGE" .
     - docker push "$CI_REGISTRY_IMAGE"
   only:
-    - master
+    - {git_branch}
 
 build:
   stage: build
@@ -175,4 +174,4 @@ build:
     - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" .
     - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
   except:
-    - master"""
+    - {git_branch}""".format(git_branch=git_branch)
