@@ -82,8 +82,9 @@ def kubectl_command(arg):
 
 @main.command()
 @click.argument('GITLAB_PROJECT_NAME')
+@click.argument('GIT_BRANCH', default='master')
 @click.option('-w', '--wait-ready', is_flag=True)
-def initialize_gitlab(gitlab_project_name, wait_ready):
+def initialize_gitlab(gitlab_project_name, git_branch, wait_ready):
     """Initialize the gitlab integration
 
     Example:
@@ -91,7 +92,7 @@ def initialize_gitlab(gitlab_project_name, wait_ready):
         ckan-cloud-operator initialize-gitlab repo/project
     """
     ckan_gitlab = CkanGitlab()
-    ckan_gitlab.initialize(gitlab_project_name)
+    ckan_gitlab.initialize(gitlab_project_name, git_branch)
     if wait_ready and not ckan_gitlab.is_ready(gitlab_project_name):
         logs.info(f'Waiting for GitLab project {gitlab_project_name} to be ready...')
         while not ckan_gitlab.is_ready(gitlab_project_name):
