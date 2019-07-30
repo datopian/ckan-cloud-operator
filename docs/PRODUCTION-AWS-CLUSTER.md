@@ -45,7 +45,7 @@ You should use the ckan-cloud-operator generated kube-config for increased secur
 
 
 ## Optional: enable autoscaling
-Read help and install `stable/cluster-autoscaler` help package on cluster if needed:
+Read help and install `stable/cluster-autoscaler` helm package on cluster if needed by using CCO command:
 ```
 ckan-cloud-operator cluster setup-autoscaler --help
 ```

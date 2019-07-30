@@ -116,7 +116,7 @@ ckan-cloud-operator cluster initialize --interactive
 While interactive initialization:
 - Set `enable-deis-ckan: y`
 - If environment is production, set `env-id` to `p` on "routers" step.
-- On "solr" step of interactive initialization choose `self-hosted: n`
+- On "solr" step of interactive initialization choose `self-hosted: y`
 - On "ckan" step when asked for docker server/username/password, enter your Gitlab credentials, password should be your Gitlab access token.
 
 
@@ -155,7 +155,7 @@ ckan-cloud-operator cluster setup-autoscaler --help
 ```
 cd ~/dev
 git clone https://github.com/ckan/ckan.git
-# optionally swithc to another branch if you don't want `master`
+# optionally switch to another branch if you don't want `master`
 # cd ~/dev/ckan && git checkout ckan-2.8.2
 ckan-cloud-operator solr zk put-configs ~/dev/ckan
 ```
