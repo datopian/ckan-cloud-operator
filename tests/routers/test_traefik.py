@@ -98,4 +98,52 @@ class RoutersManagerTestCase(unittest.TestCase):
         traefik_deployment.get.return_value = {'router-type': 'traefik'}
         self.assertEqual(manager.get('datapushers', attr='all'), {'dns': {'root-domain': 'ckan.io'}, 'deployment': {'router-type': 'traefik'}})
 
+    @patch('ckan_cloud_operator.kubectl.get')
+    def test_update_new_deployment(self, get):
+        get.return_value = None
+        annotations = MagicMock()
 
+        manager.update('datapushers', False, {'router-type': 'traefik'}, annotations, {'root-domain': 'ckan.io'})
+        get.assert_called_once_with('deployment router-traefik-datapushers', required=False)
+        self.assertEqual(annotations.update_status.call_count, 1)
+
+    @patch('ckan_cloud_operator.kubectl.get')
+    def test_update_old_deployment(self, get):
+        get.side_effect = [
+            {
+                'metadata': {
+                    'generation': 1
+                }
+            },
+            {
+                'metadata': {
+                    'generation': 2
+                }
+            }
+        ]
+        annotations = MagicMock()
+
+        manager.update('datapushers', False, {'router-type': 'traefik'}, annotations, {'root-domain': 'ckan.io'})
+        self.assertEqual(get.call_count, 2)
+        self.assertEqual(annotations.update_status.call_count, 1)
+
+    @patch('ckan_cloud_operator.kubectl.get')
+    def test_update_old_deployment_wrong_generation(self, get):
+        get.side_effect = [
+            {
+                'metadata': {
+                    'generation': 1
+                }
+            },
+            {
+                'metadata': {
+                    'generation': 4
+                }
+            }
+        ]
+        annotations = MagicMock()
+
+        with self.assertRaisesRegex(Exception, 'Invalid generation: 4 \(expected: 2\)'):
+            manager.update('datapushers', False, {'router-type': 'traefik'}, annotations, {'root-domain': 'ckan.io'})
+        self.assertEqual(get.call_count, 2)
+        self.assertEqual(annotations.update_status.call_count, 1)
