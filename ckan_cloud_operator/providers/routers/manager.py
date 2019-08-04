@@ -44,7 +44,7 @@ def initialize(interactive=False):
 
 
 def get_env_id():
-    return config_get('env-id')
+    return config_get('env-id') or 'p'
 
 
 def get_default_root_domain():

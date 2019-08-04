@@ -23,7 +23,7 @@ def create(router):
     if dns_provider == 'cloudflare':
         assert cloudflare_email and cloudflare_api_key, 'invalid traefik router spec for cloudflare dns provider'
     # cloudflare credentials are stored in a secret, not in the spec
-    del router_spec['cloudflare']
+    router_spec.pop('cloudflare', None)
     kubectl.apply(router)
     annotations = CkanRoutersAnnotations(router_name, router)
     if dns_provider == 'cloudflare':
