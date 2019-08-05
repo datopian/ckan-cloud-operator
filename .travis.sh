@@ -14,7 +14,7 @@ elif [ "${1}" == "script" ]; then
 
 elif [ "${1}" == "test" ]; then
     echo Run tests
-    docker run --rm ckan-cloud-operator test
+    docker run --env NO_KUBE_CONFIG=1 --rm --entrypoint '/bin/bash' ckan-cloud-operator -c 'source ~/.bashrc && cd /usr/src/ckan-cloud-operator && ckan-cloud-operator test'
     echo Great Success! && exit 0
 
 elif [ "${1}" == "deploy" ]; then
