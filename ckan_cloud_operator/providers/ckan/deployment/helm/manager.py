@@ -284,7 +284,7 @@ def _init_namespace(instance_id, dry_run=False):
 
 def _init_solr(instance_id, dry_run=False):
     logs.debug('Initializing solr', instance_id=instance_id)
-    solr_status = solr_manager.get_collectoin_status(instance_id)
+    solr_status = solr_manager.get_collection_status(instance_id)
     logs.debug_yaml_dump(solr_status)
     if not solr_status['ready']:
         logs.info('Creating solr collection', collection_name=instance_id, solr_config='ckan_28_default')

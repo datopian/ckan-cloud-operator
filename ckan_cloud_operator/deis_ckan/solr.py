@@ -31,7 +31,7 @@ class DeisCkanInstanceSolr(object):
     def get(self):
         from ckan_cloud_operator.providers.solr import manager as solr_manager
         collection_name = self.instance.spec.solrCloudCollection['name']
-        return solr_manager.get_collectoin_status(collection_name)
+        return solr_manager.get_collection_status(collection_name)
 
     def is_ready(self):
         return self.get().get('ready')

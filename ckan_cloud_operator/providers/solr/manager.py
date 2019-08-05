@@ -89,7 +89,7 @@ def delete_collection(collection_name):
     solr_curl(f'/admin/collections?action=DELETE&name={collection_name}', required=True)
 
 
-def get_collectoin_status(collection_name):
+def get_collection_status(collection_name):
     output = solr_curl(f'/{collection_name}/schema')
     if output == False:
         return {'ready': False,
