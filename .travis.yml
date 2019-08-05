@@ -14,6 +14,8 @@ install:
 - bash .travis.sh install
 script:
 - bash .travis.sh script
+test:
+- bash .travis.sh test
 deploy:
   skip_cleanup: true
   provider: script

@@ -158,3 +158,10 @@ def datapushers():
 
 
 ckan_cloud_operator.datapushers.add_cli_commands(click, datapushers, great_success)
+
+
+@main.command()
+def test():
+    """Run unittest suite and report coverage"""
+    subprocess.check_call('coverage run -m unittest discover', shell=True)
+    subprocess.check_call('coverage report', shell=True)
