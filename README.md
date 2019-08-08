@@ -120,3 +120,8 @@ jupyter lab
 ```
 
 Open notebooks from the `notebooks` directory
+
+## Run tests
+If you already have `ckan-cloud-operator` executable in your PATH, you could run test suite with `ckan-cloud-operator test` command.
+
+The other way to run test suite is `coverage run -m unittest discover`.
