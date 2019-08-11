@@ -38,7 +38,7 @@ def solrcloud_port_forward(suffix):
 @solr.command()
 @click.argument('COLLECTION_NAME')
 def collection_status(collection_name):
-    logs.print_yaml_dump(manager.get_collectoin_status(collection_name))
+    logs.print_yaml_dump(manager.get_collection_status(collection_name))
 
 
 @solr.command()

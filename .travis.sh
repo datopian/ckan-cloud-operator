@@ -12,6 +12,11 @@ elif [ "${1}" == "script" ]; then
     ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:jnlp-latest -t ckan-cloud-operator-jnlp -f Dockerfile.jenkins-jnlp . && echo Failed to build jnlp image && exit 1
     echo Great Success! && exit 0
 
+elif [ "${1}" == "test" ]; then
+    echo Run tests
+    docker run --env NO_KUBE_CONFIG=1 --rm --entrypoint '/bin/bash' ckan-cloud-operator -lc 'cd /usr/src/ckan-cloud-operator && ckan-cloud-operator test'
+    echo Great Success! && exit 0
+
 elif [ "${1}" == "deploy" ]; then
     docker tag ckan-cloud-operator "viderum/ckan-cloud-operator:${TAG}" &&\
     echo && echo "viderum/ckan-cloud-operator:${TAG}" && echo &&\

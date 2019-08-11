@@ -3,14 +3,11 @@ RUN conda update -n base -c defaults conda
 COPY docker-build.sh /usr/src/ckan-cloud-operator/
 RUN /usr/src/ckan-cloud-operator/docker-build.sh
 COPY environment.yaml /environment.yaml
+COPY bashrc.inc /root/bashrc.inc
 RUN conda env create -f /environment.yaml
-RUN echo conda activate ckan-cloud-operator >> ~/.bashrc &&\
-    echo '[ -e /etc/ckan-cloud/.kube-config ] && export KUBECONFIG=/etc/ckan-cloud/.kube-config' >> ~/.bashrc &&\
-    echo '! [ -z "${KUBE_CONTEXT}" ] && kubectl config use-context "${KUBE_CONTEXT}" >/dev/null 2>&1' >> ~/.bashrc &&\
-    echo '! [ "$(ckan-cloud-operator config get --key=ckan-cloud-provider-cluster-main-provider-id --raw)" == "aws" ] && ckan-cloud-operator activate-gcloud-auth >/dev/null 2>&1' >> ~/.bashrc &&\
-    echo 'ckan-cloud-operator db proxy port-forward --all-daemon "I know the risks" >/dev/null 2>&1' >> ~/.bashrc &&\
-    echo 'while ! pg_isready -h localhost >/dev/null 2>&1; do sleep .1; done' >> ~/.bashrc
+RUN cat /root/bashrc.inc >> ~/.bashrc
 COPY ckan_cloud_operator /usr/src/ckan-cloud-operator/ckan_cloud_operator
+COPY tests /usr/src/ckan-cloud-operator/tests
 COPY *.sh *.py /usr/src/ckan-cloud-operator/
 RUN . /opt/conda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
     cd /usr/src/ckan-cloud-operator && python3 -m pip install -e . &&\

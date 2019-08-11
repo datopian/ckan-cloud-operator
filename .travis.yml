@@ -14,10 +14,10 @@ install:
 - bash .travis.sh install
 script:
 - bash .travis.sh script
+- bash .travis.sh test
 deploy:
   skip_cleanup: true
   provider: script
   script: bash .travis.sh deploy
   on:
-    all_branches: true
-    condition: $TRAVIS_PULL_REQUEST = "false"
+    branch: master
