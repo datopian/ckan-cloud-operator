@@ -134,7 +134,7 @@ In case of extreme disasters the entire DB cluster can be restored via the Gclou
 
 Scheduled DB backups can run using Jenkins or similiar CI / job scheduler
 
-Following script can be used to created a scheduled job using the [jenkins integration](https://github.com/ViderumGlobal/ckan-cloud-operator/blob/master/docs/JENKINS.md):
+Following script can be used to created a scheduled job using the [jenkins integration](https://github.com/datopian/ckan-cloud-operator/blob/master/docs/JENKINS.md):
 
 Build triggers:
 

@@ -27,7 +27,7 @@ export ARGS="--namespace ckan-cloud"
 Run the script:
 
 ```
-curl -L "https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/${CKAN_CLOUD_OPERATOR_VERSION}/scripts/$(echo "$SCRIPT_NAME" | sed 's/ /%20/g').${SCRIPT_EXT}" \
+curl -L "https://raw.githubusercontent.com/datopian/ckan-cloud-operator/${CKAN_CLOUD_OPERATOR_VERSION}/scripts/$(echo "$SCRIPT_NAME" | sed 's/ /%20/g').${SCRIPT_EXT}" \
   | tee /dev/stderr \
   | if [ "${SCRIPT_EXT}" == "py" ]; then python3; else bash; fi
 ```
@@ -58,7 +58,7 @@ To test development version of the scripts, you can just copy-paste the script t
 Alternatively, to test a committed script, add the following to the job configuration: 
 
 * Source code management: git
-  * repository url: https://github.com/ViderumGlobal/ckan-cloud-operator.git
+  * repository url: https://github.com/datopian/ckan-cloud-operator.git
   * branch specifier: `master` (or required commit / tag)
 
 Append the following snippet before the last run snippet:

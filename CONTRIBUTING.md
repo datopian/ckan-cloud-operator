@@ -2,7 +2,7 @@
 
 * Welcome to CKAN Cloud!
 * Contributions of any kind are welcome.
-* Please search for issues in this repository and [across the different CKAN Cloud repositories](https://github.com/search?q=repo%3AViderumGlobal%2Fckan-cloud-docker+repo%3AViderumGlobal%2Fckan-cloud-helm+repo%3AViderumGlobal%2Fckan-cloud-cluster&type=Issues)
+* Please search for issues in this repository and [across the different CKAN Cloud repositories](https://github.com/search?q=repo%3Adatopian%2Fckan-cloud-docker+repo%3Adatopian%2Fckan-cloud-helm+repo%3Adatopian%2Fckan-cloud-cluster&type=Issues)
 
 ## Continuous Deployment
 

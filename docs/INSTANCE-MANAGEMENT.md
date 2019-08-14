@@ -150,9 +150,9 @@ Add an external route (Make sure DNS is configured and propogated before):
 ckan-cloud-operator routers create-deis-instance-subdomain-route EXTERNAL_DOMAINS_ROUTER_NAME DEIS_INSTANCE_ID EXTERNAL_SUB_DOMAIN EXTERNAL_ROOT_DOMAIN
 ```
 
-This command can also be used to restore from backup or changing storage paths or solr collections, see [CKAN Instance Recovery](https://github.com/ViderumGlobal/ckan-cloud-operator/blob/master/docs/DISASTER-RECOVERY.md#ckan-instance-recovery).
+This command can also be used to restore from backup or changing storage paths or solr collections, see [CKAN Instance Recovery](https://github.com/datopian/ckan-cloud-operator/blob/master/docs/DISASTER-RECOVERY.md#ckan-instance-recovery).
 
-[Migration doc](https://github.com/ViderumGlobal/ckan-cloud-operator/blob/master/docs/IMPORT-DEIS.md) also contain useful details to troubleshoot or debug instance creation.
+[Migration doc](https://github.com/datopian/ckan-cloud-operator/blob/master/docs/IMPORT-DEIS.md) also contain useful details to troubleshoot or debug instance creation.
 
 ##### list instances
 

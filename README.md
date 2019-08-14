@@ -17,7 +17,7 @@ tool for synchronized, centralized, audited interaction with the operator and th
 Install latest ckan-cloud-operator-env
 
 ```
-curl -s https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-operator/master/ckan-cloud-operator-env.sh \
+curl -s https://raw.githubusercontent.com/datopian/ckan-cloud-operator/master/ckan-cloud-operator-env.sh \
 | sudo tee /usr/local/bin/ckan-cloud-operator-env >/dev/null && sudo chmod +x /usr/local/bin/ckan-cloud-operator-env
 ```
 

@@ -15,7 +15,7 @@ setup(
     name='ckan_cloud_operator',
     version=version,
     description='''CKAN Cloud Kubernetes operator''',
-    url='https://github.com/ViderumGlobal/ckan-cloud-operator',
+    url='https://github.com/datopian/ckan-cloud-operator',
     author='''Viderum''',
     license='MIT',
     packages=find_packages(exclude=['examples', 'tests', '.tox']),

@@ -190,4 +190,4 @@ ckan-cloud-operator deis-instance create from-gitlab <repo> ckan/config/schema.x
 Optionally add `--use-private-gitlab-repo` if the repo you passed is outside the organization you configured during cluster setup (e.g. forked to your private account). You will be asked to provide your gitlab deploy token.
 
 ### Create routes, set up subdomains
-Follow the steps [here](https://github.com/ViderumGlobal/ckan-cloud-operator/blob/master/docs/INSTANCE-MANAGEMENT.md#create-instance) to create internal/external instance routes
+Follow the steps [here](https://github.com/datopian/ckan-cloud-operator/blob/master/docs/INSTANCE-MANAGEMENT.md#create-instance) to create internal/external instance routes
