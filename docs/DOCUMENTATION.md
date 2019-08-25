@@ -23,11 +23,11 @@ CKAN Cloud operator (CCO) manages, provisions and configures Ckan Cloud instance
             * [Prepare datapushers](#prepare-datapushers)
             * [Optional: prepare GCloud SQL proxy (if you use private IP)](#optional-prepare-gcloud-sql-proxy-if-you-use-private-ip)
             * [Create instance](#create-instance)
-            * [Create routes, set up subdomains](#create-routes-set-up-subdomains
+            * [Create routes, set up subdomains](#create-routes-set-up-subdomains)
 
 
 # DevOps Giude
-![infra overview](docs/infra_overview.png)
+![infra overview](https://github.com/datopian/ckan-cloud-operator/raw/full-documentation/docs/resources/infra_overview.png)
 
 All the requirements needed to smoothly run CKAN instances runs inside `ckan-cloud` namespace.  
 Each CKAN instance has it's own namespace.
