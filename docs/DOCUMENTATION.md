@@ -69,7 +69,7 @@ Each CKAN instance has it's own namespace.
 For each of CKAN intance there should be a Gitlab repo contains `Dockerfile` and `.env` file (which stores CKAN settings).  
 CCO creates or updates CKAN instance from the Docker image built on Gitlab CI.
 
-## Installation an quick start
+## Installation and quick start
 `ckan-cloud-operator-env` is used to install and manage CKAN Cloud operator environments on your local PC
 
 **Prerequisites:**
