@@ -1,6 +1,30 @@
 # Ckan Cloud Operator documentation
 CKAN Cloud operator (CCO) manages, provisions and configures Ckan Cloud instances and related infrastructure.
 
+# Table of contents
+   * [DevOps Giude](#devops-giude)
+      * [Installation an quick start](#installation-an-quick-start)
+      * [Usage](#usage)
+      * [Supported clouds](#supported-clouds)
+      * [Initial set up of the cluster](#initial-set-up-of-the-cluster)
+         * [Create the Kubernetes cluster](#create-the-kubernetes-cluster)
+         * [Create the DB](#create-the-db)
+         * [Install the management server](#install-the-management-server)
+         * [Import the cluster to Rancher and get a kubeconfig file](#import-the-cluster-to-rancher-and-get-a-kubeconfig-file)
+         * [Create multi-user storage class](#create-multi-user-storage-class)
+         * [Initialize a new ckan-cloud-operator environment](#initialize-a-new-ckan-cloud-operator-environment)
+            * [Prerequisites](#prerequisites)
+            * [Install ckan-cloud-operator](#install-ckan-cloud-operator)
+            * [Initialize the cluster](#initialize-the-cluster)
+         * [Optional: enable autoscaling](#optional-enable-autoscaling)
+         * [Optional: install sample CKAN instance](#optional-install-sample-ckan-instance)
+            * [Put SOLR schema configs:](#put-solr-schema-configs)
+            * [Prepare Gitlab repo:](#prepare-gitlab-repo)
+            * [Prepare datapushers](#prepare-datapushers)
+            * [Optional: prepare GCloud SQL proxy (if you use private IP)](#optional-prepare-gcloud-sql-proxy-if-you-use-private-ip)
+            * [Create instance](#create-instance)
+            * [Create routes, set up subdomains](#create-routes-set-up-subdomains
+
 
 # DevOps Giude
 ![infra overview](docs/infra_overview.png)
