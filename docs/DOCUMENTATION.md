@@ -3,7 +3,7 @@ CKAN Cloud operator (CCO) manages, provisions and configures Ckan Cloud instance
 
 # Table of contents
    * [DevOps Giude](#devops-giude)
-      * [Installation an quick start](#installation-an-quick-start)
+      * [Installation and quick start](#installation-and-quick-start)
       * [Usage](#usage)
       * [Supported clouds](#supported-clouds)
       * [Initial set up of the cluster](#initial-set-up-of-the-cluster)
