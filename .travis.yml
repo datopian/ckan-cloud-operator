@@ -21,3 +21,4 @@ deploy:
   script: bash .travis.sh deploy
   on:
     branch: master
+    tags: true
