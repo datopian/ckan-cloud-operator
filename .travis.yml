@@ -21,4 +21,9 @@ deploy:
   script: bash .travis.sh deploy
   on:
     branch: master
+deploy_tag:
+  skip_cleanup: true
+  provider: script
+  script: bash .travis.sh deploy
+  on:
     tags: true
