@@ -16,14 +16,13 @@ script:
 - bash .travis.sh script
 - bash .travis.sh test
 deploy:
-  skip_cleanup: true
-  provider: script
-  script: bash .travis.sh deploy
-  on:
-    branch: master
-deploy_tag:
-  skip_cleanup: true
-  provider: script
-  script: bash .travis.sh deploy
-  on:
-    tags: true
+  - provider: script
+    skip_cleanup: true
+    script: bash .travis.sh deploy
+    on:
+      branch: master
+  - provider: script
+    skip_cleanup: true
+    script: bash .travis.sh deploy
+    on:
+      tags: true
