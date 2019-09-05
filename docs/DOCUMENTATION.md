@@ -58,6 +58,14 @@ CKAN Cloud operator (CCO) manages, provisions and configures Ckan Cloud instance
          * [DB Backup data verification](#db-backup-data-verification)
       * [Contributing](#contributing)
       * [Features wanted](#features-wanted)
+   * [Developer Guide](#developer-guide)
+      * [Overview](#overview)
+      * [Environment](#environment)
+      * [Code overview](#code-overview)
+      * [Testing](#testing)
+      * [Contributing](#contributing-1)
+      * [Continuous Deployment](#continuous-deployment)
+
 
 
 # DevOps Giude
@@ -918,3 +926,45 @@ Include full description of the issue including related logs and traces. Don't f
 ## Features wanted
 1. CCO command to deploy custom (not Lets Encrypt) certificate on traefik for a domain.
 2. Deploy Ark/Velero (used for backups) as a part of infractructure on cluster initialization
+
+
+# Developer Guide
+
+## Overview
+The code has designed to work with Python >=3.7 environment (3.6 would also work, but it's not recommended).
+Repository has `setup.py` file to allow installation of the package via setuptools or it could be uploaded to PyPi repo and will be available with `pip install`.
+
+## Environment
+See the required system dependencies: environment.yaml
+
+You can install miniconda3, then create the environment using: `conda env create -f environment.yaml`.  
+Or you could use virtualenv instead.
+
+Activate the conda environment using `conda activate ckan-cloud-operator`.  
+
+Install the Python package
+```
+python3 -m pip install -e .
+```
+
+## Code overview
+Check the [document](https://github.com/datopian/ckan-cloud-operator/blob/master/docs/CODE-OVERVIEW.md) that describes all internal modules.
+
+## Testing
+All unit tests are placed in `tests` directory.
+
+If you already have `ckan-cloud-operator` executable in your PATH, you could run test suite with `ckan-cloud-operator test` command.
+
+The other way to run test suite is `coverage run -m unittest discover`.
+
+## Contributing
+* Contributions of any kind are welcome.
+* Please search for issues in this repository and [across the different CKAN Cloud repositories](https://github.com/search?q=repo%3Adatopian%2Fckan-cloud-docker+repo%3Adatopian%2Fckan-cloud-helm+repo%3Adatopian%2Fckan-cloud-cluster&type=Issues)
+
+## Continuous Deployment
+
+Travis builds and pushes a docker image on every push to `master` or on new tag.
+
+Pushes are tagged with the commit SHA or published tag name.
+
+Pushes to `master` are also tagged with `latest`.
