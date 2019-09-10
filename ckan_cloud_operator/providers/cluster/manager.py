@@ -48,7 +48,7 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
         input('Verify your are connected to the right cluster and press <RETURN> to continue')
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
-        assert default_cluster_provider in ['gcloud', 'aws'], f'invalid cluster provider: {default_cluster_provider}'
+        assert default_cluster_provider in ['gcloud', 'aws', 'azure'], f'invalid cluster provider: {default_cluster_provider}'
 
     from ckan_cloud_operator.providers import manager as providers_manager
     from ckan_cloud_operator.labels import manager as labels_manager
