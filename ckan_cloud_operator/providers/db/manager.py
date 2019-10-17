@@ -6,8 +6,10 @@ from ckan_cloud_operator.drivers.postgres import driver as postgres_driver
 from ckan_cloud_operator.providers import manager as providers_manager
 from ckan_cloud_operator.providers.db.proxy import manager as db_proxy_manager
 from ckan_cloud_operator.providers.ckan import manager as ckan_manager
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 from .constants import PROVIDER_SUBMODULE as db_provider_submodule
+from .azuresql.constants import PROVIDER_ID as db_azuresql_provider_id
 from .gcloudsql.constants import PROVIDER_ID as db_gcloudsql_provider_id
 from .rds.constants import PROVIDER_ID as db_rds_provider_id
 
@@ -16,6 +18,8 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
     """Initialize / upgrade the db module and sub-modules"""
     if default_cluster_provider == 'aws':
         default_provider = db_rds_provider_id
+    elif default_cluster_provider == 'azure':
+        default_provider = db_azuresql_provider_id
     elif not default_cluster_provider or default_cluster_provider == 'gcloud':
         default_provider = db_gcloudsql_provider_id
     else:
@@ -86,6 +90,25 @@ def get_external_admin_connection_string(db_name=None, db_prefix=None):
         db_name = admin_db_name
     db_host, db_port = get_external_proxy_host_port(db_prefix=db_prefix)
     return f'postgresql://{admin_user}:{admin_password}@{db_host}:{db_port}/{db_name}'
+
+
+def get_external_admin_connection_kwargs(db_name=None, db_prefix=None):
+    """Get an admin connection string for access from outside the cluster"""
+    admin_user, admin_password, admin_db_name = get_admin_db_credentials(db_prefix=db_prefix)
+    if not db_name:
+        db_name = admin_db_name
+    db_host, db_port = get_external_proxy_host_port(db_prefix=db_prefix)
+
+    if cluster_manager.get_provider_id() == 'azure':
+        admin_user = '{}@{}'.format(admin_user, db_host)
+
+    return {
+        'user': admin_user,
+        'password': admin_password,
+        'host': db_host,
+        'port': db_port,
+        'dbname': db_name
+    }
 
 
 def get_deis_instsance_external_connection_string(instance_id, is_datastore=False, is_datastore_readonly=False, admin=False, db_prefix=None):

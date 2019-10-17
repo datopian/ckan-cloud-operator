@@ -18,9 +18,10 @@ def _config_interactive_set(default_values, namespace=None, is_secret=False, suf
 # custom provider code starts here
 #
 
+import binascii
+import json
 import os
 import yaml
-import binascii
 
 from ckan_cloud_operator import logs
 from ckan_cloud_operator import kubectl
@@ -32,11 +33,12 @@ from ckan_cloud_operator.drivers.gcloud import driver as gcloud_driver
 def initialize(interactive=False):
     _set_provider()
     if interactive:
-        #print('\nEnter credentials for an AWS Access Key with relevant permissions\n')
-        print('\nEnter the region of the Kubernets cluster is hosted on\n')
-        _config_interactive_set({'azure-default-region': None}, is_secret=True)
+        print('\nEnter the Resource Group name\n')
+        _config_interactive_set({'azure-rg': None}, is_secret=False)
+        print('\nEnter the location of the Kubernets cluster is hosted on [westus2]\n')
+        _config_interactive_set({'azure-default-location': None}, is_secret=False)
         print('\nEnter the name of your cluster\n')
-        _config_interactive_set({'azure-cluster-name': None}, is_secret=True)
+        _config_interactive_set({'azure-cluster-name': None}, is_secret=False)
 
 def activate_auth():
     gcloud_driver.activate_auth(
@@ -106,34 +108,68 @@ def get_project_zone():
 
 
 def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
+    rg = _config_get('azure-rg')
+    location = _config_get('azure-default-location')
+
     disk_id = use_existing_disk_name or 'cc' + _generate_password(12)
     if use_existing_disk_name:
         logs.info(f'using existing persistent disk {disk_id}')
     else:
-        logs.info(f'creating persistent disk {disk_id} with size {disk_size_gb}')
+        logs.info(f'creating persistent disk {disk_id} with size {disk_size_gb}GB')
         _, zone = get_project_zone()
         labels = ','.join([
             '{}={}'.format(k.replace('/', '_'), v.replace('/', '_')) for k, v in labels.items()
         ])
         #gcloud_driver.check_call(*get_project_zone(), f'compute disks create {disk_id} --size={disk_size_gb}GB --zone={zone} --labels={labels}')
+        '''import subprocess
+        result = subprocess.check_output(f'az disk create -g {rg} -n {disk_id} --size-gb {disk_size_gb} --location {location}', shell=True)
+        volume_id = json.loads(result).get('id')
+        print(volume_id)'''
+    '''
     kubectl.apply({
         'apiVersion': 'v1', 'kind': 'PersistentVolume',
         'metadata': {'name': disk_id, 'namespace': 'ckan-cloud'},
         'spec': {
-            'storageClassName': '',
+            'storageClassName': 'cca-ckan',
             'capacity': {'storage': f'{disk_size_gb}G'},
             'accessModes': ['ReadWriteOnce'],
-            'gcePersistentDisk': {'pdName': disk_id}
+            #'azureDisk': {
+            #    'kind': 'Managed',
+            #    'diskName': disk_id,
+            #    'diskURI': volume_id
+            #}
         }
     })
+    '''
+    '''
     kubectl.apply({
-        'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim',
+        'apiVersion': 'v1',
+        'kind': 'PersistentVolumeClaim',
         'metadata': {'name': disk_id, 'namespace': 'ckan-cloud'},
         'spec': {
-            'storageClassName': '',
+            'storageClassName': 'cca-ckan',
             'volumeName': disk_id,
             'accessModes': ['ReadWriteOnce'],
-            'resources': {'requests': {'storage': f'{disk_size_gb}G'}}
+            'resources': {'requests': {'storage': '1Mi'}}#f'{disk_size_gb}G'}}
+        }
+    })'''
+    kubectl.apply({
+        "kind": "PersistentVolumeClaim",
+        "apiVersion": "v1",
+        "metadata": {
+            "name": disk_id,
+            "namespace": "ckan-cloud"
+        },
+        "spec": {
+            "accessModes": [
+                "ReadWriteOnce"
+            ],
+            "resources": {
+                "requests": {
+                    "storage": f'{disk_size_gb}G'
+                }
+            },
+            "storageClassName": "cca-ckan"
         }
     })
     return {'persistentVolumeClaim': {'claimName': disk_id}}

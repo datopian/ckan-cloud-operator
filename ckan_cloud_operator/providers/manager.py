@@ -223,6 +223,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     ## db
 
     elif submodule == db_provider_submodule:
+        from ckan_cloud_operator.providers.db.azuresql.constants import PROVIDER_ID as azuresql_provider_id
         from ckan_cloud_operator.providers.db.gcloudsql.constants import PROVIDER_ID as gcloudsql_provider_id
         from ckan_cloud_operator.providers.db.rds.constants import PROVIDER_ID as rds_provider_id
 
@@ -242,6 +243,13 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.db.rds import manager as rds_manager
 
             return rds_manager
+
+        ## azuresql
+
+        elif provider_id == azuresql_provider_id:
+            from ckan_cloud_operator.providers.db.azuresql import manager as azuresql_manager
+
+            return azuresql_manager
 
     ## db-web-ui
 

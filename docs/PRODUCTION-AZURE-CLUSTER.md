@@ -53,13 +53,13 @@ helm repo update
 3. Deploy `nfs-server-provisioner` helm chart (can use Rancher catalog app) with the following values:
 ```
 persistence.enabled = true
-persistence.size = 5Gi
+persistence.size = 500Gi
 storageClass.name = cca-ckan
 ```
 
 Or from command line:
 ```
-helm install --namespace=ckan-cloud stable/nfs-server-provisioner --name cloud-nfs --set=persistence.enabled=true,persistence.size=5Gi,storageClass.name=cca-ckan
+helm install --namespace=ckan-cloud stable/nfs-server-provisioner --name cloud-nfs --set=persistence.enabled=true,persistence.size=500Gi,storageClass.name=cca-ckan
 ```
 
 ## Initialize a new ckan-cloud-operator environment
