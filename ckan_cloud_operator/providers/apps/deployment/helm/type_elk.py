@@ -5,7 +5,7 @@ DEFAULT_CHART_VALUES = {
     'chart-repo': 'https://raw.githubusercontent.com/ViderumGlobal/ckan-cloud-helm/master/charts_repository',
     'chart-repo-name': 'ckan-cloud',
     'chart-name': 'ckan-cloud/elk',
-    'chart-version': 'v0.0.1',
+    'chart-version': 'v0.0.2',
 }
 
 DEFAULT_VALUES = {
@@ -45,7 +45,7 @@ def post_delete_hook(instance_id, instance, delete_kwargs):
 
 
 def get_backend_url(instance_id, instance, backend_url):
-    return backend_url
+    return 'http://kibana.elk:80'
 
 
 def get(instance_id, instance, res):
