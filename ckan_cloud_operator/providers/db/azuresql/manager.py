@@ -69,7 +69,7 @@ def is_private_ip():
 
 def get_postgres_admin_credentials(db_prefix=None):
     credentials = _credentials_get(db_prefix)
-    return credentials
+    return credentials['admin-user'], credentials['admin-password'], credentials.get('admin-db-name', credentials['admin-user'])
 
 
 def _credentials_get(db_prefix, key=None, default=None, required=False):
