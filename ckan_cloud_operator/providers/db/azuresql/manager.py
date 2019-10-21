@@ -59,7 +59,7 @@ def initialize(db_prefix=None, interactive=False):
 def _get_config_credentials_kwargs(db_prefix):
     return {
         'is_secret': True,
-        'suffix': f'{db_prefix}-credentials' if db_prefix else 'credentials'
+        'suffix': f'{db_prefix}-credentials' if db_prefix.strip() else 'credentials'
     }
 
 

@@ -155,7 +155,7 @@ def _credentials_get(db_prefix, key=None, default=None, required=False):
 def _get_config_credentials_kwargs(db_prefix):
     return {
         'is_secret': True,
-        'suffix': f'{db_prefix}-credentials' if db_prefix else 'credentials'
+        'suffix': f'{db_prefix.strip()}-credentials' if db_prefix.strip() else 'credentials'
     }
 
 
