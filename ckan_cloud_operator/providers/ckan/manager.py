@@ -5,6 +5,7 @@ import traceback
 import time
 import json
 import datetime
+from pathlib import Path
 
 from ckan_cloud_operator import logs
 from ckan_cloud_operator import kubectl
@@ -54,6 +55,17 @@ def initialize(interactive=False):
         )
     crds_manager.install_crd(INSTANCE_CRD_SINGULAR, INSTANCE_CRD_PLURAL_SUFFIX, INSTANCE_CRD_KIND_SUFFIX)
     crds_manager.install_crd(INSTANCE_NAME_CRD_SINGULAR, INSTANCE_NAME_CRD_PLURAL_SUFFIX, INSTANCE_NAME_CRD_KIND_SUFFIX)
+
+    from ckan_cloud_operator.providers.solr.manager import zk_list_configs, zk_put_configs
+    print('Checking CKAN Solr config in ZooKeeper')
+    if 'ckan_default' in zk_list_configs():
+        print('Found ckan_default Solr config')
+    else:
+        print('No default Solr config found. Putting CKAN 2.8 config for Solr to ZooKeeper as ckan_default...')
+        file_path = os.path.dirname(os.path.abspath(__file__))
+        root_path = Path(file_path).parent.parent
+        configs_dir = os.path.join(root_path, 'data', 'solr')
+        zk_put_configs(configs_dir)
 
     if config_manager.get('disable-centralized-datapushers', configmap_name='global-ckan-config', required=False) != 'yes':
         from ckan_cloud_operator.datapushers import initialize as datapusher_initialize

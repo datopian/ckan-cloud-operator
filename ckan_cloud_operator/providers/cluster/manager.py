@@ -49,6 +49,8 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
         assert default_cluster_provider in ['gcloud', 'aws'], f'invalid cluster provider: {default_cluster_provider}'
+        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create secret generic ckan-cloud-provider-cluster-{default_cluster_provider}')
+        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix={OPERATOR_NAMESPACE}')
 
     from ckan_cloud_operator.providers import manager as providers_manager
     from ckan_cloud_operator.labels import manager as labels_manager
