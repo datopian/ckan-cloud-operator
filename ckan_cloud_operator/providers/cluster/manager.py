@@ -14,6 +14,9 @@ def get_operator_version(verify=False):
     installed_image_tag = _get_installed_operator_image_tag()
     if verify:
         expected_image_tag = _get_expected_operator_image_tag()
+        if not expected_image_tag:
+            logs.info('No configmap created yet')
+            return 'not-configured'
         if installed_image_tag and len(installed_image_tag) >= 2:
             assert installed_image_tag == expected_image_tag, \
                 f'installed tag mismatch (expected={expected_image_tag}, actual={installed_image_tag})'
@@ -271,6 +274,8 @@ def _get_installed_operator_image_tag():
 def _get_expected_operator_image_tag():
     from ckan_cloud_operator.config import manager as config_manager
     expected_image = config_manager.get('ckan-cloud-operator-image')
+    if not expected_image:
+        return
     assert '@' not in expected_image and ':' in expected_image, f'invalid expected image: {expected_image}'
     _, expected_image_tag = expected_image.split(':')
     return expected_image_tag
