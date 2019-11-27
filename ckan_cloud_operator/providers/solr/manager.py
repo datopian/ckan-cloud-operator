@@ -137,9 +137,12 @@ def solr_curl(path, required=False, debug=False):
 
 def zk_list_configs():
     pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
-    lines = list(kubectl.check_output(f'exec {pod_name} zkCli.sh ls /configs').decode().splitlines())[5:]
-    assert len(lines) == 1
-    return [name.strip() for name in lines[0][1:-1].split(',')]
+    try:
+        lines = list(kubectl.check_output(f'exec {pod_name} zkCli.sh ls /configs').decode().splitlines())[5:]
+        assert len(lines) == 1
+        return [name.strip() for name in lines[0][1:-1].split(',')]
+    except AssertionError:
+        return []
 
 
 def zk_list_config_files(config_name, config_files, base_path=''):

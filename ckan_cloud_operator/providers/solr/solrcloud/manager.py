@@ -2,6 +2,7 @@
 
 from .constants import PROVIDER_ID
 from ..constants import PROVIDER_SUBMODULE
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 # define common provider functions based on the constants
 from ckan_cloud_operator.providers import manager as providers_manager
@@ -132,11 +133,17 @@ def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False, dry
 
 
 def _get_zk_suffixes():
-    return ['zk-0', 'zk-1', 'zk-2']
+    if cluster_manager.get_provider_id() != 'minikube':
+        return ['zk-0', 'zk-1', 'zk-2']
+    else:
+        return ['zk-0']
 
 
 def _get_sc_suffixes():
-    return ['sc-3', 'sc-4', 'sc-5']
+    if cluster_manager.get_provider_id() != 'minikube':
+        return ['sc-3', 'sc-4', 'sc-5']
+    else:
+        return ['sc-3']
 
 
 def _apply_zookeeper_configmap(zk_host_names):
