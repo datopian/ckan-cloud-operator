@@ -213,6 +213,9 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
             'replicas': 1,
             'revisionHistoryLimit': 2,
             'strategy': {'type': 'Recreate', },
+            'selector': {
+                'matchLabels': _get_resource_labels(for_deployment=True, suffix='zk'),
+            },
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix='zk'),
@@ -274,6 +277,9 @@ def _apply_zoonavigator_deployment(dry_run=False):
         {
             'replicas': 1,
             'revisionHistoryLimit': 2,
+            'selector': {
+                'matchLabels': _get_resource_labels(for_deployment=True, suffix=suffix),
+            },                
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix=suffix),
@@ -321,6 +327,9 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
             'replicas': 1,
             'revisionHistoryLimit': 2,
             'strategy': {'type': 'Recreate', },
+            'selector': {
+                'matchLabels': _get_resource_labels(for_deployment=True, suffix='sc'),
+            },                
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix='sc'),

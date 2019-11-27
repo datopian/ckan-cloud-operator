@@ -13,8 +13,7 @@ def create(router):
     cloudflare_api_key = cloudflare_spec.get('api-key')
     default_root_domain = router_spec.get('default-root-domain')
     dns_provider = router_spec.get('dns-provider')
-    from ckan_cloud_operator.providers.cluster import manager as cluster_manager
-    default_dns_provider = 'route53' if cluster_manager.get_provider_id() == 'aws' else 'cloudflare'
+    default_dns_provider = 'none'
     logs.info(dns_provider=dns_provider, default_dns_provider=default_dns_provider)
     if not dns_provider:
         dns_provider = default_dns_provider

@@ -217,7 +217,8 @@ def install_crd(plural, singular, kind):
     crd = get(f'crd {plural}.stable.viderum.com', required=False)
     version = 'v1'
     if crd:
-        assert crd['spec']['version'] == version
+        print('CRD', crd)
+        assert crd['spec']['versions'][0]['name'] == version
         print(f'{kind} custom resource definitions are up-to-date')
     else:
         print(f'Creating {kind} {version} custom resource definition')
@@ -227,7 +228,11 @@ def install_crd(plural, singular, kind):
                    'name': f'{plural}.stable.viderum.com'
                },
                'spec': {
-                   'version': 'v1',
+                   'versions': [{
+                       'name': version,
+                       'served': True,
+                       'storage': True
+                   }],
                    'group': 'stable.viderum.com',
                    'scope': 'Namespaced',
                    'names': {
@@ -266,7 +271,7 @@ def get_persistent_volume_claim(name, labels, spec, namespace='ckan-cloud'):
 
 
 def get_deployment(name, labels, spec, namespace='ckan-cloud', with_timestamp=True):
-    deployment = get_resource('apps/v1beta1', 'Deployment', name, labels, namespace)
+    deployment = get_resource('apps/v1', 'Deployment', name, labels, namespace)
     deployment = dict(deployment, spec=spec)
     if with_timestamp:
         add_operator_timestamp_annotation(deployment['spec']['template']['metadata'])

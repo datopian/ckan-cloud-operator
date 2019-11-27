@@ -9,16 +9,13 @@ def initialize(interactive=False):
         {
             'env-id': None,
             'default-root-domain': None,
+            'dns-provider': 'route53' if cluster_manager.get_provider_id() == 'aws' else None
         },
         configmap_name='routers-config',
         interactive=interactive
     )
-    if cluster_manager.get_provider_id() == 'aws':
-        dns_provider = 'route53'
-    else:
-        dns_provider = 'cloudflare'
+    dns_provider = config_manager.get(key='dns-provider', configmap_name='routers-config')
     logs.info(dns_provider=dns_provider)
-    config_manager.set(key='dns-provider', value=dns_provider, configmap_name='routers-config')
     if dns_provider == 'cloudflare':
         config_manager.interactive_set(
             {
