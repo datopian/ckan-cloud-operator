@@ -21,6 +21,7 @@ def _config_interactive_set(default_values, namespace=None, is_secret=False, suf
 import subprocess
 import yaml
 import json
+import time
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -88,6 +89,18 @@ def initialize(interactive=False, dry_run=False):
     _config_set('sc-main-host-name', solrcloud_host_name)
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
+    # TODO - need to check the pod names and ensure these are solrcloud ones 
+    # TODO - actual number is _+ 1_ and not _+ 2_
+    expected_running = len(sc_host_names) + len(zk_host_names) + 2
+    while True:
+        pods = kubectl.get('pods')
+        running = len([x for x in pods['items']
+                       if x['status']['phase'] == 'Running'])
+        if running == expected_running:
+            break
+        logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
+        time.sleep(30)
+    
     _set_provider()
 
 

@@ -102,7 +102,7 @@ def _apply_deployment(db_prefix=None):
                     'containers': [
                         {
                             'name': 'postgres',
-                            'image': 'postgres:12',
+                            'image': 'mdillon/postgis',
                             'env': [
                                 {
                                     'name': 'POSTGRES_PASSWORD',

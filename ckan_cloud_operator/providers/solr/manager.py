@@ -43,6 +43,7 @@ def initialize(interactive=False, dry_run=False):
 
 def initialize_self_hosted(interactive=False, dry_run=False):
     get_provider(default=solrcloud_provider_id, verbose=True).initialize(interactive=interactive, dry_run=dry_run)
+    zk_set_url_scheme()
 
 
 def get_internal_http_endpoint():
@@ -134,14 +135,17 @@ def solr_curl(path, required=False, debug=False):
                 logs.warning(output)
                 return False
 
+def zk_set_url_scheme(scheme='http'):
+    pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
+    kubectl.check_output('exec %s zkCli.sh set /clusterprops.json \'{"urlScheme":"%s"}\'' % (pod_name, scheme))
+
 
 def zk_list_configs():
     pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
-    try:
-        lines = list(kubectl.check_output(f'exec {pod_name} zkCli.sh ls /configs').decode().splitlines())[5:]
-        assert len(lines) == 1
+    lines = list(kubectl.check_output(f'exec {pod_name} zkCli.sh ls /configs').decode().splitlines())[5:]
+    if len(lines) == 1:
         return [name.strip() for name in lines[0][1:-1].split(',')]
-    except AssertionError:
+    else:
         return []
 
 

@@ -32,10 +32,26 @@ def initialize(interactive=False):
     if interactive:
         print('\nUsing Minikube\n')
     print(yaml.dump(get_info(), default_flow_style=False))
+    _create_storage_classes()
 
 
 def get_info(debug=False):
     return {}
+
+def _create_storage_classes():
+    for sc in ('cca-storage', 'cca-ckan'):
+        kubectl.apply({
+            'apiVersion': 'storage.k8s.io/v1', 'kind': 'StorageClass',
+            'metadata': {
+                'annotations': {'storageclass.kubernetes.io/is-default-class': True},
+                'labels': {'addonmanager.kubernetes.io/mode': 'EnsureExists'},
+                'name': sc,
+            },
+            'provisioner': 'k8s.io/minikube-hostpath',
+            'reclaimPolicy': 'Delete',
+            'volumeBindingMode': 'Immediate'
+        })
+
 
 
 def create_volume(disk_size_gb, labels, use_existing_disk_name=None):

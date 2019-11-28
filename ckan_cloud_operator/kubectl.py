@@ -217,7 +217,6 @@ def install_crd(plural, singular, kind):
     crd = get(f'crd {plural}.stable.viderum.com', required=False)
     version = 'v1'
     if crd:
-        print('CRD', crd)
         assert crd['spec']['versions'][0]['name'] == version
         print(f'{kind} custom resource definitions are up-to-date')
     else:
