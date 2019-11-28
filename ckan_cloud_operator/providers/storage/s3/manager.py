@@ -6,6 +6,11 @@ from ckan_cloud_operator.providers.cluster.aws.manager import aws_check_output, 
 from .constants import PROVIDER_ID
 
 
+def initialize(*args, **kwargs):
+    # No actions needed
+    pass
+
+
 def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
     if not region:
         region = get_aws_credentials().get('region')
