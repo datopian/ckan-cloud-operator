@@ -2,7 +2,8 @@ import json
 import unittest
 from unittest.mock import patch, call
 
-from ckan_cloud_operator.providers.storage.s3 import manager
+from ckan_cloud_operator.providers.storage.gcloud import manager as gcloud_manager
+from ckan_cloud_operator.providers.storage.s3 import manager as s3_manager
 
 
 class S3ManagerTestCase(unittest.TestCase):
@@ -14,7 +15,7 @@ class S3ManagerTestCase(unittest.TestCase):
         list_s3_buckets.return_value = []
         get_aws_credentials.return_value = {'region': 'us-west-1'}
 
-        result = manager.create_bucket('new-instance')
+        result = s3_manager.create_bucket('new-instance')
 
         get_aws_credentials.assert_called_once()
         list_s3_buckets.assert_called_once()
@@ -30,16 +31,16 @@ class S3ManagerTestCase(unittest.TestCase):
         get_aws_credentials.return_value = {'region': 'us-west-1'}
 
         with self.assertRaisesRegex(Exception, 'Bucket for this instance already exists'):
-            manager.create_bucket('new-instance')
+            s3_manager.create_bucket('new-instance')
 
-        self.assertEqual(manager.create_bucket('new-instance', exists_ok=True), 's3://new-instance')
+        self.assertEqual(s3_manager.create_bucket('new-instance', exists_ok=True), 's3://new-instance')
         aws_check_output.assert_not_called()
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.get_aws_credentials')
     def test_create_bucket_without_region(self, get_aws_credentials):
         get_aws_credentials.return_value = {}
         with self.assertRaisesRegex(AssertionError, 'No default region set for the cluster'):
-            manager.create_bucket('new-instance')
+            s3_manager.create_bucket('new-instance')
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.get_aws_credentials')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
@@ -49,7 +50,7 @@ class S3ManagerTestCase(unittest.TestCase):
         list_s3_buckets.return_value = []
         get_aws_credentials.return_value = {'region': 'us-west-1'}
 
-        result = manager.create_bucket('new-instance', dry_run=True)
+        result = s3_manager.create_bucket('new-instance', dry_run=True)
 
         get_aws_credentials.assert_called_once()
         list_s3_buckets.assert_called_once()
@@ -61,7 +62,7 @@ class S3ManagerTestCase(unittest.TestCase):
     def test_delete_bucket(self, aws_check_output, list_s3_buckets):
         list_s3_buckets.return_value = ['new-instance']
 
-        manager.delete_bucket('new-instance')
+        s3_manager.delete_bucket('new-instance')
 
         expected_calls = [
             call('s3 rm s3://new-instance --recursive'),
@@ -75,7 +76,7 @@ class S3ManagerTestCase(unittest.TestCase):
     def test_delete_bucket_that_does_not_exist(self, aws_check_output, list_s3_buckets):
         list_s3_buckets.return_value = []
 
-        manager.delete_bucket('new-instance')
+        s3_manager.delete_bucket('new-instance')
 
         aws_check_output.assert_not_called()
 
@@ -84,7 +85,7 @@ class S3ManagerTestCase(unittest.TestCase):
     def test_delete_bucket_dry_run(self, aws_check_output, list_s3_buckets):
         list_s3_buckets.return_value = ['new-instance']
 
-        manager.delete_bucket('new-instance', dry_run=True)
+        s3_manager.delete_bucket('new-instance', dry_run=True)
 
         aws_check_output.assert_called_once_with('s3 rm s3://new-instance --recursive --dryrun')
 
@@ -104,14 +105,14 @@ class S3ManagerTestCase(unittest.TestCase):
             'instance_id': 'new-instance',
             'bucket': 's3://new-instance'
         }
-        self.assertEqual(manager.get_bucket('new-instance'), expected_result)
+        self.assertEqual(s3_manager.get_bucket('new-instance'), expected_result)
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.kubectl.get')
     def test_get_bucket_that_does_not_present_in_s3(self, kubectl_get, list_s3_buckets):
         list_s3_buckets.return_value = ['old-instance']
 
-        self.assertIsNone(manager.get_bucket('new-instance'))
+        self.assertIsNone(s3_manager.get_bucket('new-instance'))
         kubectl_get.assert_not_called()
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
@@ -126,7 +127,7 @@ class S3ManagerTestCase(unittest.TestCase):
             }
         }
 
-        self.assertIsNone(manager.get_bucket('new-instance'))
+        self.assertIsNone(s3_manager.get_bucket('new-instance'))
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.kubectl.get')
     def test_list_buckets(self, kubectl_get):
@@ -174,7 +175,7 @@ class S3ManagerTestCase(unittest.TestCase):
                 'bucket': 's3://old-instance'
             }
         ]
-        self.assertEqual(manager.list_buckets(), expected_result)
+        self.assertEqual(s3_manager.list_buckets(), expected_result)
         kubectl_get.assert_called_once_with('ckancloudckaninstance')
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.aws_check_output')
@@ -189,7 +190,193 @@ class S3ManagerTestCase(unittest.TestCase):
             ['2019-11-10 21:32:57', 'old-instance'],
             ['2019-11-10 21:32:57', 'another-instance']
         ]
-        self.assertEqual(manager.list_s3_buckets(), expected_result)
+        self.assertEqual(s3_manager.list_s3_buckets(), expected_result)
 
         expected_result = ['new-instance', 'old-instance', 'another-instance']
-        self.assertEqual(manager.list_s3_buckets(names_only=True), expected_result)
+        self.assertEqual(s3_manager.list_s3_buckets(names_only=True), expected_result)
+
+
+class GCloudManagerTestCase(unittest.TestCase):
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.cluster_config_get')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.gcloud_check_output')
+    def test_create_bucket(self, gcloud_check_output, list_s3_buckets, cluster_config_get):
+        gcloud_check_output.return_value = ''
+        list_s3_buckets.return_value = []
+        cluster_config_get.return_value = 'europe-west2-c'
+
+        result = gcloud_manager.create_bucket('new-instance')
+
+        cluster_config_get.assert_called_once()
+        list_s3_buckets.assert_called_once()
+        gcloud_check_output.assert_called_once_with('mb gs://new-instance -l europe-west2-c', gsutil=True)
+        self.assertEqual(result, 'gs://new-instance')
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.cluster_config_get')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.gcloud_check_output')
+    def test_create_bucket_that_already_exists(self, gcloud_check_output, list_gcloud_buckets, cluster_config_get):
+        gcloud_check_output.return_value = ''
+        list_gcloud_buckets.return_value = ['new-instance']
+        cluster_config_get.return_value = 'europe-west2-c'
+
+        with self.assertRaisesRegex(Exception, 'Bucket for this instance already exists'):
+            gcloud_manager.create_bucket('new-instance')
+
+        self.assertEqual(gcloud_manager.create_bucket('new-instance', exists_ok=True), 'gs://new-instance')
+        gcloud_check_output.assert_not_called()
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.cluster_config_get')
+    def test_create_bucket_without_region(self, cluster_config_get):
+        cluster_config_get.return_value = {}
+        with self.assertRaisesRegex(AssertionError, 'No default region set for the cluster'):
+            gcloud_manager.create_bucket('new-instance')
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.cluster_config_get')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.gcloud_check_output')
+    def test_create_bucket_dry_run(self, gcloud_check_output, list_gcloud_buckets, cluster_config_get):
+        gcloud_check_output.return_value = ''
+        list_gcloud_buckets.return_value = []
+        cluster_config_get.return_value = 'europe-west2-c'
+
+        result = gcloud_manager.create_bucket('new-instance', dry_run=True)
+
+        cluster_config_get.assert_called_once()
+        list_gcloud_buckets.assert_called_once()
+        gcloud_check_output.assert_not_called()
+        self.assertEqual(result, 'gs://new-instance')
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.gcloud_check_output')
+    def test_delete_bucket(self, gcloud_check_output, list_gcloud_buckets):
+        list_gcloud_buckets.return_value = ['new-instance']
+
+        gcloud_manager.delete_bucket('new-instance')
+
+        expected_calls = [
+            call('rm -r gs://new-instance', gsutil=True),
+        ]
+        self.assertEqual(gcloud_check_output.call_count, 1)
+        self.assertEqual(gcloud_check_output.mock_calls, expected_calls)
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.gcloud_check_output')
+    def test_delete_bucket_that_does_not_exist(self, gcloud_check_output, list_gcloud_buckets):
+        list_gcloud_buckets.return_value = []
+
+        gcloud_manager.delete_bucket('new-instance')
+
+        gcloud_check_output.assert_not_called()
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.gcloud_check_output')
+    def test_delete_bucket_dry_run(self, gcloud_check_output, list_gcloud_buckets):
+        list_gcloud_buckets.return_value = ['new-instance']
+
+        gcloud_manager.delete_bucket('new-instance', dry_run=True)
+
+        gcloud_check_output.assert_not_called()
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.kubectl.get')
+    def test_get_bucket(self, kubectl_get, list_gcloud_buckets):
+        list_gcloud_buckets.return_value = ['new-instance']
+        kubectl_get.return_value = {
+            'spec': {
+                'bucket': {
+                    'gcloud': 'gs://new-instance'
+                }
+            }
+        }
+
+        expected_result = {
+            'instance_id': 'new-instance',
+            'bucket': 'gs://new-instance'
+        }
+        self.assertEqual(gcloud_manager.get_bucket('new-instance'), expected_result)
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.kubectl.get')
+    def test_get_bucket_that_is_not_present_in_gcp(self, kubectl_get, list_gcloud_buckets):
+        list_gcloud_buckets.return_value = ['old-instance']
+
+        self.assertIsNone(gcloud_manager.get_bucket('new-instance'))
+        kubectl_get.assert_not_called()
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.kubectl.get')
+    def test_get_bucket_when_instance_has_no_gcp_buckets(self, kubectl_get, list_gcloud_buckets):
+        list_gcloud_buckets.return_value = ['new-instance']
+        kubectl_get.return_value = {
+            'spec': {
+                'bucket': {
+                    's3': 'new-instance'
+                }
+            }
+        }
+
+        self.assertIsNone(gcloud_manager.get_bucket('new-instance'))
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.kubectl.get')
+    def test_list_buckets(self, kubectl_get):
+        kubectl_get.return_value = {
+            'items': [
+                {
+                    'spec': {
+                        'id': 'new-instance',
+                        'bucket': {
+                            'gcloud': 'gs://new-instance'
+                        }
+                    }
+                },
+                {
+                    'spec': {
+                        'id': 'old-instance',
+                        'bucket': {
+                            'gcloud': 'gs://old-instance'
+                        }
+                    }
+                },
+                {
+                    'spec': {
+                        'id': 's3-instance',
+                        'bucket': {
+                            's3': 's3-bucket'
+                        }
+                    }
+                },
+                {
+                    'spec': {
+                        'no-data': 'invalid spec'
+                    }
+                }
+            ]
+        }
+
+        expected_result = [
+            {
+                'instance_id': 'new-instance',
+                'bucket': 'gs://new-instance'
+            },
+            {
+                'instance_id': 'old-instance',
+                'bucket': 'gs://old-instance'
+            }
+        ]
+        self.assertEqual(gcloud_manager.list_buckets(), expected_result)
+        kubectl_get.assert_called_once_with('ckancloudckaninstance')
+
+    @patch('ckan_cloud_operator.providers.storage.gcloud.manager.gcloud_check_output')
+    def test_list_gcloud_buckets(self, gcloud_check_output):
+        gcloud_check_output.return_value = b"""
+gs://new-instance/
+gs://old-instance/
+gs://another-instance/"""
+
+        expected_result = [
+            'new-instance',
+            'old-instance',
+            'another-instance'
+        ]
+        self.assertEqual(gcloud_manager.list_gcloud_buckets(), expected_result)
