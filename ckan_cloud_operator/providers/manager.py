@@ -225,6 +225,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     elif submodule == db_provider_submodule:
         from ckan_cloud_operator.providers.db.gcloudsql.constants import PROVIDER_ID as gcloudsql_provider_id
         from ckan_cloud_operator.providers.db.rds.constants import PROVIDER_ID as rds_provider_id
+        from ckan_cloud_operator.providers.db.minikube.constants import PROVIDER_ID as minikube_provider_id
 
         if not provider_id:
             return [gcloudsql_provider_id]
@@ -242,6 +243,13 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.db.rds import manager as rds_manager
 
             return rds_manager
+
+        ## minikube
+
+        elif provider_id == minikube_provider_id:
+            from ckan_cloud_operator.providers.db.minikube import manager as minikube_manager
+
+            return minikube_manager
 
     ## db-web-ui
 
@@ -286,6 +294,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     elif submodule == cluster_provider_submodule:
         from ckan_cloud_operator.providers.cluster.gcloud.constants import PROVIDER_ID as cluster_gcloud_provider_id
         from ckan_cloud_operator.providers.cluster.aws.constants import PROVIDER_ID as cluster_aws_provider_id
+        from ckan_cloud_operator.providers.cluster.minikube.constants import PROVIDER_ID as cluster_minikube_provider_id
 
         if not provider_id:
             return [cluster_gcloud_provider_id, cluster_aws_provider_id]
@@ -304,13 +313,20 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
 
             return cluster_aws_manager
 
+        ## minikube
+
+        elif provider_id == cluster_minikube_provider_id:
+            from ckan_cloud_operator.providers.cluster.minikube import manager as cluster_minikube_manager
+
+            return cluster_minikube_manager
+
     ## storage
 
     elif submodule == storage_provider_submodule:
         from ckan_cloud_operator.providers.storage.minio.constants import PROVIDER_ID as storage_minio_provider_id
 
         if not provider_id:
-            return [storage_minio_provider_id]
+            return []
 
         ## minio
 

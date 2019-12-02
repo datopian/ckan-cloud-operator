@@ -41,8 +41,8 @@ def initialize(interactive=False, provider_id=None, storage_suffix=None, use_exi
                 interactive=interactive
             )
 
-    get_provider(
-        default=minio_provider_id,
+    provider = get_provider(
+        default=None,
         provider_id=provider_id
     ).initialize(
         interactive=interactive,
@@ -50,10 +50,17 @@ def initialize(interactive=False, provider_id=None, storage_suffix=None, use_exi
         use_existing_disk_name=use_existing_disk_name,
         dry_run=dry_run
     )
+    if provider:
+        provider.initialize(
+            interactive=interactive,
+            storage_suffix=storage_suffix,
+            use_existing_disk_name=use_existing_disk_name,
+            dry_run=dry_run
+        )
 
 
 def get_provider(default=None, provider_id=None):
-    return providers_manager.get_provider(PROVIDER_SUBMODULE, default=default, provider_id=provider_id)
+    return providers_manager.get_provider(PROVIDER_SUBMODULE, default=default, provider_id=provider_id, required=False)
 
 
 def print_credentials(raw=False, storage_suffix=None, provider_id=None):
