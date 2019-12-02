@@ -30,7 +30,11 @@ def get_operator_version(verify=False):
 
 
 def print_info(debug=False, minimal=False):
-    print(yaml.dump([dict(get_kubeconfig_info(), nodes=get_node_names(), operator_version=get_operator_version(verify=True))], default_flow_style=False))
+    print(yaml.dump([dict(
+        get_kubeconfig_info(), 
+        nodes=get_node_names(),
+        operator_version=get_operator_version(verify=True)
+    )], default_flow_style=False))
     if not minimal:
         from ckan_cloud_operator.providers import manager as providers_manager
         print(yaml.dump([providers_manager.get_provider('cluster').get_info(debug=debug)], default_flow_style=False))
@@ -48,12 +52,12 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
     if interactive and not skip_to:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)
-        input('Verify your are connected to the right cluster and press <RETURN> to continue')
+        input('Verify you are connected to the right cluster and press <RETURN> to continue')
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
-        assert default_cluster_provider in ['gcloud', 'aws'], f'invalid cluster provider: {default_cluster_provider}'
-        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create secret generic ckan-cloud-provider-cluster-{default_cluster_provider}')
-        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix={OPERATOR_NAMESPACE}')
+        assert default_cluster_provider in ['gcloud', 'aws', 'minikube'], f'invalid cluster provider: {default_cluster_provider}'
+        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create secret generic ckan-cloud-provider-cluster-{default_cluster_provider}', shell=True)
+        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix={OPERATOR_NAMESPACE}', shell=True)
 
     from ckan_cloud_operator.providers import manager as providers_manager
     from ckan_cloud_operator.labels import manager as labels_manager

@@ -41,7 +41,7 @@ from ckan_cloud_operator.providers.ckan.constants import INSTANCE_CRD_SINGULAR
 from ckan_cloud_operator.routers import manager as routers_manager
 
 
-def initialize():
+def initialize(interactive=False):
     tiller_namespace_name = _get_resource_name()
     helm_driver.init(tiller_namespace_name)
 
@@ -128,9 +128,9 @@ def get(instance_id, instance=None):
     if num_resource_items > 0:
         for item in all_resources['items']:
             item_kind = item['kind']
-            if item_kind in ["Pod", "Deployment", "ReplicaSet"]:
+            if item_kind in ("Pod", "ReplicaSet"):
                 item_app = item["metadata"]["labels"]["app"]
-            elif item_kind == "Service":
+            elif item_kind in ("Service", "Deployment"):
                 item_app = item["metadata"]["name"]
             else:
                 item_app = None
@@ -287,9 +287,9 @@ def _init_solr(instance_id, dry_run=False):
     solr_status = solr_manager.get_collection_status(instance_id)
     logs.debug_yaml_dump(solr_status)
     if not solr_status['ready']:
-        logs.info('Creating solr collection', collection_name=instance_id, solr_config='ckan_28_default')
+        logs.info('Creating solr collection', collection_name=instance_id, solr_config='ckan_default')
         if not dry_run:
-            solr_manager.create_collection(instance_id, 'ckan_28_default')
+            solr_manager.create_collection(instance_id, 'ckan_default')
     else:
         logs.info(f'collection already exists ({instance_id})')
     solr_url = solr_status['solr_http_endpoint']
