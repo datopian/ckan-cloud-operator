@@ -7,6 +7,21 @@ if [ "${1}" == "install" ]; then
     ! docker pull viderum/ckan-cloud-operator:jnlp-latest && echo Failed to pull jnlp image && exit 1
     echo Great Success! && exit 0
 
+elif [ "${1}" == "install-tools" ]; then
+    if [ "${K8_PROVIDER}" == "minikube" ]; then
+      # Install Minikube
+      echo Installing Minikube
+      curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+      sudo install minikube-linux-amd64 /usr/local/bin/minikube
+      rm minikube-linux-amd64 && minikube version
+      echo Minikube Installed Successfully!
+    fi
+
+    curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
+    chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
+    echo kubectl Installed Successfully!
+    echo Instalation Complete && exit 0
+
 elif [ "${1}" == "script" ]; then
     ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:latest -t ckan-cloud-operator . && echo Failed to build image && exit 1
     ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:jnlp-latest -t ckan-cloud-operator-jnlp -f Dockerfile.jenkins-jnlp . && echo Failed to build jnlp image && exit 1
