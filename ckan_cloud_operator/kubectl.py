@@ -205,10 +205,13 @@ def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
     if dry_run:
         args.append('--dry-run')
     args = " ".join(args)
-    subprocess.run(
-        f'kubectl {cmd} {args} -f -',
-        input=yaml.dump(resource).encode(), shell=True, check=True
-    )
+    try:
+        subprocess.run(
+            f'kubectl {cmd} {args} -f -',
+            input=yaml.dump(resource).encode(), shell=True, check=True
+        )
+    except subprocess.CalledProcessError:
+        logging.exception('Failed to apply resource\n%s', yaml.dump(resource, default_flow_style=False))
     if dry_run:
         print(yaml.dump(resource, default_flow_style=False))
 
