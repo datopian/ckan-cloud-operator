@@ -4,6 +4,7 @@ import base64
 import traceback
 import datetime
 import json
+import logging
 from ckan_cloud_operator import yaml_config
 
 
