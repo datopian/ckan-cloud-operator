@@ -36,6 +36,9 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
     deployment_spec = {
         'replicas': 1,
         'revisionHistoryLimit': 5,
+        'selector': {
+            'matchLabels': get_labels(router_name, router_type, for_deployment=True) 
+        },
         'template': {
             'metadata': {
                 'labels': get_labels(router_name, router_type, for_deployment=True)
