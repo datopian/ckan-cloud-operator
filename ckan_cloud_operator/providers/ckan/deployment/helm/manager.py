@@ -57,7 +57,8 @@ def update(instance_id, instance, force=False, dry_run=False):
     )
     ckan_helm_chart_version = instance['spec'].get("ckanHelmChartVersion", "")
     ckan_helm_release_name = f'ckan-cloud-{instance_id}'
-    solr_host, solr_port = _init_solr(instance_id, dry_run=dry_run)
+    solr_schema = instance['spec'].get("ckanSorlSchema", "ckan_default")
+    solr_host, solr_port = _init_solr(instance_id, solr_schema, dry_run=dry_run,)
     logs.debug(ckan_helm_chart_repo=ckan_helm_chart_repo,
                ckan_helm_chart_version=ckan_helm_chart_version, ckan_helm_release_name=ckan_helm_release_name,
                solr_host=solr_host, solr_port=solr_port)
@@ -286,14 +287,14 @@ def _init_namespace(instance_id, dry_run=False):
             )
 
 
-def _init_solr(instance_id, dry_run=False):
+def _init_solr(instance_id, solr_schema, dry_run=False):
     logs.debug('Initializing solr', instance_id=instance_id)
     solr_status = solr_manager.get_collection_status(instance_id)
     logs.debug_yaml_dump(solr_status)
     if not solr_status['ready']:
-        logs.info('Creating solr collection', collection_name=instance_id, solr_config='ckan_default')
+        logs.info('Creating solr collection', collection_name=instance_id, solr_config=solr_schema)
         if not dry_run:
-            solr_manager.create_collection(instance_id, 'ckan_default')
+            solr_manager.create_collection(instance_id, solr_schema)
     else:
         logs.info(f'collection already exists ({instance_id})')
     solr_url = solr_status['solr_http_endpoint']
