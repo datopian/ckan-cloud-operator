@@ -128,11 +128,15 @@ def get(instance_id, instance=None):
     if num_resource_items > 0:
         for item in all_resources['items']:
             item_kind = item['kind']
-            if item_kind in ("Pod", "ReplicaSet"):
-                item_app = item["metadata"]["labels"]["app"]
-            elif item_kind in ("Service", "Deployment"):
-                item_app = item["metadata"]["name"]
-            else:
+            try:
+                if item_kind in ("Pod", "ReplicaSet"):
+                    item_app = item["metadata"]["labels"]["app"]
+                elif item_kind in ("Service", "Deployment"):
+                    item_app = item["metadata"]["name"]
+                else:
+                    item_app = None
+            except:
+                logging.exception('Failed to extract item_app from %r', item)
                 item_app = None
             logs.debug(item_kind=item_kind, item_app=item_app)
             if item_app in ["ckan", "jobs-db", "redis", "nginx", "jobs"]:
