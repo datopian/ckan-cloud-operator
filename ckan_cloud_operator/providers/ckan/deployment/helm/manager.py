@@ -218,8 +218,15 @@ def pre_update_hook(instance_id, instance, override_spec, skip_route=False, dry_
 
 
 def create_ckan_admin_user(instance_id, instance, user):
-    pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True)
-    assert pod_name
+    pod_name = None
+    while not pod_name:
+        try:
+            pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True, required_phase='Running')
+            break
+        except Exception as e:
+            logs.warning('Failed to find running ckan pod', str(e))
+        time.sleep(20)
+
     name, password, email = [user[k] for k in ['name', 'password', 'email']]
     logs.info(f'Creating CKAN admin user with {name} ({email}) and {password}')
     subprocess.check_call(
