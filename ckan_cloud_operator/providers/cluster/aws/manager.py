@@ -36,13 +36,37 @@ def initialize(interactive=False):
         print('\nEnter credentials for an AWS Access Key with relevant permissions\n')
         _config_interactive_set({'aws-access-key-id': None}, is_secret=True)
         _config_interactive_set({'aws-secret-access-key': None}, is_secret=True)
-        print('\nEnter the AWS Region the Amazone Kubernets cluster is hosted on\n')
+        print('\nEnter the AWS Region the Amazon Kubernets cluster is hosted on\n')
         _config_interactive_set({'aws-default-region': None}, is_secret=True)
         print('\nEnter the name of your Amazon EKS cluster\n')
         _config_interactive_set({'eks-cluster-name': None}, is_secret=True)
     print(yaml.dump(get_info(), default_flow_style=False))
+    _create_storage_classes()
 
 
+def _create_storage_classes():
+    kubectl.apply({
+        'apiVersion': 'storage.k8s.io/v1', 'kind': 'StorageClass',
+        'metadata': {
+            'name': 'cca-ckan',
+        },
+        'provisioner': 'example.com/aws-efs',
+        'reclaimPolicy': 'Delete',
+        'volumeBindingMode': 'Immediate'
+    })
+    kubectl.apply({
+        'apiVersion': 'storage.k8s.io/v1', 'kind': 'StorageClass',
+        'metadata': {
+            'name': 'cca-storage',
+        },
+        'provisioner': 'kubernetes.io/aws-ebs',
+        'reclaimPolicy': 'Delete',
+        'volumeBindingMode': 'Immediate',
+        'parameters': {
+            'encrypted': 'false',
+            'type': 'gp2',
+        }
+    })
 
 
 def get_info(debug=False):
@@ -99,9 +123,9 @@ def exec(cmd):
     )
 
 
-def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
+def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=0):
     assert not use_existing_disk_name, 'using existing disk name is not supported yet'
-    availability_zone = get_storage_availability_zone()
+    availability_zone = get_storage_availability_zone(zone)
     logs.info(f'creating persistent disk with size {disk_size_gb} in availability zone {availability_zone}')
     data = json.loads(aws_check_output(f'ec2 create-volume -- --size {disk_size_gb} --availability-zone {availability_zone}'))
     volume_id = data['VolumeId']
@@ -136,21 +160,19 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
     }
 
 
-def get_storage_availability_zone():
-    return _config_get('default-storage-availability-zone')
+def get_storage_availability_zone(zone):
+    region = _config_get('aws-default-region', is_secret=True)
+    region += 'abc'[zone % 3]
+    return region
 
 
-def set_storage_availability_zone(zone):
-    return _config_set('default-storage-availability-zone', zone)
-
-
-def auto_get_availability_zone():
-    print('getting availability zone with most nodes in the cluster')
-    zones = collections.defaultdict(int)
-    for node in kubectl.get('nodes')['items']:
-        zones[node['metadata']['labels']['failure-domain.beta.kubernetes.io/zone']] += 1
-    return sorted([{'zone': zone, 'nodes': nodes} for zone, nodes in zones.items()],
-                  key=lambda item: item['nodes'], reverse=True)[0]['zone']
+# def auto_get_availability_zone():
+#     print('getting availability zone with most nodes in the cluster')
+#     zones = collections.defaultdict(int)
+#     for node in kubectl.get('nodes')['items']:
+#         zones[node['metadata']['labels']['failure-domain.beta.kubernetes.io/zone']] += 1
+#     return sorted([{'zone': zone, 'nodes': nodes} for zone, nodes in zones.items()],
+#                   key=lambda item: item['nodes'], reverse=True)[0]['zone']
 
 
 def get_name():
