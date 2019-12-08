@@ -13,7 +13,7 @@ authUser_delete_organizations: "false"
 centralizedSecretName: ckan-infra
 ckanAdminEmail: adam.kariv@datopian.com
 ckanGunicornWorkers: 2
-ckanHelmChartVersion: v0.0.11-rc12
+ckanHelmChartVersion: v0.0.11-rc19
 
 ckanImage: viderum/ckan-cloud-docker:ckan-e4716b4194d3f7be8497940cacb0debf42a744b9-datagov-theme
 ckanJobsDbResources: '{"requests": {"cpu": "20m", "memory": "50Mi"}, "limits": {"memory":
@@ -61,7 +61,7 @@ id: logging-test-5da8256e
 jobsDbPersistentDiskSizeGB: 5
 kind: datapusher
 name: ckan-cloud-ckaninstance-logging-test-5da8256e
-nginxReplicas: 2
+nginxReplicas: 1
 nginxResources: '{"requests": {"cpu": "60m", "memory": "300Mi"}, "limits": {"memory":
   "800Mi"}}'
 provisioningKindTitle: DataPusher / Catalog
@@ -69,7 +69,7 @@ ready: true
 redisResources: '{"requests": {"cpu": "15m", "memory": "100Mi"}, "limits": {"memory":
   "300Mi"}}'
 registerSubdomain: ckan-cloud-logging-test-5da8256e
-replicas: 2
+replicas: 1
 siteDescription: Staging environment
 siteLogo: /base/images/ckan-logo.png
 siteTitle: Logging Test

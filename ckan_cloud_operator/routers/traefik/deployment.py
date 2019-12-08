@@ -99,11 +99,14 @@ def _get_resource_name(router_name):
 
 
 def _update(router_name, spec, annotations, routes):
+    dns_provider = spec.get('dns-provider', 'cloudflare')
+    if dns_provider == 'none':
+        logs.info('No DNS provider, not setting up ingress')
+        return
     resource_name = _get_resource_name(router_name)
     router_type = spec['type']
     cloudflare_email, cloudflare_auth_key = get_cloudflare_credentials()
     external_domains = spec.get('external-domains')
-    dns_provider = spec.get('dns-provider', 'cloudflare')
     logs.info('updating traefik deployment', resource_name=resource_name, router_type=router_type,
               cloudflare_email=cloudflare_email, cloudflare_auth_key_len=len(cloudflare_auth_key) if cloudflare_auth_key else 0,
               external_domains=external_domains, dns_provider=dns_provider)

@@ -350,7 +350,7 @@ def _wait_instance_events(instance_id, force_update_events=False):
         if len(_check_instance_events(instance_id, force_update_events)) == 0:
             logs.info('All instance events completed successfully')
             break
-        if (datetime.datetime.now() - start_time).total_seconds() > 600:
+        if (datetime.datetime.now() - start_time).total_seconds() > 1200:
             raise Exception('time out waiting for instance events')
 
 
