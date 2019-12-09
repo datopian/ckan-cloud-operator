@@ -22,24 +22,9 @@ def initialize(interactive=False, provider_id=None, storage_suffix=None, use_exi
         if config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME):
             default_zone = None
             if cluster_provider_id == gcloud_provider_id:
-                from ckan_cloud_operator.providers.cluster.gcloud.manager import _config_get as gcloud_config_get
-
-                default_zone = gcloud_config_get('cluster-compute-zone')
                 provider_id = 'gcloud'
-
             elif cluster_provider_id == aws_provider_id:
-                from ckan_cloud_operator.providers.cluster.aws.manager import _config_get as aws_config_get
-
-                default_zone = aws_config_get('aws-default-region')
                 provider_id = 's3'
-
-            assert default_zone, 'No cluster region specified.'
-
-            config_manager.interactive_set(
-                {'storage-region': default_zone},
-                secret_name=CONFIG_NAME,
-                interactive=interactive
-            )
 
     get_provider(
         default=minio_provider_id,

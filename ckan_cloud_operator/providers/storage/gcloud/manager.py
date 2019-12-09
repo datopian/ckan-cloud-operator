@@ -2,14 +2,22 @@ import json
 import re
 
 from ckan_cloud_operator import logs, kubectl
+from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.providers.cluster.gcloud.manager import _config_get as cluster_config_get, check_output as gcloud_check_output
 
+from ..constants import CONFIG_NAME
 from .constants import PROVIDER_ID
 
 
 def initialize(*args, **kwargs):
-    # No actions needed
-    pass
+    default_zone = cluster_config_get('cluster-compute-zone')
+    assert default_zone, 'No cluster region specified.'
+
+    config_manager.interactive_set(
+        {'storage-region': default_zone},
+        secret_name=CONFIG_NAME,
+        interactive=kwargs.get('interactive')
+    )
 
 
 def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
