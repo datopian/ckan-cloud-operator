@@ -1,6 +1,6 @@
 language: python
 python:
-  - "3.7"
+  - "3.7.2"
 sudo: required
 env:
   global:
@@ -17,10 +17,16 @@ jobs:
         - K8_PROVIDER=minikube
         - K8_VERSION=v1.16.0
         - CHANGE_MINIKUBE_NONE_USER=true
-      befroe_install: sudo pip install -e .
+        - CCO_INTERACTIVE_CI_FPATH=interactive.yaml
+        - CCO_INTERACTIVE_CI_ENV=minikube
+        - HELM_VERSION=v2.16.1
+      befroe_install: pip install -e .
       install: bash .travis.sh install-tools
       before_script: sudo minikube start --kubernetes-version "${K8_VERSION}" --vm-driver=none
-      script:  ckan-cloud-operator cluster info
+      script:
+        - yes y | ckan-cloud-operator cluster initialize --interactive --cluster-provider=minikube
+        - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud 
+        - ckan-cloud-operator ckan instance create helm --instance-id test-instance --instance-name test-instance --update sample-values/values.datagov.yaml
 
 # install:
 # - curl -L https://raw.githubusercontent.com/OriHoch/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh

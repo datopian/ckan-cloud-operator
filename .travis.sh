@@ -19,7 +19,16 @@ elif [ "${1}" == "install-tools" ]; then
 
     curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
     chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
-    echo kubectl Installed Successfully!
+    echo Kubectl Installed Successfully!
+
+    curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh &&\
+     chmod 700 get_helm.sh &&\
+     ./get_helm.sh --version "${HELM_VERSION}" &&\
+     helm version --client && rm ./get_helm.sh
+    echo Helm Installed Successfully!
+
+    sudo apt-get update && sudo apt-get install socat
+
     echo Instalation Complete && exit 0
 
 elif [ "${1}" == "script" ]; then

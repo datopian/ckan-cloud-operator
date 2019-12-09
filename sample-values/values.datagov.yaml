@@ -82,4 +82,3 @@ terminationGracePeriodSeconds: 30
 useCentralizedInfra: true
 usePersistentVolumes: true
 withSansSSL: true
-

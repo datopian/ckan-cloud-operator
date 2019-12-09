@@ -1,4 +1,6 @@
 import base64
+import os
+import yaml
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -114,6 +116,21 @@ def interactive_set(default_values, secret_name=None, configmap_name=None, names
     log_kwargs = {'func': 'config/interactive_set', 'secret': secret_name, 'configmap': configmap_name, 'namespace': namespace}
     logs.debug('start', **log_kwargs)
     set_values = {}
+    interactive_file = os.environ.get('CCO_INTERACTIVE_CI_FPATH')
+    interactive_env = os.environ.get('CCO_INTERACTIVE_CI_ENV')
+    if interactive_file:
+        if os.path.exists(interactive_file):
+            print(f'Loading answers from {interactive_file}')
+            answers = yaml.load(open(interactive_file))
+            for key, default_value in default_values.items():
+                set_values[key] = str(answers[interactive_env].get(key, default_value))
+            return set(values=set_values,
+                       secret_name=secret_name,
+                       configmap_name=configmap_name,
+                       namespace=namespace,
+                       extra_operator_labels=extra_operator_labels)
+        else:
+            print(f'Coul not load answers from {interactive_file}, file or path does not exist')
     for key, default_value in default_values.items():
         saved_value = get(key, secret_name=secret_name, configmap_name=configmap_name, namespace=namespace)
         if interactive:
