@@ -14,6 +14,9 @@ def get_operator_version(verify=False):
     installed_image_tag = _get_installed_operator_image_tag()
     if verify:
         expected_image_tag = _get_expected_operator_image_tag()
+        if not expected_image_tag:
+            logs.info('No configmap created yet')
+            return 'not-configured'
         if installed_image_tag and len(installed_image_tag) >= 2:
             assert installed_image_tag == expected_image_tag, \
                 f'installed tag mismatch (expected={expected_image_tag}, actual={installed_image_tag})'
@@ -27,7 +30,11 @@ def get_operator_version(verify=False):
 
 
 def print_info(debug=False, minimal=False):
-    print(yaml.dump([dict(get_kubeconfig_info(), nodes=get_node_names(), operator_version=get_operator_version(verify=True))], default_flow_style=False))
+    print(yaml.dump([dict(
+        get_kubeconfig_info(), 
+        nodes=get_node_names(),
+        operator_version=get_operator_version(verify=True)
+    )], default_flow_style=False))
     if not minimal:
         from ckan_cloud_operator.providers import manager as providers_manager
         print(yaml.dump([providers_manager.get_provider('cluster').get_info(debug=debug)], default_flow_style=False))
@@ -45,12 +52,12 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
     if interactive and not skip_to:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)
-        input('Verify your are connected to the right cluster and press <RETURN> to continue')
+        input('Verify you are connected to the right cluster and press <RETURN> to continue')
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
-        assert default_cluster_provider in ['gcloud', 'aws'], f'invalid cluster provider: {default_cluster_provider}'
-        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create secret generic ckan-cloud-provider-cluster-{default_cluster_provider}')
-        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix={OPERATOR_NAMESPACE}')
+        assert default_cluster_provider in ['gcloud', 'aws', 'minikube'], f'invalid cluster provider: {default_cluster_provider}'
+        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create secret generic ckan-cloud-provider-cluster-{default_cluster_provider}', shell=True)
+        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix={OPERATOR_NAMESPACE}', shell=True)
 
     from ckan_cloud_operator.providers import manager as providers_manager
     from ckan_cloud_operator.labels import manager as labels_manager
@@ -271,6 +278,8 @@ def _get_installed_operator_image_tag():
 def _get_expected_operator_image_tag():
     from ckan_cloud_operator.config import manager as config_manager
     expected_image = config_manager.get('ckan-cloud-operator-image')
+    if not expected_image:
+        return
     assert '@' not in expected_image and ':' in expected_image, f'invalid expected image: {expected_image}'
     _, expected_image_tag = expected_image.split(':')
     return expected_image_tag

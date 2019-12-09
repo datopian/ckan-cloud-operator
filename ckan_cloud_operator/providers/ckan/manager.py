@@ -92,6 +92,9 @@ def initialize(interactive=False):
     from .storage.manager import initialize as ckan_storage_initialize
     ckan_storage_initialize(interactive=interactive)
 
+    from .deployment.manager import initialize as ckan_deployment_initialize
+    ckan_deployment_initialize(interactive=interactive)
+
 
 def get_docker_credentials():
     return [
