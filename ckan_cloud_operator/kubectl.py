@@ -4,6 +4,7 @@ import base64
 import traceback
 import datetime
 import json
+import logging
 from ckan_cloud_operator import yaml_config
 
 
@@ -12,7 +13,7 @@ def check_call(cmd, namespace='ckan-cloud', use_first_pod=False):
     subprocess.check_call(f'kubectl -n {namespace} {cmd}', shell=True)
 
 
-def get_deployment_pod_name(deployment_name, namespace='ckan-cloud', use_first_pod=False):
+def get_deployment_pod_name(deployment_name, namespace='ckan-cloud', use_first_pod=False, required_phase=None):
     deployment = get(f'deployment {deployment_name}', namespace=namespace, required=True)
     match_labels = deployment['spec']['selector']['matchLabels']
     pods = get_items_by_labels('pod', match_labels, required=True, namespace=namespace)
@@ -20,6 +21,8 @@ def get_deployment_pod_name(deployment_name, namespace='ckan-cloud', use_first_p
         assert len(pods) > 0
     else:
         assert len(pods) == 1
+    if required_phase:
+        assert pods[0]['status']['phase'].lower() == required_phase.lower()
     return pods[0]['metadata']['name']
 
 
@@ -205,10 +208,13 @@ def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
     if dry_run:
         args.append('--dry-run')
     args = " ".join(args)
-    subprocess.run(
-        f'kubectl {cmd} {args} -f -',
-        input=yaml.dump(resource).encode(), shell=True, check=True
-    )
+    try:
+        subprocess.run(
+            f'kubectl {cmd} {args} -f -',
+            input=yaml.dump(resource).encode(), shell=True, check=True
+        )
+    except subprocess.CalledProcessError:
+        logging.exception('Failed to apply resource\n%s', yaml.dump(resource, default_flow_style=False))
     if dry_run:
         print(yaml.dump(resource, default_flow_style=False))
 

@@ -57,7 +57,8 @@ def update(instance_id, instance, force=False, dry_run=False):
     )
     ckan_helm_chart_version = instance['spec'].get("ckanHelmChartVersion", "")
     ckan_helm_release_name = f'ckan-cloud-{instance_id}'
-    solr_host, solr_port = _init_solr(instance_id, dry_run=dry_run)
+    solr_schema = instance['spec'].get("ckanSorlSchema", "ckan_default")
+    solr_host, solr_port = _init_solr(instance_id, solr_schema, dry_run=dry_run,)
     logs.debug(ckan_helm_chart_repo=ckan_helm_chart_repo,
                ckan_helm_chart_version=ckan_helm_chart_version, ckan_helm_release_name=ckan_helm_release_name,
                solr_host=solr_host, solr_port=solr_port)
@@ -128,11 +129,15 @@ def get(instance_id, instance=None):
     if num_resource_items > 0:
         for item in all_resources['items']:
             item_kind = item['kind']
-            if item_kind in ("Pod", "ReplicaSet"):
-                item_app = item["metadata"]["labels"]["app"]
-            elif item_kind in ("Service", "Deployment"):
-                item_app = item["metadata"]["name"]
-            else:
+            try:
+                if item_kind in ("Pod", "ReplicaSet"):
+                    item_app = item["metadata"]["labels"]["app"]
+                elif item_kind in ("Service", "Deployment"):
+                    item_app = item["metadata"]["name"]
+                else:
+                    item_app = None
+            except:
+                logging.exception('Failed to extract item_app from %r', item)
                 item_app = None
             logs.debug(item_kind=item_kind, item_app=item_app)
             if item_app in ["ckan", "jobs-db", "redis", "nginx", "jobs"]:
@@ -213,8 +218,15 @@ def pre_update_hook(instance_id, instance, override_spec, skip_route=False, dry_
 
 
 def create_ckan_admin_user(instance_id, instance, user):
-    pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True)
-    assert pod_name
+    pod_name = None
+    while not pod_name:
+        try:
+            pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True, required_phase='Running')
+            break
+        except Exception as e:
+            logs.warning('Failed to find running ckan pod', str(e))
+        time.sleep(20)
+
     name, password, email = [user[k] for k in ['name', 'password', 'email']]
     logs.info(f'Creating CKAN admin user with {name} ({email}) and {password}')
     subprocess.check_call(
@@ -282,14 +294,14 @@ def _init_namespace(instance_id, dry_run=False):
             )
 
 
-def _init_solr(instance_id, dry_run=False):
+def _init_solr(instance_id, solr_schema, dry_run=False):
     logs.debug('Initializing solr', instance_id=instance_id)
     solr_status = solr_manager.get_collection_status(instance_id)
     logs.debug_yaml_dump(solr_status)
     if not solr_status['ready']:
-        logs.info('Creating solr collection', collection_name=instance_id, solr_config='ckan_default')
+        logs.info('Creating solr collection', collection_name=instance_id, solr_config=solr_schema)
         if not dry_run:
-            solr_manager.create_collection(instance_id, 'ckan_default')
+            solr_manager.create_collection(instance_id, solr_schema)
     else:
         logs.info(f'collection already exists ({instance_id})')
     solr_url = solr_status['solr_http_endpoint']
@@ -345,7 +357,7 @@ def _wait_instance_events(instance_id, force_update_events=False):
         if len(_check_instance_events(instance_id, force_update_events)) == 0:
             logs.info('All instance events completed successfully')
             break
-        if (datetime.datetime.now() - start_time).total_seconds() > 600:
+        if (datetime.datetime.now() - start_time).total_seconds() > 1200:
             raise Exception('time out waiting for instance events')
 
 

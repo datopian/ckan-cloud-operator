@@ -135,6 +135,8 @@ def create_subdomain_route(router_name, route_spec, dry_run=False):
         raise Exception(f'Invalid route spec: {route_spec}')
     sub_domain, root_domain = _get_default_sub_root_domain(sub_domain, root_domain, target_resource_id)
     route_name = 'cc' + hashlib.sha3_224(f'{target_type} {target_resource_id} {root_domain} {sub_domain}'.encode()).hexdigest()
+
+    logs.info(f'initializing router {router_name}')
     router, spec, router_type, annotations, labels, router_type_config = _init_router(router_name)
     route_type = f'{target_type}-subdomain'
     labels = labels or {}
