@@ -29,7 +29,7 @@ jobs:
         - ckan-cloud-operator ckan instance create helm --instance-id test-instance --instance-name test-instance --update sample-values/values.datagov.yaml
 
 # install:
-# - curl -L https://raw.githubusercontent.com/OriHoch/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+# - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
 # - bash $HOME/bin/travis_ci_operator.sh init
 # - travis_ci_operator.sh docker-login
 # - bash .travis.sh install

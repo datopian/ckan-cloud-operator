@@ -37,11 +37,13 @@ def info(debug, full):
 
 @cluster.command()
 @click.argument('DISK_SIZE_GB')
-def create_volume(disk_size_gb):
+@click.argument('ZONE', required=False, default=0)
+def create_volume(disk_size_gb, zone):
     label_prefix = labels_manager.get_label_prefix()
     print(manager.create_volume(
         disk_size_gb,
-        {f'{label_prefix}/operator-volume-source': 'cli'}
+        {f'{label_prefix}/operator-volume-source': 'cli'},
+        zone=zone
     ))
 
 

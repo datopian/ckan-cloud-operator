@@ -173,13 +173,13 @@ def get_provider_id():
     return providers_manager.get_provider_id('cluster', default='gcloud')
 
 
-def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
+def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=0):
     assert len(labels) > 0, 'must provide some labels to identify the volume'
     labels = dict(
         labels,
         **labels_manager.get_resource_labels(label_suffixes=_get_cluster_volume_label_suffixes())
     )
-    return get_provider().create_volume(disk_size_gb, labels, use_existing_disk_name=use_existing_disk_name)
+    return get_provider().create_volume(disk_size_gb, labels, use_existing_disk_name=use_existing_disk_name, zone=zone)
 
 
 def get_or_create_multi_user_volume_claim(label_suffixes):

@@ -112,8 +112,8 @@ def initialize_zookeeper(interactive=False, dry_run=False):
     headless_service_name = _apply_zookeeper_headless_service(dry_run=dry_run)
     zk_instances = {suffix: {
         'host_name': suffix,
-        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=20, dry_run=dry_run),
-    } for suffix in _get_zk_suffixes()}
+        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=20, dry_run=dry_run, zone=zone),
+    } for zone, suffix in enumerate(_get_zk_suffixes())}
     zk_host_names = [zk['host_name'] for zk in zk_instances.values()]
     zk_configmap_name = _apply_zookeeper_configmap(zk_host_names)
     if interactive:
@@ -133,8 +133,8 @@ def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False, dry
     headless_service_name = _apply_solrcloud_headless_service(dry_run=dry_run)
     sc_instances = {suffix: {
         'host_name': suffix,
-        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=100, dry_run=dry_run)
-    } for suffix in _get_sc_suffixes()}
+        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=100, dry_run=dry_run, zone=zone)
+    } for zone, suffix in enumerate(_get_sc_suffixes())}
     sc_host_names = [sc['host_name'] for sc in sc_instances.values()]
     sc_configmap_name = _apply_solrcloud_configmap(zk_host_names)
     if interactive:
@@ -506,7 +506,7 @@ def _apply_solrcloud_service(dry_run=False):
     return service_name
 
 
-def _get_or_create_volume(suffix, disk_size_gb, dry_run=False):
+def _get_or_create_volume(suffix, disk_size_gb, dry_run=False, zone=0):
     volume_spec_config_key = f'volume-spec-{suffix}'
     volume_spec = _config_get(volume_spec_config_key, required=False)
     if volume_spec:
@@ -514,7 +514,7 @@ def _get_or_create_volume(suffix, disk_size_gb, dry_run=False):
     else:
         assert not dry_run, 'creating a new volume is not supported for dry_run'
         from ckan_cloud_operator.providers.cluster import manager as cluster_manager
-        volume_spec = cluster_manager.create_volume(disk_size_gb, _get_resource_labels(suffix=suffix))
+        volume_spec = cluster_manager.create_volume(disk_size_gb, _get_resource_labels(suffix=suffix), zone=zone)
         _config_set(volume_spec_config_key, yaml.dump(volume_spec, default_flow_style=False))
     if dry_run:
         print(yaml.dump(volume_spec, default_flow_style=False))
