@@ -27,7 +27,7 @@ elif [ "${1}" == "install-tools" ]; then
      helm version --client && rm ./get_helm.sh
     echo Helm Installed Successfully!
 
-    # sudo apt-get update && sudo apt-get install socat
+    sudo apt-get update && sudo apt-get install socat
 
     echo Instalation Complete && exit 0
 

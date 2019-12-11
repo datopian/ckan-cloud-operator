@@ -197,10 +197,30 @@ def get_deployment_detailed_status(deployment, pod_label_selector, main_containe
             status['pods'].append(pod_status)
     return dict(status, ready=ready, namespace=deployment['metadata']['namespace'])
 
+def subprocess_run_with_logs(command, input=None):
+    try:
+        completed = subprocess.run(
+            command, input=input, 
+            shell=True, check=True, capture_output=True
+        )
+        for line in completed.stderr.decode('utf8').split('\n'):
+            if line:
+                logs.warning(line)
+        for line in completed.stdout.decode('utf8').split('\n'):
+            if line:
+                logs.info(line)
+    except subprocess.CalledProcessError:
+        raise
+
 
 def create(resource, is_yaml=False):
     if is_yaml: resource = yaml.load(resource)
-    subprocess.run('kubectl create -f -', input=yaml.dump(resource).encode(), shell=True, check=True)
+    try:
+        subprocess_run_with_logs('kubectl create -f -', input=yaml.dump(resource).encode())
+    except:
+        logging.exception('Failed to create resource\n%s', yaml.dump(resource, default_flow_style=False))
+        raise
+
 
 
 def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
@@ -211,18 +231,11 @@ def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
         args.append('--dry-run')
     args = " ".join(args)
     try:
-        completed = subprocess.run(
+        subprocess_run_with_logs(
             f'kubectl {cmd} {args} -f -',
-            input=yaml.dump(resource).encode(), shell=True, check=True,
-            capture_output=True
+            input=yaml.dump(resource).encode()
         )
-        for line in completed.stderr.decode('utf8').split('\n'):
-            if line:
-                logs.warning(line)
-        for line in completed.stdout.decode('utf8').split('\n'):
-            if line:
-                logs.info(line)
-    except subprocess.CalledProcessError:
+    except:
         logging.exception('Failed to apply resource\n%s', yaml.dump(resource, default_flow_style=False))
         raise
     if dry_run:
@@ -256,7 +269,7 @@ def install_crd(plural, singular, kind):
                        'kind': kind
                    }
                }}
-        subprocess.run('kubectl create -f -', input=yaml.dump(crd).encode(), shell=True, check=True)
+        subprocess_run_with_logs('kubectl create -f -', input=yaml.dump(crd).encode())
 
 
 def get_resource(api_version, kind, name, labels, namespace='ckan-cloud', **kwargs):
@@ -460,7 +473,7 @@ class BaseAnnotations(object):
             'type': 'Opaque',
             'data': secret['data']
         }
-        subprocess.run(f'kubectl apply -f -', input=yaml.dump(secret).encode(), shell=True, check=True)
+        subprocess_run_with_logs(f'kubectl apply -f -', input=yaml.dump(secret).encode())
         self._secret = secret
 
     def set_secret(self, key, value):
