@@ -74,6 +74,9 @@ def solr_curl(path, required=False, debug=False):
 
 
 def initialize(interactive=False, dry_run=False):
+    if cluster_manager.get_provider_id() == 'minikube':
+        config_manager.set('container-spec-overrides', {}, configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
+
     zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 
     _config_set('zk-host-names', yaml.dump(zk_host_names, default_flow_style=False))
@@ -271,7 +274,7 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
                                 'failureThreshold': 3, 'initialDelaySeconds': 15, 'periodSeconds': 10,
                                 'successThreshold': 1, 'timeoutSeconds': 5
                             },
-                            'resources': {'requests': {'cpu': '0.5', 'memory': '1Gi'}, 'limits': {'memory': '2Gi'}},
+                            'resources': {'limits': {'memory': '200Mi'}},
                             'volumeMounts': [
                                 {'mountPath': '/var/lib/zookeeper', 'name': 'datadir'},
                             ],
