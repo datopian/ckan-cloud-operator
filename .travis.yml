@@ -1,4 +1,6 @@
-language: bash
+language: python
+python:
+  - "3.7.2"
 sudo: required
 env:
   global:
@@ -6,23 +8,42 @@ env:
   - secure: "L2+magDtNAe7hKqOfCIkFEFkC01gjMhQsQbChwFd1ZEPa4tqX0yNgCoflghYIVfORsol/Uw3LRumiQNnJLGH4ft3NS7/azBWYLCbQkZduqJhFqYGbBuVIYlQTe1ZjrIxxV/McP0Fadha7fSS2AiyrVuPbvZSAPU0mCLz7LZazisYJg7dqNNZZTkvLEKbi0t6u+saDGUdvFqWlxG93QRJFpd4oCJ7l1K12MDouMik1b1KA5E6NWnU+LbT1wPJx3komqWE5qaM3uKs+3d2/7KTrXkXbPMExipAMGzXB4Z89hNwglFzdo0vCdM2NXrUv32O+9WoGdblfq6qQ8LU6XkyDwWP/QYz0mbAYAEtNiNAfGu1JaQ1ntH/mxyseY/ec1FnAS7TNr7zx/CUAvrs2giPB2z46nOF2KNnXlc7b04DP3OYzZIj3kmLkiF7QN2ERYNiknzHIv961DRs2k8jg5YFmz92smBqeYoi7268VtL6/LIErOubDe4jfVQPMHoP8Nn5+jcOn4MoVjh9GmduTXzQYcOCZKlJehOC7kaYPJkage8xSSjf1bMZqfstQgrhIg8R1aYw+leGW4hzegDV6qPcgToGVLloerMVbdGR9k1T6X6XsIlU7FXs5U8IJS4xiwwq8Qjc/ZMvMsgD697wyG1Yf6hUSK//kZVqkbEiGF/QLFA="
   - secure: "Hz/RBOEQRra7n2AI6r8jo0bN2QHBtZO8GVb2gMNuAZJ7SwBVT2RazZ9MxoHPrKIZ77ThVutwIk/afyjaVHLN6KO74iT597Fw8onKpX88TXfD9/01yE6elMasmlrGG7Z2VrqOZmqz1g2wTwRNXtMv0L7bDv2M94bcjW+b67g9ddaN58kX6xSjizjAmKOkxuW+F804EpEpmceu1VWwntSUukpZCCV82UiwOJekAhTNVpp7J4DEDaJBch8l1C3fNaPeADRSwo50eCdICsQ34rgkHevWVeY2L7er+VpCIfAMQO/wKazc+zBkcb9gH78gVEGjgix2WVmUDfdjaJjAYwPSkj+TvCG9OXjLcgdjCOWqO+BxqpmAIKpjDk2FsfwRBqHMolc+J/q/IhCqVD6Z57CzfM4QfAxNmWd+zxL9GVdINtJWiDyh8HWxPVqskrO+zTzM/YIyp/7x/1b16URi74f/KzwV0cdi3UI+ktn3FRYs3wVbI6z8vOT40YsOQoXsZVtcpVYHKkY6qgcJzT4OVc+PUbFWM2C/j1B67WmOyljRKDx+FFP98e3gZsk+Uqg+inYpm41Z6XXJnoZ96/qobIBmXIPqiQm92EpokEDe6+HAMW4nO1YoK65SKkbK5TP4RjoJAeuLA0g38XvlVAYk5ZNJEeNw9YR0jOXWTq/GQJM3C1I="
 services:
-- docker
-install:
-- curl -L https://raw.githubusercontent.com/OriHoch/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
-- bash $HOME/bin/travis_ci_operator.sh init
-- travis_ci_operator.sh docker-login
-- bash .travis.sh install
-script:
-- bash .travis.sh script
-- bash .travis.sh test
-deploy:
-  - provider: script
-    skip_cleanup: true
-    script: bash .travis.sh deploy
-    on:
-      branch: master
-  - provider: script
-    skip_cleanup: true
-    script: bash .travis.sh deploy
-    on:
-      tags: true
+  - docker
+
+jobs:
+  include:
+    - stage: minikube
+      env:
+        - K8_PROVIDER=minikube
+        - K8_VERSION=v1.16.0
+        - CHANGE_MINIKUBE_NONE_USER=true
+        - CCO_INTERACTIVE_CI_FPATH=interactive.yaml
+        - CCO_INTERACTIVE_CI_ENV=minikube
+        - HELM_VERSION=v2.16.1
+      befroe_install: pip install -e .
+      install: bash .travis.sh install-tools
+      before_script: sudo minikube start --kubernetes-version "${K8_VERSION}" --vm-driver=none
+      script:
+        - yes y | ckan-cloud-operator cluster initialize --interactive --cluster-provider=minikube
+        - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud 
+        - ckan-cloud-operator ckan instance create helm --instance-id test-instance --instance-name test-instance --update sample-values/values.datagov.yaml
+
+# install:
+# - curl -L https://raw.githubusercontent.com/OriHoch/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+# - bash $HOME/bin/travis_ci_operator.sh init
+# - travis_ci_operator.sh docker-login
+# - bash .travis.sh install
+# script:
+# - bash .travis.sh script
+# - bash .travis.sh test
+# deploy:
+#   - provider: script
+#     skip_cleanup: true
+#     script: bash .travis.sh deploy
+#     on:
+#       branch: master
+#   - provider: script
+#     skip_cleanup: true
+#     script: bash .travis.sh deploy
+#     on:
+#       tags: true

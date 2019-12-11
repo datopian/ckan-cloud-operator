@@ -22,6 +22,7 @@ import subprocess
 import yaml
 import json
 import time
+import os
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -30,6 +31,8 @@ from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 from .constants import LOG4J_PROPERTIES, SOLR_CONFIG_XML
 
+
+TEST_CPU, TEST_MEMORY = '0.2', '0.4Gi'
 
 def start_zoonavigator_port_forward():
     connection_string = ','.join(yaml.load(_config_get('zk-host-names')))
@@ -56,12 +59,13 @@ def get_internal_http_endpoint():
 
 def solr_curl(path, required=False, debug=False):
     deployment_name = _get_resource_name(_get_sc_suffixes()[0])
+    pods = kubectl.get('pods')
+    pod_name = [x['metadata']['name'] for x in pods['items']
+                   if deployment_name in x['metadata']['name']][0]
     if debug:
-        kubectl.check_call(f'exec deployment-pod::{deployment_name} -- curl \'localhost:8983/solr{path}\'',
-                           use_first_pod=True)
+        kubectl.check_call(f'exec {pod_name} -- curl \'localhost:8983/solr{path}\'')
     else:
-        exitcode, output = kubectl.getstatusoutput(f'exec deployment-pod::{deployment_name} -- curl -s -f \'localhost:8983/solr{path}\'',
-                                                   use_first_pod=True)
+        exitcode, output = kubectl.getstatusoutput(f'exec {pod_name} -- curl -s -f localhost:8983/solr{path}')
         if exitcode == 0:
             return output
         elif required:
@@ -89,7 +93,7 @@ def initialize(interactive=False, dry_run=False):
     _config_set('sc-main-host-name', solrcloud_host_name)
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
-    # TODO - need to check the pod names and ensure these are solrcloud ones 
+    # TODO - need to check the pod names and ensure these are solrcloud ones
     # TODO - actual number is _+ 1_ and not _+ 2_
     expected_running = len(sc_host_names) + len(zk_host_names) + 2
     while True:
@@ -100,7 +104,7 @@ def initialize(interactive=False, dry_run=False):
             break
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
         time.sleep(30)
-    
+
     _set_provider()
 
 
@@ -226,6 +230,10 @@ def _get_volume_pod_scheduling(volume_spec, app_in):
 
 
 def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, headless_service_name, dry_run=False):
+    cpu, memory = '0.5', '1Gi'
+    if os.environ.get('CCO_INTERACTIVE_CI_FPATH'):
+        cpu, memory = TEST_CPU, TEST_MEMORY
+
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='zk'),
@@ -272,7 +280,7 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
                                 'failureThreshold': 3, 'initialDelaySeconds': 15, 'periodSeconds': 10,
                                 'successThreshold': 1, 'timeoutSeconds': 5
                             },
-                            'resources': {'requests': {'cpu': '0.5', 'memory': '1Gi'}, 'limits': {'memory': '2Gi'}},
+                            'resources': {'requests': {'cpu': cpu, 'memory': memory}, 'limits': {'memory': '2Gi'}},
                             'volumeMounts': [
                                 {'mountPath': '/var/lib/zookeeper', 'name': 'datadir'},
                             ],
@@ -299,7 +307,7 @@ def _apply_zoonavigator_deployment(dry_run=False):
             'revisionHistoryLimit': 2,
             'selector': {
                 'matchLabels': _get_resource_labels(for_deployment=True, suffix=suffix),
-            },                
+            },
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix=suffix),
@@ -339,7 +347,10 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
     namespace = cluster_manager.get_operator_namespace_name()
     container_spec_overrides = config_manager.get('container-spec-overrides', configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config',
                                                   required=False, default=None)
-    resources = {'requests': {'cpu': '1', 'memory': '4Gi'}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}} if not container_spec_overrides else {}
+    cpu, memory = '1', '4Gi'
+    if os.environ.get('CCO_INTERACTIVE_CI_FPATH'):
+        cpu, memory = TEST_CPU, TEST_MEMORY
+    resources = {'requests': {'cpu': cpu, 'memory': memory}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}} if not container_spec_overrides else {}
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='sc'),
@@ -349,7 +360,7 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
             'strategy': {'type': 'Recreate', },
             'selector': {
                 'matchLabels': _get_resource_labels(for_deployment=True, suffix='sc'),
-            },                
+            },
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix='sc'),

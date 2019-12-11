@@ -19,7 +19,24 @@ setup(
     author='''Viderum''',
     license='MIT',
     packages=find_packages(exclude=['examples', 'tests', '.tox']),
-    install_requires=['pyyaml', 'httpagentparser', 'requests', 'ruamel.yaml', 'boto3', 'coverage'],
+    install_requires=[
+        'httpagentparser',
+        'boto3',
+        'coverage',
+        'psycopg2',
+        'pyyaml<5.2,>=3.10',
+        'kubernetes',
+        'click',
+        'toml',
+        'dataflows>=0.0.37',
+        'dataflows-shell>=0.0.8',
+        'jupyterlab',
+        'awscli',
+        'urllib3<1.25',
+        'ruamel.yaml<1',
+        'requests==2.21',
+        'python-dateutil==2.7.5'
+    ],
     entry_points={
       'console_scripts': [
         'ckan-cloud-operator = ckan_cloud_operator.cli:main',
