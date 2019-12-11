@@ -46,7 +46,8 @@ def get(what, *args, required=True, namespace='ckan-cloud', get_cmd='get', **kwa
     try:
         return yaml.load(
             subprocess.check_output(
-                f'kubectl -n {namespace} {get_cmd} {what} {extra_args} -o yaml {extra_kwargs}', shell=True
+                f'kubectl -n {namespace} {get_cmd} {what} {extra_args} -o yaml {extra_kwargs}', shell=True,
+                capture_output=True
             )
         )
     except subprocess.CalledProcessError:

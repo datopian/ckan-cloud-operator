@@ -7,5 +7,5 @@ default:
   secrets:
     solr-config:
       self-hosted: y
-      num-shards: 1
-      replication-factor: 1
+      num-shards: "1"
+      replication-factor: "1"
