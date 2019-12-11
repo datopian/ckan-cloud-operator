@@ -80,7 +80,7 @@ def update(instance_id, instance, force=False, dry_run=False):
         ckan_helm_release_name, instance_id, dry_run=dry_run
     )
     if not dry_run:
-        _wait_instance_events(instance_id, force_update_events=force)
+        _wait_instance_events(instance_id)
         instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id)
         if not annotations_manager.get_status(instance, 'helm', 'created'):
             annotations_manager.set_status(instance, 'helm', 'created')
@@ -312,7 +312,7 @@ def _init_solr(instance_id, solr_schema, dry_run=False):
     return host, port
 
 
-def _check_instance_events(instance_id, force_update_events=False):
+def _check_instance_events(instance_id):
     status = get(instance_id)
     errors = []
     ckan_cloud_logs = []
@@ -329,34 +329,43 @@ def _check_instance_events(instance_id, force_update_events=False):
                         ckan_cloud_events.add(logdata["event"])
                 if kind == "pods":
                     pod_names.append(item["name"])
-    instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id)
-    if force_update_events or annotations_manager.get_status(instance, 'helm', 'created'):
-        logs.debug('expecting update events')
-        expected_events = {
-            "ckan-env-vars-exists", "ckan-secrets-exists", "got-ckan-secrets",
-            "ckan-entrypoint-initialized", "ckan-entrypoint-db-init-success",
-            "ckan-entrypoint-extra-init-success"
-        }
-    else:
-        logs.debug('expecting create events')
-        expected_events = {
-            "ckan-env-vars-created", "ckan-secrets-created", "got-ckan-secrets", "ckan-db-initialized",
-            "ckan-datastore-db-initialized", "ckan-entrypoint-initialized", "ckan-entrypoint-db-init-success",
-            "ckan-entrypoint-extra-init-success"
-        }
+    expected_events = {
+        ("ckan-env-vars-created", "ckan-env-vars-exists"),
+        ("ckan-secrets-created", "ckan-secrets-exists"),
+        "got-ckan-secrets",
+        "ckan-entrypoint-initialized",
+        "ckan-entrypoint-db-init-success",
+        "ckan-entrypoint-extra-init-success"
+    }
+    missing = set()
+    for events in expected_events:
+        if isinstance(events, str):
+            events = (events,)
+        found = False
+        for e in events:
+            if e in ckan_cloud_events:
+                found = True
+                break
+        if not found:
+            missing.add('/'.join(events))
     logs.debug(ckan_cloud_events=ckan_cloud_events)
-    return expected_events.difference(ckan_cloud_events)
+    return missing
 
 
-def _wait_instance_events(instance_id, force_update_events=False):
+def _wait_instance_events(instance_id):
     start_time = datetime.datetime.now()
     logs.info('Waiting for instance events', start_time=start_time)
+    missing_events = None
     while True:
         logs.debug('sleeping 15 seconds')
         time.sleep(15)
-        if len(_check_instance_events(instance_id, force_update_events)) == 0:
+        currently_missing = _check_instance_events(instance_id)
+        if len(currently_missing) == 0:
             logs.info('All instance events completed successfully')
             break
+        if currently_missing != missing_events:
+            missing_events = currently_missing
+            logs.info('Still waiting for', repr(sorted(missing_events)))
         if (datetime.datetime.now() - start_time).total_seconds() > 1200:
             raise Exception('time out waiting for instance events')
 

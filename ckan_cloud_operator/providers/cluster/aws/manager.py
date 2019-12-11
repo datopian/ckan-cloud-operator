@@ -27,6 +27,7 @@ import binascii
 import collections
 
 from ckan_cloud_operator import kubectl
+from ckan_cloud_operator.drivers.kubectl import rbac
 from ckan_cloud_operator import logs
 
 
@@ -41,7 +42,23 @@ def initialize(interactive=False):
         print('\nEnter the name of your Amazon EKS cluster\n')
         _config_interactive_set({'eks-cluster-name': None}, is_secret=True)
     print(yaml.dump(get_info(), default_flow_style=False))
+    from ckan_cloud_operator.providers.storage.efs import manager as efs_manager
+    efs_manager.initialize(interactive=interactive)
     _create_storage_classes()
+    _update_service_account()
+
+
+def _update_service_account():
+    rbac.update_cluster_role_binding(
+        name='default-admin-rbac',
+        subject=dict(
+            kind='ServiceAccount',
+            name='default',
+            namespace='default',
+        ),
+        cluster_role_name='cluster-admin',
+        labels=_get_resource_labels()
+    )
 
 
 def _create_storage_classes():

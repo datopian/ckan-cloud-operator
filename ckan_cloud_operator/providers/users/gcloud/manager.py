@@ -98,8 +98,11 @@ def _update_role_binding(user):
         )
         rbac.update_cluster_role_binding(
             name=_get_user_role_resource_name(user),
-            service_account_namespace=_get_user_resource_namespace(user),
-            service_account_name=_get_user_resource_name(user),
+            subject={
+                'kind': 'User',
+                'name': f'system:serviceaccount:{_get_user_resource_namespace(user)}:{_get_user_resource_name(user)}',
+                'apiGroup': 'rbac.authorization.k8s.io'
+            },
             cluster_role_name=_get_role_resource_name(user),
             labels=_get_user_resource_labels(user)
         )
