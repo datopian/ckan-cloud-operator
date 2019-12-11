@@ -83,6 +83,7 @@ def subprocess_check_output(*args, **kw):
         return subprocess.check_output(*args, stderr=subprocess.PIPE, **kw)
     except subprocess.CalledProcessError as e:
         log_subprocess_output(e.stdout, e.stderr)
+        raise
 
 # yaml dumping
 
