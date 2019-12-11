@@ -27,7 +27,7 @@ jobs:
       script:
         - ckan-cloud-operator cluster initialize --cluster-provider=minikube || travis_terminate 1;
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud 
-        - ckan-cloud-operator ckan instance create helm --instance-id test-instance --instance-name test-instance --update sample-values/values.datagov.yaml
+        - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
 
 # install:
 # - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
