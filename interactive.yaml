@@ -4,5 +4,6 @@ default:
       env-id: m
       default-root-domain: localhost
       dns-provider: none
+  secrets:
     solr-config:
       self-hosted: y
