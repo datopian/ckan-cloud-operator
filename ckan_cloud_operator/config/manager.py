@@ -126,7 +126,8 @@ def get_preset_answer(namespace, configmap_name, secret_name, key):
             subsection = secret_name
         return answers[namespace][section][subsection][key]
     except:
-        logs.error('Failed to find in interactive file value for {namespace}.{section}.{subsection}.{key}')
+        logs.error(f'Failed to find in interactive file value for {namespace}.{section}.{subsection}.{key}')
+        raise
 
 
 def interactive_set(default_values, secret_name=None, configmap_name=None, namespace=None, from_file=False,
