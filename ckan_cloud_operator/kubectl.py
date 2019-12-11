@@ -215,10 +215,10 @@ def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
             input=yaml.dump(resource).encode(), shell=True, check=True,
             capture_output=True
         )
-        for line in completed.stderr.split('\n'):
+        for line in completed.stderr.decode('utf8').split('\n'):
             if line:
                 logs.warning(line)
-        for line in completed.stdout.split('\n'):
+        for line in completed.stdout.decode('utf8').split('\n'):
             if line:
                 logs.info(line)
     except subprocess.CalledProcessError:
