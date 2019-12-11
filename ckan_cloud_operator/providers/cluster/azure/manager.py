@@ -1,5 +1,7 @@
 #### standard provider code ####
 
+import subprocess
+
 # import the correct PROVIDER_SUBMODULE and PROVIDER_ID constants for your provider
 from .constants import PROVIDER_ID
 from ..constants import PROVIDER_SUBMODULE
@@ -122,3 +124,7 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
 
 def _generate_password(l):
     return binascii.hexlify(os.urandom(l)).decode()
+
+
+def check_output(cmd):
+    return subprocess.check_output(f'az {cmd}', shell=True)
