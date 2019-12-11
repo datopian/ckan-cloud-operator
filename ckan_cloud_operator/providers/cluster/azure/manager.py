@@ -26,9 +26,6 @@ import yaml
 from ckan_cloud_operator import logs
 from ckan_cloud_operator import kubectl
 
-from ckan_cloud_operator.drivers.gcloud import driver as gcloud_driver
-
-
 
 def initialize(interactive=False):
     _set_provider()
@@ -39,14 +36,6 @@ def initialize(interactive=False):
         _config_interactive_set({'azure-default-location': None}, is_secret=False)
         print('\nEnter the name of your cluster\n')
         _config_interactive_set({'azure-cluster-name': None}, is_secret=False)
-
-def activate_auth():
-    gcloud_driver.activate_auth(
-        _config_get('project-id'),
-        _config_get('cluster-compute-zone'),
-        _config_get('service-account-email', is_secret=True),
-        _config_get('service-account-json', is_secret=True)
-    )
 
 
 def get_info(debug=False):
@@ -91,18 +80,6 @@ def get_cluster_kubeconfig_spec():
     }
 
 
-def check_output(cmd, gsutil=False):
-    return gcloud_driver.check_output(*get_project_zone(), cmd, gsutil=gsutil)
-
-
-def check_call(cmd, gsutil=False):
-    return gcloud_driver.check_call(*get_project_zone(), cmd, gsutil=gsutil)
-
-
-def getstatusoutput(cmd, gsutil=False):
-    return gcloud_driver.getstatusoutput(*get_project_zone(), cmd, gsutil=gsutil)
-
-
 def get_project_zone():
     return _config_get('project-id'), _config_get('cluster-compute-zone')
 
@@ -120,39 +97,7 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
         labels = ','.join([
             '{}={}'.format(k.replace('/', '_'), v.replace('/', '_')) for k, v in labels.items()
         ])
-        #gcloud_driver.check_call(*get_project_zone(), f'compute disks create {disk_id} --size={disk_size_gb}GB --zone={zone} --labels={labels}')
-        '''import subprocess
-        result = subprocess.check_output(f'az disk create -g {rg} -n {disk_id} --size-gb {disk_size_gb} --location {location}', shell=True)
-        volume_id = json.loads(result).get('id')
-        print(volume_id)'''
-    '''
-    kubectl.apply({
-        'apiVersion': 'v1', 'kind': 'PersistentVolume',
-        'metadata': {'name': disk_id, 'namespace': 'ckan-cloud'},
-        'spec': {
-            'storageClassName': 'cca-ckan',
-            'capacity': {'storage': f'{disk_size_gb}G'},
-            'accessModes': ['ReadWriteOnce'],
-            #'azureDisk': {
-            #    'kind': 'Managed',
-            #    'diskName': disk_id,
-            #    'diskURI': volume_id
-            #}
-        }
-    })
-    '''
-    '''
-    kubectl.apply({
-        'apiVersion': 'v1',
-        'kind': 'PersistentVolumeClaim',
-        'metadata': {'name': disk_id, 'namespace': 'ckan-cloud'},
-        'spec': {
-            'storageClassName': 'cca-ckan',
-            'volumeName': disk_id,
-            'accessModes': ['ReadWriteOnce'],
-            'resources': {'requests': {'storage': '1Mi'}}#f'{disk_size_gb}G'}}
-        }
-    })'''
+
     kubectl.apply({
         "kind": "PersistentVolumeClaim",
         "apiVersion": "v1",
