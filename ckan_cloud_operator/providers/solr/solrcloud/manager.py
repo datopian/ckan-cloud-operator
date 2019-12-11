@@ -119,13 +119,8 @@ def initialize_zookeeper(interactive=False, dry_run=False):
     } for zone, suffix in enumerate(_get_zk_suffixes())}
     zk_host_names = [zk['host_name'] for zk in zk_instances.values()]
     zk_configmap_name = _apply_zookeeper_configmap(zk_host_names)
-    if interactive:
-        logs.info('Starting interactive update of zookeeper deployments')
-        print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
-        for zk_suffix, zk in zk_instances.items():
-            _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name, dry_run=dry_run)
-    else:
-        logs.warning('deployments are not updated in non-interactive mode')
+    for zk_suffix, zk in zk_instances.items():
+        _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name, dry_run=dry_run)
     namespace = cluster_manager.get_operator_namespace_name()
     return [f'{h}.{headless_service_name}.{namespace}.svc.cluster.local:2181' for h in zk_host_names]
 
@@ -139,14 +134,9 @@ def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False, dry
     } for zone, suffix in enumerate(_get_sc_suffixes())}
     sc_host_names = [sc['host_name'] for sc in sc_instances.values()]
     sc_configmap_name = _apply_solrcloud_configmap(zk_host_names)
-    if interactive:
-        logs.info('Starting interactive update of solrcloud deployments')
-        print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
-        for sc_suffix, sc in sc_instances.items():
-            _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
-                                        pause_deployment, dry_run=dry_run)
-    else:
-        logs.warning('deployments are not updated in non-interactive mode')
+    for sc_suffix, sc in sc_instances.items():
+        _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
+                                    pause_deployment, dry_run=dry_run)
     return sc_host_names
 
 
