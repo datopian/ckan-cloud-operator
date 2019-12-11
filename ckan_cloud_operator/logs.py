@@ -6,7 +6,7 @@ from ruamel import yaml
 from ruamel.yaml.serializer import Serializer as ruamelSerializer
 from ruamel.yaml.emitter import Emitter as ruamelEmitter
 import sys
-
+import subprocess
 
 CKAN_CLOUD_OPERATOR_DEBUG = strtobool(os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG', 'n'))
 CKAN_CLOUD_OPERATOR_DEBUG_FILE = os.environ.get('CKAN_CLOUD_OPERATOR_DEBUG_FILE', '').strip()
@@ -60,6 +60,29 @@ def exit_catastrophic_failure(exitcode=1, quiet=False):
         critical('Catastrophic Failure!')
     exit(exitcode)
 
+# subprocess
+
+def log_subprocess_output(stdout, stderr):
+    for line in stderr.decode('utf8').split('\n'):
+        if line:
+            warning(line)
+    for line in stdout.decode('utf8').split('\n'):
+        if line:
+            info(line)
+
+
+def subprocess_run(command, input=None):
+    completed = subprocess.run(
+        command, input=input, 
+        shell=True, check=True, capture_output=True
+    )
+    log_subprocess_output(completed.stdout, completed.stderr)
+
+def subprocess_check_output(*args, **kw):
+    try:
+        return subprocess.check_output(*args, stderr=subprocess.PIPE, **kw)
+    except subprocess.CalledProcessError as e:
+        log_subprocess_output(e.stdout, e.stderr)
 
 # yaml dumping
 

@@ -1,17 +1,17 @@
 import yaml
-import subprocess
 import base64
 import traceback
 import datetime
 import json
 import logging
+import subprocess
 from ckan_cloud_operator import yaml_config
 from ckan_cloud_operator import logs
 
 
 def check_call(cmd, namespace='ckan-cloud', use_first_pod=False):
     cmd = _parse_call_cmd(cmd, namespace, use_first_pod)
-    subprocess.check_call(f'kubectl -n {namespace} {cmd}', shell=True)
+    logs.subprocess_check_call(f'kubectl -n {namespace} {cmd}', shell=True)
 
 
 def get_deployment_pod_name(deployment_name, namespace='ckan-cloud', use_first_pod=False, required_phase=None):
@@ -28,7 +28,7 @@ def get_deployment_pod_name(deployment_name, namespace='ckan-cloud', use_first_p
 
 
 def check_output(cmd, namespace='ckan-cloud'):
-    return subprocess.check_output(f'kubectl -n {namespace} {cmd}', shell=True)
+    return logs.subprocess_check_output(f'kubectl -n {namespace} {cmd}', shell=True)
 
 
 def call(cmd, namespace='ckan-cloud'):
@@ -45,9 +45,8 @@ def get(what, *args, required=True, namespace='ckan-cloud', get_cmd='get', **kwa
     extra_kwargs = ' '.join([f'{k} {v}' for k, v in kwargs.items()])
     try:
         return yaml.load(
-            subprocess.check_output(
+            logs.subprocess_check_output(
                 f'kubectl -n {namespace} {get_cmd} {what} {extra_args} -o yaml {extra_kwargs}', shell=True,
-                stderr=subprocess.PIPE
             )
         )
     except subprocess.CalledProcessError:
@@ -66,7 +65,7 @@ def edit(what, *edit_args, namespace='ckan-cloud', **edit_kwargs):
     for item in items:
         name = item['metadata']['name']
         kind = item['kind']
-        subprocess.check_call(f'kubectl -n {namespace} edit {kind}/{name} {extra_edit_args} {extra_edit_kwargs}', shell=True)
+        logs.subprocess_check_call(f'kubectl -n {namespace} edit {kind}/{name} {extra_edit_args} {extra_edit_kwargs}', shell=True)
 
 
 def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cloud'):
@@ -197,26 +196,11 @@ def get_deployment_detailed_status(deployment, pod_label_selector, main_containe
             status['pods'].append(pod_status)
     return dict(status, ready=ready, namespace=deployment['metadata']['namespace'])
 
-def subprocess_run_with_logs(command, input=None):
-    try:
-        completed = subprocess.run(
-            command, input=input, 
-            shell=True, check=True, capture_output=True
-        )
-        for line in completed.stderr.decode('utf8').split('\n'):
-            if line:
-                logs.warning(line)
-        for line in completed.stdout.decode('utf8').split('\n'):
-            if line:
-                logs.info(line)
-    except subprocess.CalledProcessError:
-        raise
-
 
 def create(resource, is_yaml=False):
     if is_yaml: resource = yaml.load(resource)
     try:
-        subprocess_run_with_logs('kubectl create -f -', input=yaml.dump(resource).encode())
+        logs.subprocess_run('kubectl create -f -', input=yaml.dump(resource).encode())
     except:
         logging.exception('Failed to create resource\n%s', yaml.dump(resource, default_flow_style=False))
         raise
@@ -231,7 +215,7 @@ def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
         args.append('--dry-run')
     args = " ".join(args)
     try:
-        subprocess_run_with_logs(
+        logs.subprocess_run(
             f'kubectl {cmd} {args} -f -',
             input=yaml.dump(resource).encode()
         )
@@ -269,7 +253,7 @@ def install_crd(plural, singular, kind):
                        'kind': kind
                    }
                }}
-        subprocess_run_with_logs('kubectl create -f -', input=yaml.dump(crd).encode())
+        logs.subprocess_run('kubectl create -f -', input=yaml.dump(crd).encode())
 
 
 def get_resource(api_version, kind, name, labels, namespace='ckan-cloud', **kwargs):
@@ -473,7 +457,7 @@ class BaseAnnotations(object):
             'type': 'Opaque',
             'data': secret['data']
         }
-        subprocess_run_with_logs(f'kubectl apply -f -', input=yaml.dump(secret).encode())
+        logs.subprocess_run(f'kubectl apply -f -', input=yaml.dump(secret).encode())
         self._secret = secret
 
     def set_secret(self, key, value):
@@ -520,7 +504,7 @@ class BaseAnnotations(object):
             cmd += f' ckan-cloud/{annotation}'
         if overwrite:
             cmd += ' --overwrite'
-        subprocess.check_call(cmd, shell=True)
+        logs.subprocess_check_call(cmd, shell=True)
 
     def _get_annotation(self, annotation, default=None):
         return self.resource_values['metadata'].get('annotations', {}).get(f'ckan-cloud/{annotation}', default)
