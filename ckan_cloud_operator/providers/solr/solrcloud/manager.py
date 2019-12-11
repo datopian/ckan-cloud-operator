@@ -75,7 +75,10 @@ def solr_curl(path, required=False, debug=False):
 
 def initialize(interactive=False, dry_run=False):
     if cluster_manager.get_provider_id() == 'minikube':
-        config_manager.set('container-spec-overrides', {}, configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
+        config_manager.set('container-spec-overrides', {
+                'resources': {'limits': {'memory': '1Gi'}}
+            },
+            configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
 
     zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 
