@@ -1,6 +1,8 @@
-cluster:
+default:
   config:
-    env-id: m
-    default-root-domain: localhost
-    dns-provider: none
-    self-hosted: y
+    routers-config:
+      env-id: m
+      default-root-domain: localhost
+      dns-provider: none
+    solr-config:
+      self-hosted: y

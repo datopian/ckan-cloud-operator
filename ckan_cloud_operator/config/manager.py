@@ -117,6 +117,7 @@ def get_preset_answer(namespace, configmap_name, secret_name, key):
     answers = yaml.load(open(interactive_file))
     section = '?'
     subsection = '?'
+    namespace = namespace or 'default'
     try:
         if configmap_name:
             section = 'config'

@@ -117,8 +117,7 @@ def initialize_zookeeper(interactive=False, dry_run=False):
         logs.info('Starting interactive update of zookeeper deployments')
         print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
         for zk_suffix, zk in zk_instances.items():
-            if input(f'Update zookeeper deployment {zk_suffix}? [y/n]: ') == 'y':
-                _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name, dry_run=dry_run)
+            _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name, dry_run=dry_run)
     else:
         logs.warning('deployments are not updated in non-interactive mode')
     namespace = cluster_manager.get_operator_namespace_name()
@@ -138,9 +137,8 @@ def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False, dry
         logs.info('Starting interactive update of solrcloud deployments')
         print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
         for sc_suffix, sc in sc_instances.items():
-            if input(f'Update solrcloud deployment {sc_suffix}? [y/n]: ') == 'y':
-                _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
-                                            pause_deployment, dry_run=dry_run)
+            _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
+                                        pause_deployment, dry_run=dry_run)
     else:
         logs.warning('deployments are not updated in non-interactive mode')
     return sc_host_names
