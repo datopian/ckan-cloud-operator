@@ -1,5 +1,6 @@
-minikube:
-  env-id: m
-  default-root-domain: localhost
-  dns-provider: none
-  self-hosted: y
+cluster:
+  config:
+    env-id: m
+    default-root-domain: localhost
+    dns-provider: none
+    self-hosted: y

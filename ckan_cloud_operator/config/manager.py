@@ -110,30 +110,36 @@ def list_configs(namespace=None, full=False, show_secrets=False):
                     data['values'] = None
             yield data
 
+def get_preset_answer(namespace, configmap_name, secret_name, key):
+    interactive_file = os.environ.get('CCO_INTERACTIVE_CI')
+    if not interactive_file:
+        return
+    answers = yaml.load(open(interactive_file))
+    section = '?'
+    subsection = '?'
+    try:
+        if configmap_name:
+            section = 'config'
+            subsection = configmap_name
+        else:
+            section = 'secrets'
+            subsection = secret_name
+        return answers[namespace][section][subsection][key]
+    except:
+        log.error('Failed to find in interactive file value for {namespace}.{section}.{subsection}.{key}')
+
 
 def interactive_set(default_values, secret_name=None, configmap_name=None, namespace=None, from_file=False,
                     extra_operator_labels=None, interactive=True):
     log_kwargs = {'func': 'config/interactive_set', 'secret': secret_name, 'configmap': configmap_name, 'namespace': namespace}
     logs.debug('start', **log_kwargs)
     set_values = {}
-    interactive_file = os.environ.get('CCO_INTERACTIVE_CI_FPATH')
-    interactive_env = os.environ.get('CCO_INTERACTIVE_CI_ENV')
-    if interactive_file:
-        if os.path.exists(interactive_file):
-            print(f'Loading answers from {interactive_file}')
-            answers = yaml.load(open(interactive_file))
-            for key, default_value in default_values.items():
-                set_values[key] = str(answers[interactive_env].get(key, default_value))
-            return set(values=set_values,
-                       secret_name=secret_name,
-                       configmap_name=configmap_name,
-                       namespace=namespace,
-                       extra_operator_labels=extra_operator_labels)
-        else:
-            print(f'Coul not load answers from {interactive_file}, file or path does not exist')
     for key, default_value in default_values.items():
         saved_value = get(key, secret_name=secret_name, configmap_name=configmap_name, namespace=namespace)
-        if interactive:
+        preset_value = get_preset_answer(namespace, configmap_name, secret_name, key)
+        if preset_value:
+            set_values[key] = preset_value
+        elif interactive:
             if saved_value:
                 if from_file:
                     msg = ', leave empty to use the saved value'
