@@ -215,6 +215,7 @@ def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
         )
     except subprocess.CalledProcessError:
         logging.exception('Failed to apply resource\n%s', yaml.dump(resource, default_flow_style=False))
+        raise
     if dry_run:
         print(yaml.dump(resource, default_flow_style=False))
 
