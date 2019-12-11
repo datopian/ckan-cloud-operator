@@ -49,10 +49,12 @@ def print_info(debug=False, minimal=False):
 
 
 def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None, skip_to=None):
-    if interactive and not skip_to:
+    if interactive:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)
         input('Verify you are connected to the right cluster and press <RETURN> to continue')
+
+    if not skip_to:
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
         assert default_cluster_provider in ['gcloud', 'aws', 'minikube'], f'invalid cluster provider: {default_cluster_provider}'
