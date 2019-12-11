@@ -1,7 +1,7 @@
 default:
   config:
     routers-config:
-      env-id: m
+      env-id: p
       default-root-domain: localhost
       dns-provider: none
   secrets:
