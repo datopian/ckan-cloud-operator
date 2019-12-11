@@ -20,7 +20,7 @@ jobs:
         - CCO_INTERACTIVE_CI_FPATH=interactive.yaml
         - CCO_INTERACTIVE_CI_ENV=minikube
         - HELM_VERSION=v2.16.1
-      befroe_install: pip install -e .
+      before_install: pip install -e .
       install: bash .travis.sh install-tools
       before_script: sudo minikube start --kubernetes-version "${K8_VERSION}" --vm-driver=none
       script:
