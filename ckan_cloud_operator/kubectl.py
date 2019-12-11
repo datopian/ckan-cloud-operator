@@ -6,6 +6,7 @@ import datetime
 import json
 import logging
 from ckan_cloud_operator import yaml_config
+from ckan_cloud_operator import logs
 
 
 def check_call(cmd, namespace='ckan-cloud', use_first_pod=False):
@@ -209,10 +210,17 @@ def apply(resource, is_yaml=False, reconcile=False, dry_run=False):
         args.append('--dry-run')
     args = " ".join(args)
     try:
-        subprocess.run(
+        completed = subprocess.run(
             f'kubectl {cmd} {args} -f -',
-            input=yaml.dump(resource).encode(), shell=True, check=True
+            input=yaml.dump(resource).encode(), shell=True, check=True,
+            capture_output=True
         )
+        for line in completed.stderr.split('\n'):
+            if line:
+                logs.warning(line)
+        for line in completed.stdout.split('\n'):
+            if line:
+                logs.info(line)
     except subprocess.CalledProcessError:
         logging.exception('Failed to apply resource\n%s', yaml.dump(resource, default_flow_style=False))
         raise
