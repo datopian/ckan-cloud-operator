@@ -141,4 +141,5 @@ def _print_log_msg(level, msg):
         or (level == DEBUG_VERBOSE and CKAN_CLOUD_OPERATOR_DEBUG_VERBOSE)
         or level not in [DEBUG, DEBUG_VERBOSE]
     ):
-        print(msg)
+        print(msg, file=sys.stderr)
+        sys.stderr.flush()
