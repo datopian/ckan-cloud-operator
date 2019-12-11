@@ -9,3 +9,5 @@ default:
       self-hosted: y
       num-shards: "1"
       replication-factor: "1"
+    ckan-storage-config:
+      default-storage-bucket: ckan
