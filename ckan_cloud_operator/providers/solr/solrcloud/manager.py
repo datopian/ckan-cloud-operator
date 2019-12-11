@@ -104,6 +104,8 @@ def initialize(interactive=False, dry_run=False):
         if running == expected_running:
             break
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
+        for x in pods['items']:
+            logs.info('  - %s: %s' % (x['metadata']['name'], x['status']['phase']))
         time.sleep(30)
 
     _set_provider()
