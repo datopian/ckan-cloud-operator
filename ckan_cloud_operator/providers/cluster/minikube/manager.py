@@ -54,7 +54,7 @@ def _create_storage_classes():
 
 
 
-def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
+def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=None):
     disk_id = use_existing_disk_name or 'cc' + _generate_password(12)
     if use_existing_disk_name:
         logs.info(f'using existing persistent disk {disk_id}')

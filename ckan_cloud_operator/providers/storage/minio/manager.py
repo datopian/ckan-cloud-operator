@@ -141,7 +141,7 @@ def _apply_service(storage_suffix=None, dry_run=False):
     ), dry_run=dry_run)
 
 
-def _get_or_create_volume(storage_suffix=None, use_existing_disk_name=None):
+def _get_or_create_volume(storage_suffix=None, use_existing_disk_name=None, zone=0):
     disk_size_gb = _config_get('disk-size-gb', required=True, suffix=storage_suffix)
     volume_spec = _config_get('volume-spec', required=False, suffix=storage_suffix)
     if volume_spec:
@@ -151,7 +151,7 @@ def _get_or_create_volume(storage_suffix=None, use_existing_disk_name=None):
         volume_spec = cluster_manager.create_volume(
             disk_size_gb,
             _get_resource_labels(suffix=storage_suffix),
-            use_existing_disk_name=use_existing_disk_name
+            use_existing_disk_name=use_existing_disk_name, zone=zone
         )
         _config_set('volume-spec', yaml.dump(volume_spec, default_flow_style=False), suffix=storage_suffix)
     return volume_spec
