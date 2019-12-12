@@ -12,7 +12,8 @@ services:
 
 jobs:
   include:
-    - stage: minikube
+    - stage: Cluster Providers
+      name: minikube
       env:
         - K8_PROVIDER=minikube
         - K8_VERSION=v1.16.0
@@ -28,23 +29,25 @@ jobs:
         - ckan-cloud-operator cluster initialize --cluster-provider=minikube || travis_terminate 1;
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud 
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
-
-# install:
-# - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
-# - bash $HOME/bin/travis_ci_operator.sh init
-# - travis_ci_operator.sh docker-login
-# - bash .travis.sh install
-# script:
-# - bash .travis.sh script
-# - bash .travis.sh test
-# deploy:
-#   - provider: script
-#     skip_cleanup: true
-#     script: bash .travis.sh deploy
-#     on:
-#       branch: master
-#   - provider: script
-#     skip_cleanup: true
-#     script: bash .travis.sh deploy
-#     on:
-#       tags: true
+      after_script:
+        - minikube delete
+    - stage: Deploy
+      install:
+      - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+      - bash $HOME/bin/travis_ci_operator.sh init
+      - travis_ci_operator.sh docker-login
+      - bash .travis.sh install
+      script:
+      - bash .travis.sh script
+      - bash .travis.sh test
+      deploy:
+        - provider: script
+          skip_cleanup: true
+          script: bash .travis.sh deploy
+          on:
+            branch: master
+        - provider: script
+          skip_cleanup: true
+          script: bash .travis.sh deploy
+          on:
+            tags: true
