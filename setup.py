@@ -35,7 +35,7 @@ setup(
         'urllib3<1.25',
         'ruamel.yaml<1',
         'requests==2.21',
-        'python-dateutil==2.7.5'
+        'python-dateutil<3'
     ],
     entry_points={
       'console_scripts': [
