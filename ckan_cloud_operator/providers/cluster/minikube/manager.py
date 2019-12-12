@@ -43,7 +43,7 @@ def _create_storage_classes():
         kubectl.apply({
             'apiVersion': 'storage.k8s.io/v1', 'kind': 'StorageClass',
             'metadata': {
-                'annotations': {'storageclass.kubernetes.io/is-default-class': True},
+                'annotations': {'storageclass.kubernetes.io/is-default-class': 'true'},
                 'labels': {'addonmanager.kubernetes.io/mode': 'EnsureExists'},
                 'name': sc,
             },
