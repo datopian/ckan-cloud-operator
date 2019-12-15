@@ -8,15 +8,16 @@ from ..constants import CONFIG_NAME
 from .constants import PROVIDER_ID
 
 
-def initialize(*args, **kwargs):
+def initialize(interactive=False, storage_suffix='', use_existing_disk_name=False, dry_run=False):
     default_zone = aws_config_get('aws-default-region')
     assert default_zone, 'No cluster region specified.'
 
-    config_manager.interactive_set(
-        {'storage-region': default_zone},
-        secret_name=CONFIG_NAME,
-        interactive=kwargs.get('interactive')
-    )
+    if interactive and not dry_run:
+        config_manager.interactive_set(
+            {'storage-region': default_zone},
+            secret_name=CONFIG_NAME,
+            interactive=interactive
+        )
 
 
 def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
