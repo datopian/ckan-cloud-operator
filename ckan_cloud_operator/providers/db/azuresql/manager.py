@@ -26,7 +26,6 @@ import json
 
 from ckan_cloud_operator import logs
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
-from ckan_cloud_operator.drivers.gcloud import driver as gcloud_driver
 
 
 def initialize(db_prefix=None, interactive=False):
@@ -52,8 +51,8 @@ def initialize(db_prefix=None, interactive=False):
             _config_set(key, default_value, **_get_config_credentials_kwargs(db_prefix))
         elif not config.get(key):
             raise Exception(f'missing key: {key}')
-    #from ckan_cloud_operator.providers.db.proxy.azuresql import manager as proxy_azuresql_manager
-    #proxy_azuresql_manager.initialize(db_prefix=db_prefix)
+    from ckan_cloud_operator.providers.db.proxy.azuresql import manager as proxy_azuresql_manager
+    proxy_azuresql_manager.initialize(db_prefix=db_prefix)
 
 
 def _get_config_credentials_kwargs(db_prefix):

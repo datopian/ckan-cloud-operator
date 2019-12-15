@@ -40,6 +40,8 @@ def initialize(interactive=False):
         _config_interactive_set({'aws-default-region': None}, is_secret=True)
         print('\nEnter the name of your Amazon EKS cluster\n')
         _config_interactive_set({'eks-cluster-name': None}, is_secret=True)
+    else:
+        logs.info('Skipping initial cluster set up as `--interactive` flag was not set')
     print(yaml.dump(get_info(), default_flow_style=False))
 
 

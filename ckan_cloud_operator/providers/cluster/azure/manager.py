@@ -1,7 +1,5 @@
 #### standard provider code ####
 
-import subprocess
-
 # import the correct PROVIDER_SUBMODULE and PROVIDER_ID constants for your provider
 from .constants import PROVIDER_ID
 from ..constants import PROVIDER_SUBMODULE
@@ -23,6 +21,7 @@ def _config_interactive_set(default_values, namespace=None, is_secret=False, suf
 import binascii
 import json
 import os
+import subprocess
 import yaml
 
 from ckan_cloud_operator import logs
@@ -38,11 +37,13 @@ def initialize(interactive=False):
         _config_interactive_set({'azure-default-location': None}, is_secret=False)
         print('\nEnter the name of your cluster\n')
         _config_interactive_set({'azure-cluster-name': None}, is_secret=False)
+    else:
+        logs.info('Skipping initial cluster set up as `--interactive` flag was not set')
 
 
 def get_info(debug=False):
     cluster_name = _config_get('cluster-name')
-    data = yaml.load(check_output(f'container clusters describe {cluster_name}'))
+    data = yaml.load(az_check_output(f'container clusters describe {cluster_name}'))
     if debug:
         return data
     else:
@@ -75,7 +76,7 @@ def get_name():
 
 def get_cluster_kubeconfig_spec():
     cluster_name = _config_get('cluster-name')
-    cluster = yaml.load(check_output(f'container clusters describe {cluster_name}'))
+    cluster = yaml.load(az_check_output(f'container clusters describe {cluster_name}'))
     return {
         "server": 'https://' + cluster['endpoint'],
         "certificate-authority-data": cluster['masterAuth']['clusterCaCertificate']
@@ -126,5 +127,5 @@ def _generate_password(l):
     return binascii.hexlify(os.urandom(l)).decode()
 
 
-def check_output(cmd):
-    return subprocess.check_output(f'az {cmd}', shell=True)
+def az_check_output(cmd):
+    return subprocess.az_check_output(f'az {cmd}', shell=True)

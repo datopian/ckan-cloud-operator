@@ -42,6 +42,8 @@ def initialize(interactive=False):
         _config_interactive_set({'cluster-name': None})
         print('\nEnter the google project ID\n')
         _config_interactive_set({'project-id': None})
+    else:
+        logs.info('Skipping initial cluster set up as `--interactive` flag was not set')
     gcloud_driver.activate_auth(
         _config_get('project-id'),
         _config_get('cluster-compute-zone'),

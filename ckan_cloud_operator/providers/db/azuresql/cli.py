@@ -5,12 +5,12 @@ from . import manager
 
 
 @click.group('azuresql')
-def rds():
+def azuresql():
     """Manage Azure SQL instances for centralized DB services"""
     pass
 
 
-@rds.command()
+@azuresql.command()
 @click.option('--interactive', is_flag=True)
 @click.option('--db-prefix')
 def initialize(interactive, db_prefix):

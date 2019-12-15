@@ -438,8 +438,7 @@ def _create_base_dbs_and_roles(migration_name, db_name, datastore_name, recreate
             postgres_driver.create_role_if_not_exists(admin_conn, datastore_ro_name, datastore_ro_password)
             yield {'step': 'created-datastore-ro-role', 'msg': f'Created Datastore read-only user: {datastore_ro_name} ({db_prefix})'}
     yield {'step': 'created-base-dbs-and-roles', f'msg': f'Created base dbs and roles: {db_name}, {datastore_name}, {datastore_ro_name} ({db_prefix})'}
-    if cluster_manager.get_provider_id() != 'azure':
-        yield from _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, datastore_password, datastore_ro_password, db_prefix)
+    yield from _update_db_proxy(db_name, datastore_name, datastore_ro_name, db_password, datastore_password, datastore_ro_password, db_prefix)
 
 
 def _delete_dbs(admin_conn, db_name, datastore_name, datastore_ro_name):

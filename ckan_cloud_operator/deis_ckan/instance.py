@@ -312,7 +312,7 @@ class DeisCkanInstance(object):
         except Exception:
             logs.warning('Setting datastore permissions failed, continuing anyway')
         # Create/Update uptime monitoring after everything else is ready
-        #DeisCkanInstanceUptime(self).update(envvars.site_url)
+        DeisCkanInstanceUptime(self).update(envvars.site_url)
 
     def delete(self, force=False, wait_deleted=False):
         """
@@ -338,7 +338,7 @@ class DeisCkanInstance(object):
                 'namespace': lambda: DeisCkanInstanceNamespace(self).delete(),
                 'envvars-secret': lambda: kubectl.check_call(f'delete --ignore-not-found secret/{self.id}-envvars'),
                 'routes': lambda: routers_manager.delete_routes(deis_instance_id=self.id),
-                #'uptime-monitoring': lambda: DeisCkanInstanceUptime(self).delete(self.id)
+                'uptime-monitoring': lambda: DeisCkanInstanceUptime(self).delete(self.id)
             }.items():
                 try:
                     delete_code()

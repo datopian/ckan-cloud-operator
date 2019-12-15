@@ -11,7 +11,6 @@ def initialize(log_kwargs=None):
 
 def get_label_prefix(short=False):
     """Returns a global label prefix which should be used to namespace operator objects"""
-    return 'ckan-cloud'
     return config_manager.get('short-label-prefix' if short else 'label-prefix', required=True)
 
 

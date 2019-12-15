@@ -8,25 +8,26 @@ from ..constants import CONFIG_NAME
 from .constants import PROVIDER_ID
 
 
-def initialize(*args, **kwargs):
+def initialize(interactive=False, storage_suffix='', use_existing_disk_name=False, dry_run=False):
     default_zone = cluster_config_get('azure-default-location')
     assert default_zone, 'No cluster region specified.'
 
-    config_manager.interactive_set(
-        {'storage-region': default_zone},
-        secret_name=CONFIG_NAME,
-        interactive=kwargs.get('interactive')
-    )
-    config_manager.interactive_set(
-        {'storage-account-name': ''},
-        secret_name=CONFIG_NAME,
-        interactive=kwargs.get('interactive')
-    )
-    config_manager.interactive_set(
-        {'storage-account-key': ''},
-        secret_name=CONFIG_NAME,
-        interactive=kwargs.get('interactive')
-    )
+    if interactive and not dry_run:
+        config_manager.interactive_set(
+            {'storage-region': default_zone},
+            secret_name=CONFIG_NAME,
+            interactive=kwargs.get('interactive')
+        )
+        config_manager.interactive_set(
+            {'storage-account-name': ''},
+            secret_name=CONFIG_NAME,
+            interactive=kwargs.get('interactive')
+        )
+        config_manager.interactive_set(
+            {'storage-account-key': ''},
+            secret_name=CONFIG_NAME,
+            interactive=kwargs.get('interactive')
+        )
 
 
 def _get_cred_options():
