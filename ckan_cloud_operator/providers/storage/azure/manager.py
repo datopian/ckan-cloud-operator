@@ -16,17 +16,17 @@ def initialize(interactive=False, storage_suffix='', use_existing_disk_name=Fals
         config_manager.interactive_set(
             {'storage-region': default_zone},
             secret_name=CONFIG_NAME,
-            interactive=kwargs.get('interactive')
+            interactive=interactive
         )
         config_manager.interactive_set(
             {'storage-account-name': ''},
             secret_name=CONFIG_NAME,
-            interactive=kwargs.get('interactive')
+            interactive=interactive
         )
         config_manager.interactive_set(
             {'storage-account-key': ''},
             secret_name=CONFIG_NAME,
-            interactive=kwargs.get('interactive')
+            interactive=interactive
         )
 
 
