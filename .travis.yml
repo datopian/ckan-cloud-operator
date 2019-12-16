@@ -33,6 +33,7 @@ jobs:
         - minikube delete
     - name: AWS
       env:
+        - K8_PROVIDER=aws
         - CCO_INTERACTIVE_CI=interactive.yaml
         - HELM_VERSION=v2.16.1
       before_install: pip install -e .
