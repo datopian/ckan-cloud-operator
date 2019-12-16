@@ -83,7 +83,6 @@ tests:
 
 # (optional) list skipped test IDs here, eg '[B101, B406]':
 skips:
-  - B322
   - B506
   - B602
   - B608
