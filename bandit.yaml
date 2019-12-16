@@ -86,6 +86,7 @@ skips:
   - B322
   - B506
   - B602
+  - B604
   - B608
   
 ### (optional) plugin settings - some test plugins require configuration data
