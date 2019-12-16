@@ -31,7 +31,25 @@ jobs:
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
       after_script:
         - minikube delete
+    - name: AWS
+      env:
+        - CCO_INTERACTIVE_CI=interactive.yaml
+        - HELM_VERSION=v2.16.1
+      before_install: pip install -e .
+      install: bash .travis.sh install-tools
+      before_script:
+        - cd terraform/aws &&\
+             ./terraform init -input=false &&\
+             ./terraform validate &&\
+             ./terraform apply -input=false -auto-approve
+      script:
+        - ckan-cloud-operator cluster initialize --cluster-provider=aws
+        - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
+        - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
+      after_script:
+        - cd terraform/aws && ./terraform destroy -auto-approve
     - stage: Deploy
+      if: branch = master OR tag IS present
       install:
       - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
       - bash $HOME/bin/travis_ci_operator.sh init
