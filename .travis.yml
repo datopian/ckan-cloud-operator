@@ -52,7 +52,9 @@ jobs:
         - ckan-cloud-operator cluster initialize --cluster-provider=aws
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
-      after_script:
+      after_success:
+        - cd terraform/aws && ./terraform destroy -auto-approve
+      after_failure:
         - cd terraform/aws && ./terraform destroy -auto-approve
     - stage: Deploy
       if: branch = master OR tag IS present
