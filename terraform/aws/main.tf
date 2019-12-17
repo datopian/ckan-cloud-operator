@@ -218,9 +218,9 @@ default:
     aws-efs:
       file.system.id: ${aws_efs_file_system.default.id}
   secrets:
-    aws:
+    ckan-cloud-provider-cluster-aws:
       aws-access-key-id: x
-      aws-secret-access-key': x
+      aws-secret-access-key: x
       aws-default-region: ${var.region}
       eks-cluster-name: ${module.eks.cluster_id}
 
