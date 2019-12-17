@@ -41,14 +41,13 @@ jobs:
         - secure: "K4IUX35tZr3kAEsy6Af3HlJqQDVywoHKPPq4dhZo9EyAcDASEn3jm8dg8re2DNdvOriiUkSrFQyl5WDqbsJaK+nBoGC0eH0b+lzEzGE7Fh/+sm39dmEt29EVXymIutjGYnCiz5dTJKng2VouT2CzgUude8vYUT/bDuYZZmfhA+iS/Bk+X2ex2dknepe7ODnBSgK5YDr82HLZUIn0GhlZ6pHDKhUw0qObQovYhIT5nTcHPgM+m2DFDuo19v9eUCyzPc3YoIMVhInz9BkvhYF1JgeRFvr9cSz27CSnPEx7aJVd4H6xIh4sII/RUOicFvcNiUlALogxr8Vt0swstlvHnjuISkrzW84k2oe5aBf19f7yXAUKWGrhlTz8dsr1TUqGyAc2FYzILpNc0Gl7UwvO2jUam+G/Um1R9k8n8napDG1WSxryc/Fxpfa/FipTv7JaboudmV+6HfsdtrbXoSq2edQ27N3gbMBh5FWeD82NwmxEtQ4GOhhxCjKuVrs8bzIWNvzE6BEQL8fVhYZ0jFJ8Po22gx/gsFva1p9sgGkGXzCBxqT9xaOYOeDRxv1lEjGZth7+N61MPbR2G04B+/AopI/3iQiDuncrgj6hWrPLwYCJRVuxG+UU/S+cFS+G4x4wltOF05eKB3VbAEAg1J5VmpoQpYB1IbtN2wC8LbXVGhE="
       before_install: pip install -e .
       install: bash .travis.sh install-tools
-      before_script:
+      script:
         - cd terraform/aws &&
           ./terraform init -input=false &&
           ./terraform validate &&
           ./terraform apply -input=false -auto-approve &&
           ./terraform output cco-interactive-yaml | tee ../../interactive.yaml
         - kubectl get pods --all-namespaces
-      script:
         - ckan-cloud-operator cluster initialize --cluster-provider=aws
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
