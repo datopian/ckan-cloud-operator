@@ -18,6 +18,16 @@ def initialize(interactive=False, storage_suffix='', use_existing_disk_name=Fals
             secret_name=CONFIG_NAME,
             interactive=interactive
         )
+        config_manager.interactive_set(
+            {'aws-storage-access-key': None},
+            secret_name=CONFIG_NAME,
+            interactive=interactive
+        )
+        config_manager.interactive_set(
+            {'aws-storage-access-secret': None},
+            secret_name=CONFIG_NAME,
+            interactive=interactive
+        )
 
 
 def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
@@ -33,7 +43,11 @@ def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
     if not dry_run and not bucket_exists:
         aws_check_output(f's3 mb s3://{instance_id} --region {region}')
 
-    return f's3://{instance_id}'
+    return {
+        'BUCKET_NAME': f's3://{instance_id}',
+        'ACCESS_KEY': config_manager.get('aws-storage-access-key', secret_name=CONFIG_NAME),
+        'ACCESS_SECRET': config_manager.get('aws-storage-access-secret', secret_name=CONFIG_NAME)
+    }
     
 
 def delete_bucket(instance_id, dry_run=False):

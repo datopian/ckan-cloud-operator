@@ -9,14 +9,16 @@ import sys
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
+from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.crds import manager as crds_manager
 from ckan_cloud_operator.labels import manager as labels_manager
-from ..deployment import manager as deployment_manager
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
+from ckan_cloud_operator.providers.storage.constants import CONFIG_NAME
 from ckan_cloud_operator.routers import manager as routers_manager
-from ckan_cloud_operator.config import manager as config_manager
 
 from ..constants import INSTANCE_NAME_CRD_SINGULAR
 from ..constants import INSTANCE_CRD_SINGULAR
+from ..deployment import manager as deployment_manager
 
 
 def create(instance_type, instance_id=None, instance_name=None, values=None, values_filename=None, exists_ok=False,
@@ -45,8 +47,13 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
         extra_label_suffixes={'instance-type': instance_type},
         spec=values
     ), dry_run=dry_run)
+
     if instance_name:
         set_name(instance_id, instance_name, dry_run=dry_run)
+
+    if config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME):
+        set_storage(instance_id, instance_name, dry_run=dry_run)
+
     if update_:
         update(instance_id, wait_ready=wait_ready, skip_deployment=skip_deployment, skip_route=skip_route, force=force,
                dry_run=dry_run)
@@ -64,6 +71,23 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
     else:
         pre_update_hook_data = deployment_manager.pre_update_hook(instance_id, instance_type, instance, override_spec,
                                                                   skip_route)
+
+        if config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME):
+            cluster_provider_id = cluster_manager.get_provider_id()
+            if cluster_provider_id == 'gcloud':
+                provider_id = 'gcloud'
+            elif cluster_provider_id == 'aws':
+                provider_id = 's3'
+
+            bucket_credentials = instance['spec'].get('bucket', {}).get(provider_id)
+            if bucket_credentials:
+                literal = []
+                for key, value in bucket_credentials.items():
+                    literal.append(f'--from-literal={key}={value}')
+                literal = ' '.join(literal)
+
+                kubectl.call(f'create secret generic bucket-credentials {literal}', namespace=instance_id)
+
         if persist_overrides:
             logs.info('Persisting overrides')
             kubectl.apply(instance)
@@ -276,6 +300,32 @@ def set_name(instance_id, instance_name, dry_run=False):
                 }
             }
         )
+    if dry_run:
+        logs.print_yaml_dump(resource)
+    else:
+        kubectl.apply(resource)
+
+
+def set_storage(instance_id, instance_name, dry_run=False):
+    from ckan_cloud_operator.providers.storage.manager import get_provider
+
+    resource = crds_manager.get(INSTANCE_NAME_CRD_SINGULAR, name=instance_name, required=False)
+
+    cluster_provider_id = cluster_manager.get_provider_id()
+    if cluster_provider_id == 'gcloud':
+        provider_id = 'gcloud'
+    elif cluster_provider_id == 'aws':
+        provider_id = 's3'
+    else:
+        logs.warning(f'No storage module found for cluster provider {cluster_provider_id}')
+        return
+
+    storage_provider = get_provider(default=None, provider_id=provider_id)
+    bucket = storage_provider.create_bucket(instance_id, exists_ok=True, dry_run=dry_run)
+    resource['spec']['bucket'] = {
+        storage.PROVIDER_ID: bucket
+    }
+
     if dry_run:
         logs.print_yaml_dump(resource)
     else:

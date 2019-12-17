@@ -20,7 +20,12 @@ class S3ManagerTestCase(unittest.TestCase):
         get_aws_credentials.assert_called_once()
         list_s3_buckets.assert_called_once()
         aws_check_output.assert_called_once_with('s3 mb s3://new-instance --region us-west-1')
-        self.assertEqual(result, 's3://new-instance')
+        expected_result = {
+            'BUCKET_NAME': 's3://new-instance',
+            'ACCESS_KEY': None,
+            'ACCESS_SECRET': None
+        }
+        self.assertEqual(result, expected_result)
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.get_aws_credentials')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
@@ -33,7 +38,12 @@ class S3ManagerTestCase(unittest.TestCase):
         with self.assertRaisesRegex(Exception, 'Bucket for this instance already exists'):
             s3_manager.create_bucket('new-instance')
 
-        self.assertEqual(s3_manager.create_bucket('new-instance', exists_ok=True), 's3://new-instance')
+        expected_result = {
+            'BUCKET_NAME': 's3://new-instance',
+            'ACCESS_KEY': None,
+            'ACCESS_SECRET': None
+        }
+        self.assertEqual(s3_manager.create_bucket('new-instance', exists_ok=True), expected_result)
         aws_check_output.assert_not_called()
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.get_aws_credentials')
@@ -55,7 +65,13 @@ class S3ManagerTestCase(unittest.TestCase):
         get_aws_credentials.assert_called_once()
         list_s3_buckets.assert_called_once()
         aws_check_output.assert_not_called()
-        self.assertEqual(result, 's3://new-instance')
+
+        expected_result = {
+            'BUCKET_NAME': 's3://new-instance',
+            'ACCESS_KEY': None,
+            'ACCESS_SECRET': None
+        }
+        self.assertEqual(result, expected_result)
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.aws_check_output')
@@ -206,11 +222,14 @@ class GCloudManagerTestCase(unittest.TestCase):
         cluster_config_get.return_value = 'europe-west2-c'
 
         result = gcloud_manager.create_bucket('new-instance')
+        expected_result = {
+            'BUCKET_NAME': 'gs://new-instance'
+        }
 
         cluster_config_get.assert_called_once()
         list_s3_buckets.assert_called_once()
         gcloud_check_output.assert_called_once_with('mb gs://new-instance -l europe-west2-c', gsutil=True)
-        self.assertEqual(result, 'gs://new-instance')
+        self.assertEqual(result, expected_result)
 
     @patch('ckan_cloud_operator.providers.storage.gcloud.manager.cluster_config_get')
     @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
@@ -223,7 +242,10 @@ class GCloudManagerTestCase(unittest.TestCase):
         with self.assertRaisesRegex(Exception, 'Bucket for this instance already exists'):
             gcloud_manager.create_bucket('new-instance')
 
-        self.assertEqual(gcloud_manager.create_bucket('new-instance', exists_ok=True), 'gs://new-instance')
+        expected_result = {
+            'BUCKET_NAME': 'gs://new-instance'
+        }
+        self.assertEqual(gcloud_manager.create_bucket('new-instance', exists_ok=True), expected_result)
         gcloud_check_output.assert_not_called()
 
     @patch('ckan_cloud_operator.providers.storage.gcloud.manager.cluster_config_get')
@@ -240,12 +262,15 @@ class GCloudManagerTestCase(unittest.TestCase):
         list_gcloud_buckets.return_value = []
         cluster_config_get.return_value = 'europe-west2-c'
 
+        expected_result = {
+            'BUCKET_NAME': 'gs://new-instance'
+        }
         result = gcloud_manager.create_bucket('new-instance', dry_run=True)
 
         cluster_config_get.assert_called_once()
         list_gcloud_buckets.assert_called_once()
         gcloud_check_output.assert_not_called()
-        self.assertEqual(result, 'gs://new-instance')
+        self.assertEqual(result, expected_result)
 
     @patch('ckan_cloud_operator.providers.storage.gcloud.manager.list_gcloud_buckets')
     @patch('ckan_cloud_operator.providers.storage.gcloud.manager.gcloud_check_output')

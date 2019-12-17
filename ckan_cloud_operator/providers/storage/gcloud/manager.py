@@ -34,7 +34,9 @@ def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
     if not dry_run and not bucket_exists:
         gcloud_check_output(f'mb gs://{instance_id} -l {region}', gsutil=True)
 
-    return f'gs://{instance_id}'
+    return {
+        'BUCKET_NAME': f'gs://{instance_id}'
+    }
     
 
 def delete_bucket(instance_id, dry_run=False):
