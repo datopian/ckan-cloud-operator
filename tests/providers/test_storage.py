@@ -22,8 +22,8 @@ class S3ManagerTestCase(unittest.TestCase):
         aws_check_output.assert_called_once_with('s3 mb s3://new-instance --region us-west-1')
         expected_result = {
             'BUCKET_NAME': 's3://new-instance',
-            'ACCESS_KEY': None,
-            'ACCESS_SECRET': None
+            'BUCKET_ACCESS_KEY': None,
+            'BUCKET_ACCESS_SECRET': None
         }
         self.assertEqual(result, expected_result)
 
@@ -40,8 +40,8 @@ class S3ManagerTestCase(unittest.TestCase):
 
         expected_result = {
             'BUCKET_NAME': 's3://new-instance',
-            'ACCESS_KEY': None,
-            'ACCESS_SECRET': None
+            'BUCKET_ACCESS_KEY': None,
+            'BUCKET_ACCESS_SECRET': None
         }
         self.assertEqual(s3_manager.create_bucket('new-instance', exists_ok=True), expected_result)
         aws_check_output.assert_not_called()
@@ -68,8 +68,8 @@ class S3ManagerTestCase(unittest.TestCase):
 
         expected_result = {
             'BUCKET_NAME': 's3://new-instance',
-            'ACCESS_KEY': None,
-            'ACCESS_SECRET': None
+            'BUCKET_ACCESS_KEY': None,
+            'BUCKET_ACCESS_SECRET': None
         }
         self.assertEqual(result, expected_result)
 

@@ -45,8 +45,8 @@ def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
 
     return {
         'BUCKET_NAME': f's3://{instance_id}',
-        'ACCESS_KEY': config_manager.get('aws-storage-access-key', secret_name=CONFIG_NAME),
-        'ACCESS_SECRET': config_manager.get('aws-storage-access-secret', secret_name=CONFIG_NAME)
+        'BUCKET_ACCESS_KEY': config_manager.get('aws-storage-access-key', secret_name=CONFIG_NAME),
+        'BUCKET_ACCESS_SECRET': config_manager.get('aws-storage-access-secret', secret_name=CONFIG_NAME)
     }
     
 

@@ -41,6 +41,10 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
     if values_id and values_id != instance_id:
         logs.warning(f'changing instance id in spec from {values_id} to the instance id {instance_id}')
     values['id'] = instance_id
+
+    use_cloud_storage = config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME)
+    values['useCloudStorage'] = use_cloud_storage
+
     logs.info('Creating instance', instance_id=instance_id)
     kubectl.apply(crds_manager.get_resource(
         INSTANCE_CRD_SINGULAR, instance_id,
@@ -51,7 +55,7 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
     if instance_name:
         set_name(instance_id, instance_name, dry_run=dry_run)
 
-    if config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME):
+    if use_native_storage:
         set_storage(instance_id, instance_name, dry_run=dry_run)
 
     if update_:
