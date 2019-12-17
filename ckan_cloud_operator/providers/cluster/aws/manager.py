@@ -122,22 +122,21 @@ def get_aws_credentials():
         'region': _config_get('aws-default-region', is_secret=True)
     }
 
-
-def aws_check_output(cmd):
+def aws_process_cmd(cmd)
     access = _config_get('aws-access-key-id', is_secret=True)
     secret = _config_get('aws-secret-access-key', is_secret=True)
     region = _config_get('aws-default-region', is_secret=True)
-    return subprocess.check_output(f"AWS_ACCESS_KEY_ID={access} AWS_SECRET_ACCESS_KEY={secret} AWS_DEFAULT_REGION={region} aws {cmd}", shell=True)
+    cmd = f"AWS_DEFAULT_REGION={region} aws {cmd}"
+    if len(access) >= 20 and len(secret) >= 40:
+        cmd = f"AWS_ACCESS_KEY_ID={access} AWS_SECRET_ACCESS_KEY={secret} " + cmd
+    return cmd
+
+def aws_check_output(cmd):
+    return subprocess.check_output(aws_process_cmd(cmd), shell=True)
 
 
 def exec(cmd):
-    access = _config_get('aws-access-key-id', is_secret=True)
-    secret = _config_get('aws-secret-access-key', is_secret=True)
-    region = _config_get('aws-default-region', is_secret=True)
-    subprocess.check_call(
-        f"AWS_ACCESS_KEY_ID={access} AWS_SECRET_ACCESS_KEY={secret} AWS_DEFAULT_REGION={region} aws {cmd}",
-        shell=True
-    )
+    subprocess.check_call(aws_process_cmd(cmd), shell=True)
 
 
 def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=0):
