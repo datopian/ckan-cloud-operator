@@ -100,8 +100,8 @@ resource "aws_iam_role_policy_attachment" "cco-AmazonEC2ContainerRegistryReadOnl
 }
 
 resource "aws_eks_node_group" "cco-nodegroup" {
-  cluster_name    = var.cluster_name
-  node_group_name = "${var.cluster_name}-nodegroup"
+  cluster_name    = module.eks.cluster_name
+  node_group_name = "${module.eks.cluster_name}-nodegroup"
   node_role_arn   = aws_iam_role.cco-nodegroup.arn
   subnet_ids      = data.aws_subnet_ids.selected.ids
 
