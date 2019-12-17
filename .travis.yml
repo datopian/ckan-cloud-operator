@@ -50,7 +50,7 @@ jobs:
         - kubectl get pods --all-namespaces
         - ckan-cloud-operator cluster initialize --cluster-provider=aws
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
-        - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
+        - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.datagov.yaml
       after_success:
         - ./terraform destroy -auto-approve
       after_failure:
