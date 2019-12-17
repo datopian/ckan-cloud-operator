@@ -39,34 +39,34 @@ module "eks" {
   write_kubeconfig = true
 }
 
-resource "aws_iam_role" "cco-cluster" {
-  name = "eks-cluster"
+# resource "aws_iam_role" "cco-cluster" {
+#   name = "eks-cluster"
 
-  assume_role_policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "eks.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-POLICY
-}
+#   assume_role_policy = <<POLICY
+# {
+#   "Version": "2012-10-17",
+#   "Statement": [
+#     {
+#       "Effect": "Allow",
+#       "Principal": {
+#         "Service": "eks.amazonaws.com"
+#       },
+#       "Action": "sts:AssumeRole"
+#     }
+#   ]
+# }
+# POLICY
+# }
 
-resource "aws_iam_role_policy_attachment" "cco-AmazonEKSClusterPolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-  role       = aws_iam_role.cco-cluster.name
-}
+# resource "aws_iam_role_policy_attachment" "cco-AmazonEKSClusterPolicy" {
+#   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+#   role       = aws_iam_role.cco-cluster.name
+# }
 
-resource "aws_iam_role_policy_attachment" "cco-AmazonEKSServicePolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
-  role       = aws_iam_role.cco-cluster.name
-}
+# resource "aws_iam_role_policy_attachment" "cco-AmazonEKSServicePolicy" {
+#   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+#   role       = aws_iam_role.cco-cluster.name
+# }
 
 # K8S NODE GROUP
 resource "aws_iam_role" "cco-nodegroup" {
