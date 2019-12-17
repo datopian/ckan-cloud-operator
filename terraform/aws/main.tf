@@ -215,7 +215,7 @@ default:
       env-id: p
       default-root-domain: localhost
       dns-provider: none
-    aws-efs:
+    ckan-cloud-provider-storage-aws-efs:
       file.system.id: ${aws_efs_file_system.default.id}
   secrets:
     ckan-cloud-provider-cluster-aws:
@@ -230,7 +230,7 @@ default:
       replication-factor: "3"
     ckan-storage-config:
       default-storage-bucket: ckan
-    rds:
+    ckan-cloud-provider-db-rds:
       rds-instance-name: ${aws_db_instance.default.id}
       rds-host: ${aws_db_instance.default.address}
       admin-user: ckan
