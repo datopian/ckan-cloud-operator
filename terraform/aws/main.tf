@@ -154,7 +154,7 @@ resource "aws_db_instance" "default" {
   username             = "ckan"
   password             = random_password.rds_password.result
   vpc_security_group_ids = [aws_security_group.allow_postgres.id]
-  snapshot_identifier = "some-snap"
+  final_snapshot_identifier  = "some-snap"
   skip_final_snapshot = true
 }
 
