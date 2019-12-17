@@ -48,7 +48,7 @@ jobs:
           ./terraform init -input=false &&
           ./terraform validate &&
           ./terraform apply -input=false -auto-approve &&
-          ./terraform output cco-interactive-yaml | tee interactive.yaml
+          ./terraform output cco-interactive-yaml > interactive.yaml
         - kubectl get pods --all-namespaces
         - ckan-cloud-operator cluster initialize --interactive --cluster-provider=aws
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
