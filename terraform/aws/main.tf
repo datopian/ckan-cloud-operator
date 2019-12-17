@@ -39,6 +39,15 @@ module "eks" {
   write_kubeconfig = true
 }
 
+resource "aws_security_group_rule" "allow_inner_cluster" {
+  security_group_id = module.eks.cluster_security_group_id
+  source_security_group_id = module.eks.cluster_security_group_id
+  type = "ingress"
+  from_port = 0
+  to_port = 65535
+  protocol = "tcp"
+}
+
 # resource "aws_iam_role" "cco-cluster" {
 #   name = "eks-cluster"
 
@@ -164,7 +173,7 @@ resource "aws_security_group" "allow_postgres" {
   vpc_id      = var.vpc_id
 
   ingress {    
-    from_port = 0
+    from_port = 5432
     to_port = 5432
     protocol = "tcp"
     security_groups = [module.eks.cluster_security_group_id]
@@ -189,7 +198,7 @@ resource "aws_security_group" "allow_nfs" {
   vpc_id      = var.vpc_id
 
   ingress {    
-    from_port = 0
+    from_port = 2049
     to_port = 2049
     protocol = "tcp"
     security_groups = [module.eks.cluster_security_group_id]
