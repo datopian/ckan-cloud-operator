@@ -26,10 +26,12 @@ jobs:
         - minikube config set cpus 4 && minikube config set memory 8192 && minikube config set vm-driver none && minikube config set kubernetes-version "${K8_VERSION}" 
         - sudo minikube start
       script:
-        - ckan-cloud-operator cluster initialize --cluster-provider=minikube || travis_terminate 1;
+        - ckan-cloud-operator cluster initialize --interactive --cluster-provider=minikube
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud 
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
-      after_script:
+      after_success:
+        - minikube delete
+      after_failure:
         - minikube delete
     - name: AWS
       env:
@@ -48,7 +50,7 @@ jobs:
           ./terraform apply -input=false -auto-approve &&
           ./terraform output cco-interactive-yaml | tee interactive.yaml
         - kubectl get pods --all-namespaces
-        - ckan-cloud-operator cluster initialize --cluster-provider=aws
+        - ckan-cloud-operator cluster initialize --interactive --cluster-provider=aws
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.datagov.yaml
       after_success:
