@@ -230,7 +230,7 @@ default:
       replication-factor: "3"
     ckan-storage-config:
       default-storage-bucket: ckan
-    ckan-cloud-provider-db-rds:
+    ckan-cloud-provider-db-rds-credentials:
       rds-instance-name: ${aws_db_instance.default.id}
       rds-host: ${aws_db_instance.default.address}
       admin-user: ckan
