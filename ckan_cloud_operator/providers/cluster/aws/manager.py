@@ -122,7 +122,7 @@ def get_aws_credentials():
         'region': _config_get('aws-default-region', is_secret=True)
     }
 
-def aws_process_cmd(cmd)
+def aws_process_cmd(cmd):
     access = _config_get('aws-access-key-id', is_secret=True)
     secret = _config_get('aws-secret-access-key', is_secret=True)
     region = _config_get('aws-default-region', is_secret=True)
