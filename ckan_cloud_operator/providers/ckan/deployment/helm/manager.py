@@ -41,7 +41,7 @@ from ckan_cloud_operator.providers.ckan.constants import INSTANCE_CRD_SINGULAR
 from ckan_cloud_operator.routers import manager as routers_manager
 
 
-def initialize():
+def initialize(interactive=False):
     tiller_namespace_name = _get_resource_name()
     helm_driver.init(tiller_namespace_name)
 
@@ -57,7 +57,8 @@ def update(instance_id, instance, force=False, dry_run=False):
     )
     ckan_helm_chart_version = instance['spec'].get("ckanHelmChartVersion", "")
     ckan_helm_release_name = f'ckan-cloud-{instance_id}'
-    solr_host, solr_port = _init_solr(instance_id, dry_run=dry_run)
+    solr_schema = instance['spec'].get("ckanSorlSchema", "ckan_default")
+    solr_host, solr_port = _init_solr(instance_id, solr_schema, dry_run=dry_run,)
     logs.debug(ckan_helm_chart_repo=ckan_helm_chart_repo,
                ckan_helm_chart_version=ckan_helm_chart_version, ckan_helm_release_name=ckan_helm_release_name,
                solr_host=solr_host, solr_port=solr_port)
@@ -79,7 +80,7 @@ def update(instance_id, instance, force=False, dry_run=False):
         ckan_helm_release_name, instance_id, dry_run=dry_run
     )
     if not dry_run:
-        _wait_instance_events(instance_id, force_update_events=force)
+        _wait_instance_events(instance_id)
         instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id)
         if not annotations_manager.get_status(instance, 'helm', 'created'):
             annotations_manager.set_status(instance, 'helm', 'created')
@@ -128,11 +129,15 @@ def get(instance_id, instance=None):
     if num_resource_items > 0:
         for item in all_resources['items']:
             item_kind = item['kind']
-            if item_kind in ["Pod", "Deployment", "ReplicaSet"]:
-                item_app = item["metadata"]["labels"]["app"]
-            elif item_kind == "Service":
-                item_app = item["metadata"]["name"]
-            else:
+            try:
+                if item_kind in ("Pod", "ReplicaSet"):
+                    item_app = item["metadata"]["labels"]["app"]
+                elif item_kind in ("Service", "Deployment"):
+                    item_app = item["metadata"]["name"]
+                else:
+                    item_app = None
+            except:
+                logging.exception('Failed to extract item_app from %r', item)
                 item_app = None
             logs.debug(item_kind=item_kind, item_app=item_app)
             if item_app in ["ckan", "jobs-db", "redis", "nginx", "jobs"]:
@@ -213,8 +218,15 @@ def pre_update_hook(instance_id, instance, override_spec, skip_route=False, dry_
 
 
 def create_ckan_admin_user(instance_id, instance, user):
-    pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True)
-    assert pod_name
+    pod_name = None
+    while not pod_name:
+        try:
+            pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True, required_phase='Running')
+            break
+        except Exception as e:
+            logs.warning('Failed to find running ckan pod', str(e))
+        time.sleep(20)
+
     name, password, email = [user[k] for k in ['name', 'password', 'email']]
     logs.info(f'Creating CKAN admin user with {name} ({email}) and {password}')
     subprocess.check_call(
@@ -282,14 +294,14 @@ def _init_namespace(instance_id, dry_run=False):
             )
 
 
-def _init_solr(instance_id, dry_run=False):
+def _init_solr(instance_id, solr_schema, dry_run=False):
     logs.debug('Initializing solr', instance_id=instance_id)
     solr_status = solr_manager.get_collection_status(instance_id)
     logs.debug_yaml_dump(solr_status)
     if not solr_status['ready']:
-        logs.info('Creating solr collection', collection_name=instance_id, solr_config='ckan_28_default')
+        logs.info('Creating solr collection', collection_name=instance_id, solr_config=solr_schema)
         if not dry_run:
-            solr_manager.create_collection(instance_id, 'ckan_28_default')
+            solr_manager.create_collection(instance_id, solr_schema)
     else:
         logs.info(f'collection already exists ({instance_id})')
     solr_url = solr_status['solr_http_endpoint']
@@ -300,7 +312,7 @@ def _init_solr(instance_id, dry_run=False):
     return host, port
 
 
-def _check_instance_events(instance_id, force_update_events=False):
+def _check_instance_events(instance_id):
     status = get(instance_id)
     errors = []
     ckan_cloud_logs = []
@@ -317,35 +329,44 @@ def _check_instance_events(instance_id, force_update_events=False):
                         ckan_cloud_events.add(logdata["event"])
                 if kind == "pods":
                     pod_names.append(item["name"])
-    instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id)
-    if force_update_events or annotations_manager.get_status(instance, 'helm', 'created'):
-        logs.debug('expecting update events')
-        expected_events = {
-            "ckan-env-vars-exists", "ckan-secrets-exists", "got-ckan-secrets",
-            "ckan-entrypoint-initialized", "ckan-entrypoint-db-init-success",
-            "ckan-entrypoint-extra-init-success"
-        }
-    else:
-        logs.debug('expecting create events')
-        expected_events = {
-            "ckan-env-vars-created", "ckan-secrets-created", "got-ckan-secrets", "ckan-db-initialized",
-            "ckan-datastore-db-initialized", "ckan-entrypoint-initialized", "ckan-entrypoint-db-init-success",
-            "ckan-entrypoint-extra-init-success"
-        }
+    expected_events = {
+        ("ckan-env-vars-created", "ckan-env-vars-exists"),
+        ("ckan-secrets-created", "ckan-secrets-exists"),
+        "got-ckan-secrets",
+        "ckan-entrypoint-initialized",
+        "ckan-entrypoint-db-init-success",
+        "ckan-entrypoint-extra-init-success"
+    }
+    missing = set()
+    for events in expected_events:
+        if isinstance(events, str):
+            events = (events,)
+        found = False
+        for e in events:
+            if e in ckan_cloud_events:
+                found = True
+                break
+        if not found:
+            missing.add('/'.join(events))
     logs.debug(ckan_cloud_events=ckan_cloud_events)
-    return expected_events.difference(ckan_cloud_events)
+    return missing
 
 
-def _wait_instance_events(instance_id, force_update_events=False):
+def _wait_instance_events(instance_id):
     start_time = datetime.datetime.now()
     logs.info('Waiting for instance events', start_time=start_time)
+    missing_events = None
     while True:
         logs.debug('sleeping 15 seconds')
         time.sleep(15)
-        if len(_check_instance_events(instance_id, force_update_events)) == 0:
+        currently_missing = _check_instance_events(instance_id)
+        if len(currently_missing) == 0:
             logs.info('All instance events completed successfully')
             break
-        if (datetime.datetime.now() - start_time).total_seconds() > 600:
+        if currently_missing != missing_events:
+            missing_events = currently_missing
+            logs.info('Still waiting for', repr(sorted(missing_events)))
+        if (datetime.datetime.now() - start_time).total_seconds() > 1200:
             raise Exception('time out waiting for instance events')
 
 

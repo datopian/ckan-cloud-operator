@@ -298,6 +298,8 @@ def _get_app_type_manager(app_type):
         from . import type_provisioning as app_type_manager
     elif app_type == 'jenkins':
         from . import type_jenkins as app_type_manager
+    elif app_type == 'elk':
+        from . import type_elk as app_type_manager
     else:
         raise NotImplementedError(f'Unknown app type: {app_type}')
     return app_type_manager

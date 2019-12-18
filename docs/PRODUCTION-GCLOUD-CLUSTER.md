@@ -96,18 +96,6 @@ helm install --namespace=ckan-cloud stable/nfs-server-provisioner --name cloud-n
 Follow the ckan-cloud-operator installation and usage guide in the [README.md](/README.md) to configure ckan-cloud-operator to use with kubeconfig file.
 
 ### Initialize the cluster
-First,
-```
-kubectl create namespace ckan-cloud
-kubectl -n ckan-cloud create secret generic ckan-cloud-provider-cluster-gcloud
-kubectl -n ckan-cloud create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix=ckan-cloud
-```
-
-After that create `uptime-statuscake-api` secrets with keys "user", "key", "group" populated from StatusCake account:
-```
-kubectl -n ckan-cloud create secret generic uptime-statuscake-api --from-literal=user=<user> --from-literal=key=<key> --from-literal=group=<group>
-```
-
 Then run interactive initialization of the currently connected cluster:
 ```
 ckan-cloud-operator cluster initialize --interactive
@@ -151,15 +139,6 @@ ckan-cloud-operator cluster setup-autoscaler --help
 ```
 
 ## Optional: install sample CKAN instance
-### Put SOLR schema configs:
-```
-cd ~/dev
-git clone https://github.com/ckan/ckan.git
-# optionally switch to another branch if you don't want `master`
-# cd ~/dev/ckan && git checkout ckan-2.8.2
-ckan-cloud-operator solr zk put-configs ~/dev/ckan
-```
-
 ### Prepare Gitlab repo:
 1. Copy or fork from existing repo (for example `viderum/cloud-lithuania`)
 2. Update parameters in `.env` file inside the repo and push to master
@@ -184,7 +163,7 @@ ckan-cloud-operator db proxy port-forward --db-prefix demo
 
 ### Create instance
 ```
-ckan-cloud-operator deis-instance create from-gitlab <repo> ckan/config/schema.xml ckandemo --db-prefix demo
+ckan-cloud-operator deis-instance create from-gitlab <repo> ckan_default ckandemo
 ```
 
 Optionally add `--use-private-gitlab-repo` if the repo you passed is outside the organization you configured during cluster setup (e.g. forked to your private account). You will be asked to provide your gitlab deploy token.

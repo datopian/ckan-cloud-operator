@@ -12,6 +12,7 @@ from .constants import PROVIDER_SUBMODULE as db_provider_submodule
 from .azuresql.constants import PROVIDER_ID as db_azuresql_provider_id
 from .gcloudsql.constants import PROVIDER_ID as db_gcloudsql_provider_id
 from .rds.constants import PROVIDER_ID as db_rds_provider_id
+from .minikube.constants import PROVIDER_ID as db_minikube_provider_id
 
 
 def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None):
@@ -22,6 +23,8 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
         default_provider = db_azuresql_provider_id
     elif not default_cluster_provider or default_cluster_provider == 'gcloud':
         default_provider = db_gcloudsql_provider_id
+    elif not default_cluster_provider or default_cluster_provider == 'minikube':
+        default_provider = db_minikube_provider_id
     else:
         raise NotImplementedError(f'Unknown provider: {default_cluster_provider}')
     log_kwargs = log_kwargs or {}

@@ -2,6 +2,7 @@
 
 from .constants import PROVIDER_ID
 from ..constants import PROVIDER_SUBMODULE
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 # define common provider functions based on the constants
 from ckan_cloud_operator.providers import manager as providers_manager
@@ -20,6 +21,8 @@ def _config_interactive_set(default_values, namespace=None, is_secret=False, suf
 import subprocess
 import yaml
 import json
+import time
+import os
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -59,7 +62,7 @@ def solr_curl(path, required=False, debug=False):
                            use_first_pod=True)
     else:
         exitcode, output = kubectl.getstatusoutput(f'exec deployment-pod::{deployment_name} -- curl -s -f \'localhost:8983/solr{path}\'',
-                                                   use_first_pod=True)
+                           use_first_pod=True)
         if exitcode == 0:
             return output
         elif required:
@@ -71,6 +74,10 @@ def solr_curl(path, required=False, debug=False):
 
 
 def initialize(interactive=False, dry_run=False):
+    if cluster_manager.get_provider_id() == 'minikube':
+        config_manager.set('container-spec-overrides', '{"resources":{"limits":{"memory":"1Gi"}}}',
+            configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
+
     zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 
     _config_set('zk-host-names', yaml.dump(zk_host_names, default_flow_style=False))
@@ -87,6 +94,20 @@ def initialize(interactive=False, dry_run=False):
     _config_set('sc-main-host-name', solrcloud_host_name)
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
+    # TODO - need to check the pod names and ensure these are solrcloud ones
+    # TODO - actual number is _+ 1_ and not _+ 2_
+    expected_running = len(sc_host_names) + len(zk_host_names) + 2
+    while True:
+        pods = kubectl.get('pods')
+        running = len([x for x in pods['items']
+                       if x['status']['phase'] == 'Running'])
+        logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
+        for x in pods['items']:
+            logs.info('  - %s: %s' % (x['metadata']['name'], x['status']['phase']))
+        if running == expected_running:
+            break
+        time.sleep(30)
+
     _set_provider()
 
 
@@ -94,18 +115,12 @@ def initialize_zookeeper(interactive=False, dry_run=False):
     headless_service_name = _apply_zookeeper_headless_service(dry_run=dry_run)
     zk_instances = {suffix: {
         'host_name': suffix,
-        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=20, dry_run=dry_run),
-    } for suffix in _get_zk_suffixes()}
+        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=20, dry_run=dry_run, zone=zone),
+    } for zone, suffix in enumerate(_get_zk_suffixes())}
     zk_host_names = [zk['host_name'] for zk in zk_instances.values()]
     zk_configmap_name = _apply_zookeeper_configmap(zk_host_names)
-    if interactive:
-        logs.info('Starting interactive update of zookeeper deployments')
-        print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
-        for zk_suffix, zk in zk_instances.items():
-            if input(f'Update zookeeper deployment {zk_suffix}? [y/n]: ') == 'y':
-                _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name, dry_run=dry_run)
-    else:
-        logs.warning('deployments are not updated in non-interactive mode')
+    for zk_suffix, zk in zk_instances.items():
+        _apply_zookeeper_deployment(zk_suffix, zk['volume_spec'], zk_configmap_name, headless_service_name, dry_run=dry_run)
     namespace = cluster_manager.get_operator_namespace_name()
     return [f'{h}.{headless_service_name}.{namespace}.svc.cluster.local:2181' for h in zk_host_names]
 
@@ -115,28 +130,28 @@ def initialize_solrcloud(zk_host_names, pause_deployment, interactive=False, dry
     headless_service_name = _apply_solrcloud_headless_service(dry_run=dry_run)
     sc_instances = {suffix: {
         'host_name': suffix,
-        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=100, dry_run=dry_run)
-    } for suffix in _get_sc_suffixes()}
+        'volume_spec': _get_or_create_volume(suffix, disk_size_gb=100, dry_run=dry_run, zone=zone)
+    } for zone, suffix in enumerate(_get_sc_suffixes())}
     sc_host_names = [sc['host_name'] for sc in sc_instances.values()]
     sc_configmap_name = _apply_solrcloud_configmap(zk_host_names)
-    if interactive:
-        logs.info('Starting interactive update of solrcloud deployments')
-        print('\nDeployments will be done one by one, you should check if deployment succeeded before moving on to next one')
-        for sc_suffix, sc in sc_instances.items():
-            if input(f'Update solrcloud deployment {sc_suffix}? [y/n]: ') == 'y':
-                _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
-                                            pause_deployment, dry_run=dry_run)
-    else:
-        logs.warning('deployments are not updated in non-interactive mode')
+    for sc_suffix, sc in sc_instances.items():
+        _apply_solrcloud_deployment(sc_suffix, sc['volume_spec'], sc_configmap_name, sc_logs_configmap_name, headless_service_name,
+                                    pause_deployment, dry_run=dry_run)
     return sc_host_names
 
 
 def _get_zk_suffixes():
-    return ['zk-0', 'zk-1', 'zk-2']
+    if cluster_manager.get_provider_id() != 'minikube':
+        return ['zk-0', 'zk-1', 'zk-2']
+    else:
+        return ['zk-0']
 
 
 def _get_sc_suffixes():
-    return ['sc-3', 'sc-4', 'sc-5']
+    if cluster_manager.get_provider_id() != 'minikube':
+        return ['sc-3', 'sc-4', 'sc-5']
+    else:
+        return ['sc-3']
 
 
 def _apply_zookeeper_configmap(zk_host_names):
@@ -213,6 +228,9 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
             'replicas': 1,
             'revisionHistoryLimit': 2,
             'strategy': {'type': 'Recreate', },
+            'selector': {
+                'matchLabels': _get_resource_labels(for_deployment=True, suffix='zk'),
+            },
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix='zk'),
@@ -249,7 +267,7 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
                                 'failureThreshold': 3, 'initialDelaySeconds': 15, 'periodSeconds': 10,
                                 'successThreshold': 1, 'timeoutSeconds': 5
                             },
-                            'resources': {'requests': {'cpu': '0.5', 'memory': '1Gi'}, 'limits': {'memory': '2Gi'}},
+                            'resources': {'limits': {'memory': '200Mi'}},
                             'volumeMounts': [
                                 {'mountPath': '/var/lib/zookeeper', 'name': 'datadir'},
                             ],
@@ -274,6 +292,9 @@ def _apply_zoonavigator_deployment(dry_run=False):
         {
             'replicas': 1,
             'revisionHistoryLimit': 2,
+            'selector': {
+                'matchLabels': _get_resource_labels(for_deployment=True, suffix=suffix),
+            },
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix=suffix),
@@ -313,7 +334,7 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
     namespace = cluster_manager.get_operator_namespace_name()
     container_spec_overrides = config_manager.get('container-spec-overrides', configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config',
                                                   required=False, default=None)
-    resources = {'requests': {'cpu': '1', 'memory': '4Gi'}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}} if not container_spec_overrides else {}
+    resources = {'requests': {'cpu': '1', 'memory': '1Gi'}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}} if not container_spec_overrides else {}
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='sc'),
@@ -321,6 +342,9 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
             'replicas': 1,
             'revisionHistoryLimit': 2,
             'strategy': {'type': 'Recreate', },
+            'selector': {
+                'matchLabels': _get_resource_labels(for_deployment=True, suffix='sc'),
+            },
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix='sc'),
@@ -466,7 +490,7 @@ def _apply_solrcloud_service(dry_run=False):
     return service_name
 
 
-def _get_or_create_volume(suffix, disk_size_gb, dry_run=False):
+def _get_or_create_volume(suffix, disk_size_gb, dry_run=False, zone=0):
     volume_spec_config_key = f'volume-spec-{suffix}'
     volume_spec = _config_get(volume_spec_config_key, required=False)
     if volume_spec:
@@ -474,7 +498,7 @@ def _get_or_create_volume(suffix, disk_size_gb, dry_run=False):
     else:
         assert not dry_run, 'creating a new volume is not supported for dry_run'
         from ckan_cloud_operator.providers.cluster import manager as cluster_manager
-        volume_spec = cluster_manager.create_volume(disk_size_gb, _get_resource_labels(suffix=suffix))
+        volume_spec = cluster_manager.create_volume(disk_size_gb, _get_resource_labels(suffix=suffix), zone=zone)
         _config_set(volume_spec_config_key, yaml.dump(volume_spec, default_flow_style=False))
     if dry_run:
         print(yaml.dump(volume_spec, default_flow_style=False))

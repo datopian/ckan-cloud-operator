@@ -7,5 +7,7 @@ tests/data
 __pycache__
 *.pyc
 .checkpoints
-data
+/data
 .coverage
+.pytest_cache/
+.vscode/
