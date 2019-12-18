@@ -133,7 +133,12 @@ def _apply_deployment(db_prefix=None):
                                 }
                             }
                         }
-                    ]
+                    ],
+                    'selector': {
+                        'matchLabels': {
+                            'app': 'provider-db-proxy-azuresql'
+                        }
+                    }
                 }
             }
         }
