@@ -36,7 +36,7 @@ class RoutersManagerTestCase(unittest.TestCase):
                 'name': 'datapusher',
             },
             'spec': {
-                'default-root-domain': 'default',
+                'default-root-domain': None,
                 'type': 'traefik',
                 'cloudflare': {
                 },
