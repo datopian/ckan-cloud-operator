@@ -16,7 +16,7 @@ ckanGunicornWorkers: 2
 ckanHelmChartVersion: v0.0.14-rc4
 # debugMode: NO
 
-ckanImage: viderum/ckan-cloud-docker:ckan-c55820d32b4f872f308cb5f209556c00553d0ff8-datagov-theme
+ckanImage: viderum/ckan-cloud-docker:ckan-6b82d719a408c6ef1ab7ad9ea291f5da992a1135-datagov-theme
 ckanJobsDbResources: '{"requests": {"cpu": "20m", "memory": "50Mi"}, "limits": {"memory":
   "200Mi"}}'
 ckanJobsDbTerminationGracePeriodSeconds: 30
