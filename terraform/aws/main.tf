@@ -14,6 +14,7 @@ variable "cluster_name" {
 # AWS GENERIC
 provider "aws" {
   region  = var.region
+  version = "2.42.0"
 }
 
 # VPC DATA
@@ -44,8 +45,8 @@ resource "aws_security_group_rule" "allow_inner_cluster" {
   source_security_group_id = module.eks.cluster_security_group_id
   type = "ingress"
   from_port = 0
-  to_port = 65535
-  protocol = "tcp"
+  to_port = 0
+  protocol = "-1"
 }
 
 # resource "aws_iam_role" "cco-cluster" {
@@ -176,7 +177,14 @@ resource "aws_security_group" "allow_postgres" {
     from_port = 5432
     to_port = 5432
     protocol = "tcp"
-    security_groups = [module.eks.cluster_security_group_id]
+    security_groups = [data.aws_eks_cluster.cluster.vpc_config.0.cluster_security_group_id]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
@@ -201,7 +209,14 @@ resource "aws_security_group" "allow_nfs" {
     from_port = 2049
     to_port = 2049
     protocol = "tcp"
-    security_groups = [module.eks.cluster_security_group_id]
+    security_groups = [data.aws_eks_cluster.cluster.vpc_config.0.cluster_security_group_id]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
