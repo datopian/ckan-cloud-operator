@@ -39,6 +39,7 @@ jobs:
         - CCO_INTERACTIVE_CI=interactive.yaml
         - HELM_VERSION=v2.16.1
         - KUBECONFIG=kubeconfig_terraform-cco
+        - AWS_DEFAULT_REGION=eu-west-2
         - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc=" 
         - secure: "K4IUX35tZr3kAEsy6Af3HlJqQDVywoHKPPq4dhZo9EyAcDASEn3jm8dg8re2DNdvOriiUkSrFQyl5WDqbsJaK+nBoGC0eH0b+lzEzGE7Fh/+sm39dmEt29EVXymIutjGYnCiz5dTJKng2VouT2CzgUude8vYUT/bDuYZZmfhA+iS/Bk+X2ex2dknepe7ODnBSgK5YDr82HLZUIn0GhlZ6pHDKhUw0qObQovYhIT5nTcHPgM+m2DFDuo19v9eUCyzPc3YoIMVhInz9BkvhYF1JgeRFvr9cSz27CSnPEx7aJVd4H6xIh4sII/RUOicFvcNiUlALogxr8Vt0swstlvHnjuISkrzW84k2oe5aBf19f7yXAUKWGrhlTz8dsr1TUqGyAc2FYzILpNc0Gl7UwvO2jUam+G/Um1R9k8n8napDG1WSxryc/Fxpfa/FipTv7JaboudmV+6HfsdtrbXoSq2edQ27N3gbMBh5FWeD82NwmxEtQ4GOhhxCjKuVrs8bzIWNvzE6BEQL8fVhYZ0jFJ8Po22gx/gsFva1p9sgGkGXzCBxqT9xaOYOeDRxv1lEjGZth7+N61MPbR2G04B+/AopI/3iQiDuncrgj6hWrPLwYCJRVuxG+UU/S+cFS+G4x4wltOF05eKB3VbAEAg1J5VmpoQpYB1IbtN2wC8LbXVGhE="
       before_install: pip install -e .
@@ -55,10 +56,10 @@ jobs:
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.datagov.yaml
       after_success:
-        - for vid in `aws ec2 describe-volumes --filter Name=tag:Owner,Values=cco | jq '.Volumes[] | .VolumeId' -r` ; do echo $vid ; aws ec2 delete-volume --volume-id "$vid"; done
+        - for vid in `aws ec2 describe-volumes | jq '.Volumes[] | .VolumeId' -r` ; do echo $vid ; aws ec2 delete-volume --volume-id "$vid"; done
         - ./terraform destroy -auto-approve
       after_failure:
-        - for vid in `aws ec2 describe-volumes --filter Name=tag:Owner,Values=cco | jq '.Volumes[] | .VolumeId' -r` ; do echo $vid ; aws ec2 delete-volume --volume-id "$vid"; done
+        - for vid in `aws ec2 describe-volumes | jq '.Volumes[] | .VolumeId' -r` ; do echo $vid ; aws ec2 delete-volume --volume-id "$vid"; done
         - ./terraform destroy -auto-approve
     - stage: Deploy
       if: branch = master OR tag IS present
