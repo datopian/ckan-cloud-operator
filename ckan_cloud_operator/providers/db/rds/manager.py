@@ -35,7 +35,7 @@ def initialize(db_prefix=None, interactive=False):
         'rds-instance-name': '',
         'rds-host': '',
         'admin-user': '',
-        'admin-password': ''
+        'admin-password': '',
     }
     if interactive:
         print("\n"

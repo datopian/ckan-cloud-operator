@@ -13,7 +13,7 @@ authUser_delete_organizations: "false"
 centralizedSecretName: ckan-infra
 ckanAdminEmail: adam.kariv@datopian.com
 ckanGunicornWorkers: 2
-ckanHelmChartVersion: v0.0.14-rc2
+ckanHelmChartVersion: v0.0.14-rc4
 # debugMode: NO
 
 ckanImage: viderum/ckan-cloud-docker:ckan-c55820d32b4f872f308cb5f209556c00553d0ff8-datagov-theme

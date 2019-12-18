@@ -55,8 +55,10 @@ jobs:
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.datagov.yaml
       after_success:
+        - for vid in `aws ec2 describe-volumes --filter Name=tag:Owner,Values=cco | jq '.Volumes[] | .VolumeId' -r` ; do echo $vid ; aws ec2 delete-volume --volume-id "$vid"; done
         - ./terraform destroy -auto-approve
       after_failure:
+        - for vid in `aws ec2 describe-volumes --filter Name=tag:Owner,Values=cco | jq '.Volumes[] | .VolumeId' -r` ; do echo $vid ; aws ec2 delete-volume --volume-id "$vid"; done
         - ./terraform destroy -auto-approve
     - stage: Deploy
       if: branch = master OR tag IS present

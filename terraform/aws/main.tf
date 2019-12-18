@@ -160,8 +160,8 @@ resource "aws_db_instance" "default" {
   engine               = "postgres"
   engine_version       = "11.5"
   instance_class       = "db.m4.large"
-  name                 = replace("${var.cluster_name}-db", "-", "_")
-  username             = "ckan"
+  name                 = "ckan"
+  username             = "ckan_admin"
   password             = random_password.rds_password.result
   vpc_security_group_ids = [aws_security_group.allow_postgres.id]
   final_snapshot_identifier  = "some-snap"
@@ -248,7 +248,7 @@ default:
     ckan-cloud-provider-db-rds-credentials:
       rds-instance-name: ${aws_db_instance.default.id}
       rds-host: ${aws_db_instance.default.address}
-      admin-user: ckan
+      admin-user: ${aws_db_instance.default.username}
       admin-password: "${random_password.rds_password.result}"
 YAML
 }
