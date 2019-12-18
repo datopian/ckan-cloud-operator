@@ -143,7 +143,8 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=0):
     assert not use_existing_disk_name, 'using existing disk name is not supported yet'
     availability_zone = get_storage_availability_zone(zone)
     logs.info(f'creating persistent disk with size {disk_size_gb} in availability zone {availability_zone}')
-    data = json.loads(aws_check_output(f'ec2 create-volume -- --size {disk_size_gb} --availability-zone {availability_zone}'))
+    tags = 'ResourceType=volume,Tags=[{Key=Owner,Value=cco}]'
+    data = json.loads(aws_check_output(f'ec2 create-volume -- --size {disk_size_gb} --availability-zone {availability_zone} --tag-specification "{tags}"'))
     volume_id = data['VolumeId']
     logs.info(f'volume_id={volume_id}')
     kubectl.apply({
