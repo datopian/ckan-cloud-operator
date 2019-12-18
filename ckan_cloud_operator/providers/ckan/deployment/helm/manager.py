@@ -41,6 +41,9 @@ from ckan_cloud_operator.providers.ckan.constants import INSTANCE_CRD_SINGULAR
 from ckan_cloud_operator.routers import manager as routers_manager
 
 
+DESPAIR_TIMEOUT = 38 # 9.5 minutes, as after 10 minutes travis will fail the build
+
+
 def initialize(interactive=False):
     tiller_namespace_name = _get_resource_name()
     helm_driver.init(tiller_namespace_name)
@@ -356,6 +359,7 @@ def _wait_instance_events(instance_id):
     start_time = datetime.datetime.now()
     logs.info('Waiting for instance events', start_time=start_time)
     missing_events = None
+    despair_counter = DESPAIR_TIMEOUT
     while True:
         logs.debug('sleeping 15 seconds')
         time.sleep(15)
@@ -366,8 +370,10 @@ def _wait_instance_events(instance_id):
         if currently_missing != missing_events:
             missing_events = currently_missing
             logs.info('Still waiting for', repr(sorted(missing_events)))
-        if (datetime.datetime.now() - start_time).total_seconds() > 1200:
-            raise Exception('time out waiting for instance events')
+            despair_counter = DESPAIR_TIMEOUT
+        despair_counter -= 1
+        if despair_counter == 0:
+            raise Exception('timed out waiting for instance events')
 
 
 def _pre_update_hook_admin_user(instance, sub_domain, root_domain, instance_id, res, dry_run=False):
