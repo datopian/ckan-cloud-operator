@@ -161,7 +161,7 @@ resource "aws_db_instance" "default" {
   engine_version       = "11.5"
   instance_class       = "db.m4.large"
   name                 = "ckan"
-  username             = "ckan_admin"
+  username             = "ckan"
   password             = random_password.rds_password.result
   vpc_security_group_ids = [aws_security_group.allow_postgres.id]
   final_snapshot_identifier  = "some-snap"
