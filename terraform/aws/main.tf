@@ -27,11 +27,16 @@ data "aws_subnet_ids" "selected" {
 }
 
 # K8S CLUSTER
+resource "random_password" "cluster_name_suffix" {
+  length = 4
+  special = false
+}
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "7.0.1"
 
-  cluster_name    = var.cluster_name
+  cluster_name    = "${var.cluster_name}-${random_password.cluster_name_suffix.result}"
   cluster_version = "1.14"
 
   subnets = data.aws_subnet_ids.selected.ids
@@ -51,7 +56,7 @@ resource "aws_security_group_rule" "allow_inner_cluster" {
 
 # K8S NODE GROUP
 resource "aws_iam_role" "cco-nodegroup" {
-  name = "eks-node-group"
+  name = "eks-node-group-${random_password.cluster_name_suffix.result}"
 
   assume_role_policy = jsonencode({
     Statement = [{
@@ -140,7 +145,7 @@ resource "aws_db_instance" "default" {
 }
 
 resource "aws_security_group" "allow_postgres" {
-  name        = "allow_postgres"
+  name        = "allow_postgres-${random_password.cluster_name_suffix.result}"
   description = "Allow Postgres inbound traffic"
   vpc_id      = var.vpc_id
 
@@ -172,7 +177,7 @@ resource "aws_efs_mount_target" "default" {
 }
 
 resource "aws_security_group" "allow_nfs" {
-  name        = "allow_nfs"
+  name        = "allow_nfs-${random_password.cluster_name_suffix.result}"
   description = "Allow NFS inbound traffic"
   vpc_id      = var.vpc_id
 
