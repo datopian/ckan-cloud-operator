@@ -43,6 +43,7 @@ module "eks" {
   vpc_id = var.vpc_id
 
   write_kubeconfig = true
+  config_output_path = "./kubeconfig_terraform-cco"
 }
 
 resource "aws_security_group_rule" "allow_inner_cluster" {
