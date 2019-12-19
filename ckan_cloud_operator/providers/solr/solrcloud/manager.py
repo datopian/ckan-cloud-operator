@@ -94,13 +94,11 @@ def initialize(interactive=False, dry_run=False):
     _config_set('sc-main-host-name', solrcloud_host_name)
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
-    # TODO - need to check the pod names and ensure these are solrcloud ones
-    # TODO - actual number is _+ 1_ and not _+ 2_
-    expected_running = len(sc_host_names) + len(zk_host_names) + 2
+    expected_running = len(sc_host_names) + len(zk_host_names)
     while True:
         pods = kubectl.get('pods')
         running = len([x for x in pods['items']
-                       if x['status']['phase'] == 'Running'])
+                       if x['status']['phase'] == 'Running' and ('solrcloud-zk' in x['metadata']['name'] or 'solrcloud-sc' in x['metadata']['name'])])
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
         for x in pods['items']:
             logs.info('  - %s: %s' % (x['metadata']['name'], x['status']['phase']))
