@@ -110,9 +110,11 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
                 'root-domain': root_domain,
                 'sub-domain': sub_domain
             })
+            logs.info(f'updating routers_manager wait_ready: {wait_ready}')
             routers_manager.update('instances-default', wait_ready)
         else:
             logs.info('skipping route creation', skip_route=skip_route, sub_domain=pre_update_hook_data.get('sub-domain'))
+        logs.info('creating ckan admin')
         ckan_admin_email = pre_update_hook_data.get('ckan-admin-email')
         ckan_admin_password = pre_update_hook_data.get('ckan-admin-password')
         ckan_admin_name = pre_update_hook_data.get('ckan-admin-name', 'admin')

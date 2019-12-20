@@ -13,67 +13,49 @@ authUser_delete_organizations: "false"
 centralizedSecretName: ckan-infra
 ckanAdminEmail: adam.kariv@datopian.com
 ckanGunicornWorkers: 2
-ckanHelmChartVersion: v0.0.11-rc12
+ckanHelmChartVersion: v0.0.14-rc2
+# debugMode: NO
 
-ckanImage: viderum/ckan-cloud-docker:ckan-e4716b4194d3f7be8497940cacb0debf42a744b9-datagov-theme
+ckanImage: viderum/ckan-cloud-docker:ckan-c55820d32b4f872f308cb5f209556c00553d0ff8-datagov-theme
 ckanJobsDbResources: '{"requests": {"cpu": "20m", "memory": "50Mi"}, "limits": {"memory":
   "200Mi"}}'
 ckanJobsDbTerminationGracePeriodSeconds: 30
-ckanJobsResources: '{"requests": {"cpu": "150m", "memory": "600Mi"}, "limits": {"memory":
+ckanJobsResources: '{"requests": {"cpu": "150m", "memory": "400Mi"}, "limits": {"memory":
   "1500Mi"}}'
 ckanJobsTerminationGracePeriodSeconds: 30
 ckanLivenessPeriodSeconds: 300
-ckanPlugins: stats text_view image_view recline_view datastore xloader logstash
-  datajson archiver report dcat dcat_json_interface structured_data geodatagov geodatagov_miscs
-  spatial_metadata spatial_query usmetadata
-ckanResources: '{"requests": {"cpu": "400m", "memory": "1200Mi"}, "limits": {"memory":
+ckanPlugins: stats text_view image_view recline_view datastore xloader
+ckanResources: '{"requests": {"cpu": "400m", "memory": "400Mi"}, "limits": {"memory":
   "2Gi"}}'
 ckanStorageClassName: cca-ckan
 dataStoreDbPersistentDiskSizeGB: 20
-datastoreDbResources: '{"requests": {"cpu": "100m", "memory": "300Mi"}, "limits":
+datastoreDbResources: '{"requests": {"cpu": "100m", "memory": "200Mi"}, "limits":
   {"memory": "600Mi"}}'
 datastoreDbTerminationGracePeriodSeconds: 30
 dbPersistentDiskSizeGB: 20
-dbResources: '{"requests": {"cpu": "100m", "memory": "300Mi"}, "limits": {"memory":
+dbResources: '{"requests": {"cpu": "100m", "memory": "200Mi"}, "limits": {"memory":
   "600Mi"}}'
 dbTerminationGracePeriodSeconds: 30
 displayTimezone: America/New_York
-domain: ckan-cloud-logging-test-5da8256e.datagov.us
-extraCkanConfig: |-
-  ## datajson settings
-  ckanext.datajson.inventory_links_enabled = True
-  ckanext.datajson.url_enabled = False
-  ## Datagov settings
-  ckanext.geodatagov.dynamic_menu.url_default = http://www.data.gov/app/plugins/datagov-custom/wp_download_links.php
-  ckanext.geodatagov.dynamic_menu.url =
-  ckanext.geodatagov.bureau_csv.url_default = https://project-open-data.cio.gov/data/omb_bureau_codes.csv
-  ckanext.geodatagov.bureau_csv.url = https://project-open-data.cio.gov/data/omb_bureau_codes.csv
-  ## Harvest settings
-  ckan.harvest.mq.type = redis
-  ckan.harvest.mq.hostname = redis
-  ckan.harvest.mq.redis_db = 9
-  ## logstash
-  logstash.kind = tcp
-  logstash.host = logstash-application.elk
-  logstash.port = 5044
+domain: a-ckan-instance.ckanhost.com
 favIcon: /base/images/ckan.ico
-id: logging-test-5da8256e
+id: a-ckan-instance
 jobsDbPersistentDiskSizeGB: 5
 kind: datapusher
-name: ckan-cloud-ckaninstance-logging-test-5da8256e
-nginxReplicas: 2
+name: a-ckan-instance
+nginxReplicas: 1
 nginxResources: '{"requests": {"cpu": "60m", "memory": "300Mi"}, "limits": {"memory":
   "800Mi"}}'
 provisioningKindTitle: DataPusher / Catalog
 ready: true
 redisResources: '{"requests": {"cpu": "15m", "memory": "100Mi"}, "limits": {"memory":
   "300Mi"}}'
-registerSubdomain: ckan-cloud-logging-test-5da8256e
-replicas: 2
+registerSubdomain: a-ckan-instance
+replicas: 1
 siteDescription: Staging environment
 siteLogo: /base/images/ckan-logo.png
-siteTitle: Logging Test
-siteUrl: https://ckan-cloud-logging-test-5da8256e.datagov.us
+siteTitle: A Sample CKAN Image
+siteUrl: https://a-ckan-instance.ckanhost.com
 solrPersistentDiskSizeGB: 10
 solrResources: '{"requests": {"cpu": "60m", "memory": "600Mi"}, "limits": {"memory":
   "1Gi"}}'
@@ -82,4 +64,3 @@ terminationGracePeriodSeconds: 30
 useCentralizedInfra: true
 usePersistentVolumes: true
 withSansSSL: true
-

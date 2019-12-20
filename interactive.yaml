@@ -1,0 +1,13 @@
+default:
+  config:
+    routers-config:
+      env-id: p
+      default-root-domain: localhost
+      dns-provider: none
+  secrets:
+    solr-config:
+      self-hosted: y
+      num-shards: "1"
+      replication-factor: "1"
+    ckan-storage-config:
+      default-storage-bucket: ckan

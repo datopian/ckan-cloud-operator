@@ -49,10 +49,12 @@ def print_info(debug=False, minimal=False):
 
 
 def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None, skip_to=None):
-    if interactive and not skip_to:
+    if interactive:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)
         input('Verify you are connected to the right cluster and press <RETURN> to continue')
+
+    if not skip_to:
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
         assert default_cluster_provider in ['gcloud', 'aws', 'minikube'], f'invalid cluster provider: {default_cluster_provider}'
@@ -173,13 +175,13 @@ def get_provider_id():
     return providers_manager.get_provider_id('cluster', default='gcloud')
 
 
-def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
+def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=0):
     assert len(labels) > 0, 'must provide some labels to identify the volume'
     labels = dict(
         labels,
         **labels_manager.get_resource_labels(label_suffixes=_get_cluster_volume_label_suffixes())
     )
-    return get_provider().create_volume(disk_size_gb, labels, use_existing_disk_name=use_existing_disk_name)
+    return get_provider().create_volume(disk_size_gb, labels, use_existing_disk_name=use_existing_disk_name, zone=zone)
 
 
 def get_or_create_multi_user_volume_claim(label_suffixes):

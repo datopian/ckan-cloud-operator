@@ -1,4 +1,6 @@
 import base64
+import os
+import yaml
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -108,6 +110,26 @@ def list_configs(namespace=None, full=False, show_secrets=False):
                     data['values'] = None
             yield data
 
+def get_preset_answer(namespace, configmap_name, secret_name, key):
+    interactive_file = os.environ.get('CCO_INTERACTIVE_CI')
+    if not interactive_file:
+        return
+    answers = yaml.load(open(interactive_file))
+    section = '?'
+    subsection = '?'
+    namespace = namespace or 'default'
+    try:
+        if configmap_name:
+            section = 'config'
+            subsection = configmap_name
+        else:
+            section = 'secrets'
+            subsection = secret_name
+        return answers[namespace][section][subsection][key]
+    except:
+        logs.error(f'Failed to find in interactive file value for {namespace}.{section}.{subsection}.{key}')
+        raise
+
 
 def interactive_set(default_values, secret_name=None, configmap_name=None, namespace=None, from_file=False,
                     extra_operator_labels=None, interactive=True):
@@ -116,7 +138,10 @@ def interactive_set(default_values, secret_name=None, configmap_name=None, names
     set_values = {}
     for key, default_value in default_values.items():
         saved_value = get(key, secret_name=secret_name, configmap_name=configmap_name, namespace=namespace)
-        if interactive:
+        preset_value = get_preset_answer(namespace, configmap_name, secret_name, key)
+        if preset_value:
+            set_values[key] = preset_value
+        elif interactive:
             if saved_value:
                 if from_file:
                     msg = ', leave empty to use the saved value'
