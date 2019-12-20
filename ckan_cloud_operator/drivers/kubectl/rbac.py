@@ -46,7 +46,7 @@ def update_admin_cluster_role(name, labels):
     ], labels)
 
 
-def update_cluster_role_binding(name, service_account_namespace, service_account_name,
+def update_cluster_role_binding(name, subject,
                                 cluster_role_name, labels):
     resource = {
         'apiVersion': 'rbac.authorization.k8s.io/v1',
@@ -55,13 +55,7 @@ def update_cluster_role_binding(name, service_account_namespace, service_account
             'name': name,
             'labels': labels
         },
-        'subjects': [
-            {
-                'kind': 'User',
-                'name': f'system:serviceaccount:{service_account_namespace}:{service_account_name}',
-                'apiGroup': 'rbac.authorization.k8s.io'
-            }
-        ],
+        'subjects': [subject],
         'roleRef': {
             'kind': 'ClusterRole',
             'name': cluster_role_name,
