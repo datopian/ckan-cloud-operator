@@ -17,6 +17,14 @@ elif [ "${1}" == "install-tools" ]; then
       echo Minikube Installed Successfully!
     fi
 
+    if [ "${K8_PROVIDER}" == "azure" ]; then
+      # Install terraform
+      echo Installing Terraform
+      (cd terraform/azure/ && \
+        curl -o tf.zip https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip && \
+        unzip tf.zip && \
+        ./terraform version)
+   fi
     curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
     chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
     echo Kubectl Installed Successfully!
