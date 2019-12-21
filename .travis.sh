@@ -24,6 +24,11 @@ elif [ "${1}" == "install-tools" ]; then
         curl -o tf.zip https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip && \
         unzip tf.zip && \
         ./terraform version)
+      echo Terraform Installed Successfully!
+
+      # Intall Azure CLI and login
+      curl -L https://aka.ms/InstallAzureCli | bash
+      echo Azure CLI Installed Successfully!
    fi
     curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
     chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
