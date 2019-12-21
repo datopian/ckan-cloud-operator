@@ -39,6 +39,31 @@ def initialize(interactive=False):
         _config_interactive_set({'azure-cluster-name': None}, is_secret=False)
     else:
         logs.info('Skipping initial cluster set up as `--interactive` flag was not set')
+    _create_storage_classes()
+
+def _create_storage_classes():
+    kubectl.apply({
+        'apiVersion': 'storage.k8s.io/v1', 'kind': 'StorageClass',
+        'metadata': {
+            'name': 'cca-ckan',
+        },
+        'provisioner': 'cluster.local/cloud-nfs-nfs-server-provisioner',
+        'reclaimPolicy': 'Delete',
+        'volumeBindingMode': 'Immediate',
+        'AllowVolumeExpansion': True
+    })
+    kubectl.apply({
+        'apiVersion': 'storage.k8s.io/v1', 'kind': 'StorageClass',
+        'metadata': {
+            'name': 'cca-storage',
+        },
+        'provisioner': 'kubernetes.io/azure-disk',
+        'volumeBindingMode': 'Immediate',
+        'parameters': {
+            'skuName': 'Standard_LRS',
+            'storageAccount': 'k8ssbxgdxdata',
+        }
+    })
 
 
 def get_info(debug=False):

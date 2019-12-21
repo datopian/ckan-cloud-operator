@@ -37,7 +37,6 @@ jobs:
         - CCO_INTERACTIVE_CI=interactive.yaml
         - HELM_VERSION=v2.16.1
         - KUBECONFIG=kubeconfig_terraform-cco
-        - AWS_DEFAULT_REGION=eu-west-2
       before_install: pip install -e .
       install: bash .travis.sh install-tools
       script:
@@ -49,7 +48,6 @@ jobs:
           ./terraform output kube_config > kubeconfig_terraform-cco
         - cat kubeconfig_terraform-cco
         - kubectl get pods --all-namespaces
-        - bash ../../helm_init.sh
         - ckan-cloud-operator cluster initialize --interactive --cluster-provider=azure
         - kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.datagov.yaml

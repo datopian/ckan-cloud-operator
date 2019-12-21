@@ -3,16 +3,29 @@
 variable "client_id" {}
 variable "client_secret" {}
 
+variable "location" {
+  default  = "North Europe"
+}
+
+variable "cluster_name" {
+   default = "terraform-cco"
+}
+
+resource "random_password" "cluster_name_suffix" {
+  length = 4
+  special = false
+}
+
 resource "azurerm_resource_group" "ckan_cloud_k8" {
   name     = "CkanCLoudk8Test"
-  location = "North Europe"
+  location = var.location
 }
 
 resource "azurerm_kubernetes_cluster" "ckan_cloud_k8" {
-  name                = "ckan-cloud-test"
+  name                = "${var.cluster_name}-${random_password.cluster_name_suffix.result}"
   location            = azurerm_resource_group.ckan_cloud_k8.location
   resource_group_name = azurerm_resource_group.ckan_cloud_k8.name
-  dns_prefix          = "ckan-cloud-test-dns"
+  dns_prefix          = "${var.cluster_name}-${random_password.cluster_name_suffix.result}-dns"
 
   default_node_pool {
     name       = "default"
@@ -21,10 +34,9 @@ resource "azurerm_kubernetes_cluster" "ckan_cloud_k8" {
   }
 
   service_principal {
-    client_id     = "${var.client_id}"
-    client_secret = "${var.client_secret}"
+    client_id     = var.client_id
+    client_secret = var.client_secret
   }
-
 }
 
 output "client_certificate" {
@@ -40,18 +52,18 @@ output "kube_config" {
 
 resource "random_password" "azuresql_password" {
   length = 16
-  special = false
+  special = true
 }
 
 resource "azurerm_resource_group" "ckan_cloud_db" {
   name     = "CkanCLoudk8Test"
-  location = "North Europe"
+  location = var.location
 }
 
 resource "azurerm_postgresql_server" "ckan_cloud_db" {
-  name                = "ckan-cloud-db-test"
-  location            = "${azurerm_resource_group.ckan_cloud_db.location}"
-  resource_group_name = "${azurerm_resource_group.ckan_cloud_db.name}"
+  name                = "${var.cluster_name}-${random_password.cluster_name_suffix.result}-db"
+  location            = azurerm_resource_group.ckan_cloud_db.location
+  resource_group_name = azurerm_resource_group.ckan_cloud_db.name
 
   sku {
     name     = "B_Gen5_2"
@@ -73,9 +85,9 @@ resource "azurerm_postgresql_server" "ckan_cloud_db" {
 }
 
 resource "azurerm_postgresql_database" "ckan_cloud_db" {
-  name                = "ckan_cloud_db"
-  resource_group_name = "${azurerm_resource_group.ckan_cloud_db.name}"
-  server_name         = "${azurerm_postgresql_server.ckan_cloud_db.name}"
+  name                = "ckan_cloud"
+  resource_group_name = azurerm_resource_group.ckan_cloud_db.name
+  server_name         = azurerm_postgresql_server.ckan_cloud_db.name
   charset             = "UTF8"
   collation           = "English_United States.1252"
 }
