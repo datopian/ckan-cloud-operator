@@ -205,8 +205,8 @@ default:
   config:
     routers-config:
       env-id: p
-      default-root-domain: localhost
-      dns-provider: none
+      default-root-domain: ckan-aws-testing.gq
+      dns-provider: route53
     ckan-cloud-provider-storage-aws-efs:
       file.system.id: ${aws_efs_file_system.default.id}
   secrets:
