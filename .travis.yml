@@ -43,12 +43,13 @@ jobs:
       install: bash .travis.sh install-tools
       script:
         - az login -u $AZ_USER -p $AZ_PASSWORD
+        - terraform
         - cd terraform/azure &&
-          ./terraform init -input=false &&
-          ./terraform validate &&
-          ./terraform apply -input=false -auto-approve &&
-          ./terraform output cco-interactive-yaml > interactive.yaml &&
-          ./terraform output kube_config > kubeconfig_terraform-cco
+          terraform init -input=false &&
+          terraform validate &&
+          terraform apply -input=false -auto-approve &&
+          terraform output cco-interactive-yaml > interactive.yaml &&
+          terraform output kube_config > kubeconfig_terraform-cco
         - cat kubeconfig_terraform-cco
         - kubectl get pods --all-namespaces
         - ckan-cloud-operator cluster initialize --interactive --cluster-provider=azure
