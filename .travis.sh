@@ -19,10 +19,9 @@ elif [ "${1}" == "install-tools" ]; then
 
     if [ "${K8_PROVIDER}" == "azure" ]; then
       # Install  terraform
-      wget -O terraform.zip https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip &&\
+      wget -O ს.zip https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip &&\
       unzip terraform.zip -d /tmp &&\
-      sudo mv /tmp/terraform /usr/local/bin/ &&\
-      terraform
+      sudo mv /tmp/terraform /usr/local/bin/
 
       echo Terraform Installed Successfully!
 
