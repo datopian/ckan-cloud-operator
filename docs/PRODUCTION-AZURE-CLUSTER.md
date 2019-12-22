@@ -30,38 +30,6 @@ Click on the cluster and then on kubeconfig file.
 
 Download the file locally.
 
-## Create multi-user storage class
-
-This is used for small volume storage for shared configurations / infrastructure
-
-1. Create service account for Tiller:
-```
-kubectl -n kube-system create sa tiller
-kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
-helm init --service-account tiller
-```
-
-2. Download and init helm on your cluster:
-```
-curl -LO https://git.io/get_helm.sh
-chmod 700 get_helm.sh
-./get_helm.sh
-helm init
-helm repo update
-```
-
-3. Deploy `nfs-server-provisioner` helm chart (can use Rancher catalog app) with the following values:
-```
-persistence.enabled = true
-persistence.size = 500Gi
-storageClass.name = cca-ckan
-```
-
-Or from command line:
-```
-helm install --namespace=ckan-cloud stable/nfs-server-provisioner --name cloud-nfs --set=persistence.enabled=true,persistence.size=500Gi,storageClass.name=cca-ckan
-```
-
 ## Initialize a new ckan-cloud-operator environment
 
 ### Prerequisites

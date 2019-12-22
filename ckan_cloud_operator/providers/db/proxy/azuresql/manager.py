@@ -95,6 +95,7 @@ def start_port_forward(db_prefix=None):
 
 def _apply_deployment(db_prefix=None):
     db_host = config_manager.get(secret_name='ckan-cloud-provider-db-azuresql-credentials')['azuresql-host']
+    app_name = _get_resource_labels(for_deployment=True, suffix=db_prefix or '').get('app')
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix=db_prefix),
         _get_resource_labels(for_deployment=True, suffix=db_prefix or ''),
@@ -104,7 +105,7 @@ def _apply_deployment(db_prefix=None):
             'strategy': {'type': 'RollingUpdate', },
             'selector': {
                 'matchLabels': {
-                    'app': 'provider-db-proxy-azuresql'
+                    'app': app_name
                 }
             },
             'template': {
