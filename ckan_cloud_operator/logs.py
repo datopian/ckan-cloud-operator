@@ -74,9 +74,10 @@ def log_subprocess_output(stdout, stderr):
 def subprocess_run(command, input=None):
     completed = subprocess.run(
         command, input=input, 
-        shell=True, check=True, capture_output=True
+        shell=True, check=False, capture_output=True
     )
     log_subprocess_output(completed.stdout, completed.stderr)
+    completed.check_returncode()
 
 def subprocess_check_output(*args, **kw):
     try:

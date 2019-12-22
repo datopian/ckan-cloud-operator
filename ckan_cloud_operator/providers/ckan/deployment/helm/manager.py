@@ -209,7 +209,7 @@ def pre_update_hook(instance_id, instance, override_spec, skip_route=False, dry_
     _pre_update_hook_override_spec(override_spec, instance)
     if not instance['spec'].get('useCentralizedInfra'):
         logs.warning('Forcing centralized infra even though useCentralizedInfra is disabled')
-        _pre_update_hook_modify_spec(instance_id, instance, lambda i: i['spec'].update(useCentralizedInfra=True),
+        _pre_update_hook_modify_spec(instance_id, instance, lambda i: i.update(useCentralizedInfra=True),
                                      dry_run=dry_run)
     res = {}
     sub_domain, root_domain = _pre_update_hook_route(instance_id, skip_route, instance, res, dry_run=dry_run)
@@ -441,6 +441,6 @@ def _pre_update_hook_modify_spec(instance_id, instance, callback, dry_run=False)
     latest_instance = crds_manager.get(INSTANCE_CRD_SINGULAR, crds_manager.get_resource_name(
         INSTANCE_CRD_SINGULAR, instance_id
     ), required=True)
-    callback(instance)
-    callback(latest_instance)
+    callback(instance['spec'])
+    callback(latest_instance['spec'])
     kubectl.apply(latest_instance, dry_run=dry_run)

@@ -195,7 +195,10 @@ def get_boto3_client(service_name):
     import boto3
     access = _config_get('aws-access-key-id', is_secret=True)
     secret = _config_get('aws-secret-access-key', is_secret=True)
-    return boto3.client(service_name, aws_access_key_id=access, aws_secret_access_key=secret)
+    kwargs = {}
+    if len(access) >= 20 and len(secret) >= 40:
+        kwargs = dict(aws_access_key_id=access, aws_secret_access_key=secret)
+    return boto3.client(service_name, **kwargs)
 
 
 def get_dns_hosted_zone_id(root_domain):

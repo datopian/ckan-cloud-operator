@@ -145,7 +145,7 @@ def _update(router_name, spec, annotations, routes):
     }
     kubectl.apply(load_balancer)
     load_balancer_ip = get_load_balancer_ip(router_name)
-    print(f'load balancer ip: {load_balancer_ip}')
+    logs.info(f'load balancer ip: {load_balancer_ip}')
     from ckan_cloud_operator.providers.routers import manager as routers_manager
     if external_domains:
         from ckan_cloud_operator.providers.routers import manager as routers_manager
