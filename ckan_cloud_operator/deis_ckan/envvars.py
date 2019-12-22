@@ -57,10 +57,10 @@ class DeisCkanInstanceEnvvars(object):
             postgres_host, postgres_port = db_manager.get_internal_proxy_host_port()
             logs.info(f'Connecting to DB proxy: {postgres_host}:{postgres_port}')
         envvars.update(
-            CKAN_SQLALCHEMY_URL=f"postgresql://{db_name}@{postgres_host}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
-            CKAN___BEAKER__SESSION__URL=f"postgresql://{db_name}@{postgres_host}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
-            CKAN__DATASTORE__READ_URL=f"postgresql://{datastore_ro_user}@{postgres_host}:{datastore_ro_password}@{postgres_host}:{postgres_port}/{datastore_name}",
-            CKAN__DATASTORE__WRITE_URL=f"postgresql://{datastore_name}@{postgres_host}:{datastore_password}@{postgres_host}:{postgres_port}/{datastore_name}",
+            CKAN_SQLALCHEMY_URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
+            CKAN___BEAKER__SESSION__URL=f"postgresql://{db_name}:{db_password}@{postgres_host}:{postgres_port}/{db_name}",
+            CKAN__DATASTORE__READ_URL=f"postgresql://{datastore_ro_user}:{datastore_ro_password}@{postgres_host}:{postgres_port}/{datastore_name}",
+            CKAN__DATASTORE__WRITE_URL=f"postgresql://{datastore_name}:{datastore_password}@{postgres_host}:{postgres_port}/{datastore_name}",
             CKAN_SOLR_URL=f"{solr_http_endpoint}/{solr_collection_name}",
             CKANEXT__S3FILESTORE__AWS_STORAGE_PATH=storage_path,
             CKANEXT__S3FILESTORE__AWS_ACCESS_KEY_ID=storage_access_key,
