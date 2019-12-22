@@ -39,18 +39,6 @@ TODO
 Follow the ckan-cloud-operator installation and usage guide in the [README.md](/README.md) to configure ckan-cloud-operator to use with kubeconfig file.
 
 ### Initialize the cluster
-First,
-```
-kubectl create namespace ckan-cloud
-kubectl -n ckan-cloud create secret generic ckan-cloud-provider-cluster-gcloud
-kubectl -n ckan-cloud create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix=ckan-cloud
-```
-
-After that create `uptime-statuscake-api` secrets with keys "user", "key", "group" populated from StatusCake account:
-```
-kubectl -n ckan-cloud create secret generic uptime-statuscake-api --from-literal=user=<user> --from-literal=key=<key> --from-literal=group=<group>
-```
-
 Then run interactive initialization of the currently connected cluster:
 ```
 ckan-cloud-operator cluster initialize --interactive
@@ -62,27 +50,6 @@ While interactive initialization:
 - On "solr" step of interactive initialization choose `self-hosted: y`
 - On "ckan" step when asked for docker server/username/password, enter your Gitlab credentials, password should be your Gitlab access token.
 
-
-Give the service account permission to change cluster roles:
-```
-kubectl create clusterrolebinding default-sa-binding --clusterrole=cluster-admin --user=<service account email>
-```
-
-Create an admin user:
-
-```
-ckan-cloud-operator users create your.name --role=admin
-```
-
-Get the kubeconfig file for your admin user:
-```
-ckan-cloud-operator users get-kubeconfig your.name > /path/to/your.kube-config
-```
-**Warning:** `/path/to/your.kube-config` should not be equal to your current kubeconfig file, otherwise you'll lost your kubeconfig and not receive new kubeconfig. 
-
-Replace the kube-config file for your environment with the newly created kube-config.
-
-You should use the ckan-cloud-operator generated kube-config for increased security and audit logs.
 
 ## Optional: install sample CKAN instance
 TODO
