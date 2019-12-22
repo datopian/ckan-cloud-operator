@@ -48,6 +48,8 @@ jobs:
         - cd terraform/aws &&
           ./terraform init -input=false &&
           ./terraform validate &&
+          TF_VAR_aws_access_key_id="${AWS_ACCESS_KEY_ID}"
+          TF_VAR_aws_secret_access_key="${AWS_SECRET_ACCESS_KEY}"
           ./terraform apply -input=false -auto-approve &&
           ./terraform output cco-interactive-yaml > interactive.yaml
         - cat kubeconfig_terraform-cco

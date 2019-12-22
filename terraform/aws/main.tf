@@ -11,6 +11,14 @@ variable "cluster_name" {
    default = "terraform-cco"
 }
 
+variable "aws_access_key_id" {
+  default = "n"
+}
+
+variable "aws_secret_access_key" {
+  default = "n"
+}
+
 # AWS GENERIC
 provider "aws" {
   region  = var.region
@@ -211,8 +219,8 @@ default:
       file.system.id: ${aws_efs_file_system.default.id}
   secrets:
     ckan-cloud-provider-cluster-aws:
-      aws-access-key-id: x
-      aws-secret-access-key: x
+      aws-access-key-id: ${var.aws_access_key_id}
+      aws-secret-access-key: ${var.aws_secret_access_key}
       aws-default-region: ${var.region}
       eks-cluster-name: ${module.eks.cluster_id}
 
