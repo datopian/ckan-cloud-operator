@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 TAG="${TRAVIS_TAG:-${TRAVIS_COMMIT}}"
+AWS_IAM_AUTHENTICATOR_VERSION="1.14.6/2019-08-22"
 
 if [ "${1}" == "install" ]; then
     ! docker pull viderum/ckan-cloud-operator:latest && echo Failed to pull image && exit 1
@@ -21,14 +22,14 @@ elif [ "${1}" == "install-tools" ]; then
       # Install terraform
       echo Installing Terraform
       (cd terraform/aws/ && \
-        curl -o tf.zip https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip && \
+        curl -o tf.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
         unzip tf.zip && \
         ./terraform version)
 
       # Install AWS tools
       echo Installing AWS tools
       pip install awscli
-      curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.14.6/2019-08-22/bin/linux/amd64/aws-iam-authenticator
+      curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/${AWS_IAM_AUTHENTICATOR_VERSION}/bin/linux/amd64/aws-iam-authenticator
       chmod +x aws-iam-authenticator && sudo mv aws-iam-authenticator /usr/local/bin/
       aws --version
       aws-iam-authenticator version
