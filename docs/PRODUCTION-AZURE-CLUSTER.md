@@ -45,10 +45,8 @@ ckan-cloud-operator cluster initialize --interactive
 ```
 
 While interactive initialization:
-- Set `enable-deis-ckan: y`
 - If environment is production, set `env-id` to `p` on "routers" step.
 - On "solr" step of interactive initialization choose `self-hosted: y`
-- On "ckan" step when asked for docker server/username/password, enter your Gitlab credentials, password should be your Gitlab access token.
 
 
 ## Optional: install sample CKAN instance

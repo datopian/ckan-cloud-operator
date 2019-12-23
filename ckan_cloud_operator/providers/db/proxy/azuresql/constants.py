@@ -1,1 +1,1 @@
-PROVIDER_ID='azuresql'
+PROVIDER_ID='azuresql-proxy'
