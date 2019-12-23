@@ -42,7 +42,7 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
         logs.warning(f'changing instance id in spec from {values_id} to the instance id {instance_id}')
     values['id'] = instance_id
 
-    use_cloud_storage = config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME)
+    use_cloud_storage = values.get('useCloudStorage') and config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME)
     values['useCloudStorage'] = use_cloud_storage
 
     logs.info('Creating instance', instance_id=instance_id)
@@ -83,14 +83,14 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
             elif cluster_provider_id == 'aws':
                 provider_id = 's3'
 
-            bucket_credentials = instance['spec'].get('bucket', {}).get(provider_id)
+            bucket_credentials = instance['spec'].get('ckanStorageBucket', {}).get(provider_id)
             if bucket_credentials:
                 literal = []
-                for key, value in bucket_credentials.items():
-                    literal.append(f'--from-literal={key}={value}')
-                literal = ' '.join(literal)
-
-                kubectl.call(f'create secret generic bucket-credentials {literal}', namespace=instance_id)
+                config_manager.set(
+                    values=bucket_credentials,
+                    secret_name='bucket-credentials',
+                    namespace=instance_id
+                )
 
         if persist_overrides:
             logs.info('Persisting overrides')
@@ -313,22 +313,13 @@ def set_name(instance_id, instance_name, dry_run=False):
 
 
 def set_storage(instance_id, instance_name, dry_run=False):
-    from ckan_cloud_operator.providers.storage.manager import get_provider
+    from ckan_cloud_operator.providers.storage.manager import get_provider, get_provider_id
 
     resource = crds_manager.get(INSTANCE_NAME_CRD_SINGULAR, name=instance_name, required=False)
 
-    cluster_provider_id = cluster_manager.get_provider_id()
-    if cluster_provider_id == 'gcloud':
-        provider_id = 'gcloud'
-    elif cluster_provider_id == 'aws':
-        provider_id = 's3'
-    else:
-        logs.warning(f'No storage module found for cluster provider {cluster_provider_id}')
-        return
-
-    storage_provider = get_provider(default=None, provider_id=provider_id)
+    storage_provider = get_provider(default=None, provider_id=get_provider_id())
     bucket = storage_provider.create_bucket(instance_id, exists_ok=True, dry_run=dry_run)
-    resource['spec']['bucket'] = {
+    resource['spec']['ckanStorageBucket'] = {
         storage.PROVIDER_ID: bucket
     }
 

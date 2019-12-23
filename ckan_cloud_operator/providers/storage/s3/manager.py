@@ -71,14 +71,14 @@ def get_bucket(instance_id):
         return
 
     instance = kubectl.get(f'ckancloudckaninstance {instance_id}')
-    bucket = instance['spec'].get('bucket').get(PROVIDER_ID)
+    bucket = instance['spec'].get('ckanStorageBucket').get(PROVIDER_ID)
     if not bucket:
         logs.warning('This instance does not have S3 bucket attached.')
         return
 
     return {
         'instance_id': instance_id,
-        'bucket': bucket
+        'ckanStorageBucket': bucket
     }
 
 
@@ -86,12 +86,12 @@ def list_buckets():
     """Returns list of buckets attached to CKAN Instances"""
     result = []
     for item in kubectl.get('ckancloudckaninstance').get('items', []):
-        bucket = item['spec'].get('bucket', {}).get(PROVIDER_ID)
+        bucket = item['spec'].get('ckanStorageBucket', {}).get(PROVIDER_ID)
         if not bucket:
             continue
         result.append({
             'instance_id': item['spec']['id'],
-            'bucket': bucket
+            'ckanStorageBucket': bucket
         })
 
     return result

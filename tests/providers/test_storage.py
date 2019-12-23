@@ -111,7 +111,7 @@ class S3ManagerTestCase(unittest.TestCase):
         list_s3_buckets.return_value = ['new-instance']
         kubectl_get.return_value = {
             'spec': {
-                'bucket': {
+                'ckanStorageBucket': {
                     's3': 's3://new-instance'
                 }
             }
@@ -119,7 +119,7 @@ class S3ManagerTestCase(unittest.TestCase):
 
         expected_result = {
             'instance_id': 'new-instance',
-            'bucket': 's3://new-instance'
+            'ckanStorageBucket': 's3://new-instance'
         }
         self.assertEqual(s3_manager.get_bucket('new-instance'), expected_result)
 
@@ -137,7 +137,7 @@ class S3ManagerTestCase(unittest.TestCase):
         list_s3_buckets.return_value = ['new-instance']
         kubectl_get.return_value = {
             'spec': {
-                'bucket': {
+               'ckanStorageBucket': {
                     'gcloud': 'new-instance'
                 }
             }
@@ -152,7 +152,7 @@ class S3ManagerTestCase(unittest.TestCase):
                 {
                     'spec': {
                         'id': 'new-instance',
-                        'bucket': {
+                        'ckanStorageBucket': {
                             's3': 's3://new-instance'
                         }
                     }
@@ -160,7 +160,7 @@ class S3ManagerTestCase(unittest.TestCase):
                 {
                     'spec': {
                         'id': 'old-instance',
-                        'bucket': {
+                        'ckanStorageBucket': {
                             's3': 's3://old-instance'
                         }
                     }
@@ -168,7 +168,7 @@ class S3ManagerTestCase(unittest.TestCase):
                 {
                     'spec': {
                         'id': 'gcloud-instance',
-                        'bucket': {
+                        'ckanStorageBucket': {
                             'gcloud': 'gcloud-instance'
                         }
                     }
@@ -184,11 +184,11 @@ class S3ManagerTestCase(unittest.TestCase):
         expected_result = [
             {
                 'instance_id': 'new-instance',
-                'bucket': 's3://new-instance'
+                'ckanStorageBucket': 's3://new-instance'
             },
             {
                 'instance_id': 'old-instance',
-                'bucket': 's3://old-instance'
+                'ckanStorageBucket': 's3://old-instance'
             }
         ]
         self.assertEqual(s3_manager.list_buckets(), expected_result)
@@ -309,7 +309,7 @@ class GCloudManagerTestCase(unittest.TestCase):
         list_gcloud_buckets.return_value = ['new-instance']
         kubectl_get.return_value = {
             'spec': {
-                'bucket': {
+                'ckanStorageBucket': {
                     'gcloud': 'gs://new-instance'
                 }
             }
@@ -317,7 +317,7 @@ class GCloudManagerTestCase(unittest.TestCase):
 
         expected_result = {
             'instance_id': 'new-instance',
-            'bucket': 'gs://new-instance'
+            'ckanStorageBucket': 'gs://new-instance'
         }
         self.assertEqual(gcloud_manager.get_bucket('new-instance'), expected_result)
 
@@ -335,7 +335,7 @@ class GCloudManagerTestCase(unittest.TestCase):
         list_gcloud_buckets.return_value = ['new-instance']
         kubectl_get.return_value = {
             'spec': {
-                'bucket': {
+                'ckanStorageBucket': {
                     's3': 'new-instance'
                 }
             }
@@ -350,7 +350,7 @@ class GCloudManagerTestCase(unittest.TestCase):
                 {
                     'spec': {
                         'id': 'new-instance',
-                        'bucket': {
+                        'ckanStorageBucket': {
                             'gcloud': 'gs://new-instance'
                         }
                     }
@@ -358,7 +358,7 @@ class GCloudManagerTestCase(unittest.TestCase):
                 {
                     'spec': {
                         'id': 'old-instance',
-                        'bucket': {
+                        'ckanStorageBucket': {
                             'gcloud': 'gs://old-instance'
                         }
                     }
@@ -366,7 +366,7 @@ class GCloudManagerTestCase(unittest.TestCase):
                 {
                     'spec': {
                         'id': 's3-instance',
-                        'bucket': {
+                        'ckanStorageBucket': {
                             's3': 's3-bucket'
                         }
                     }
@@ -382,11 +382,11 @@ class GCloudManagerTestCase(unittest.TestCase):
         expected_result = [
             {
                 'instance_id': 'new-instance',
-                'bucket': 'gs://new-instance'
+                'ckanStorageBucket': 'gs://new-instance'
             },
             {
                 'instance_id': 'old-instance',
-                'bucket': 'gs://old-instance'
+                'ckanStorageBucket': 'gs://old-instance'
             }
         ]
         self.assertEqual(gcloud_manager.list_buckets(), expected_result)
