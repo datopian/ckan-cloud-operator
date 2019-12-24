@@ -4,6 +4,8 @@ default:
       env-id: p
       default-root-domain: localhost
       dns-provider: none
+    ckan-cloud-provider-storage-minio:
+      disk-size-gb: 1
   secrets:
     solr-config:
       self-hosted: y
