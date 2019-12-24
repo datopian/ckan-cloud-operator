@@ -58,6 +58,13 @@ elif [ "${1}" == "script" ]; then
 elif [ "${1}" == "test" ]; then
     echo Run tests
     docker run --env NO_KUBE_CONFIG=1 --rm --entrypoint '/bin/bash' ckan-cloud-operator -lc 'cd /usr/src/ckan-cloud-operator && ckan-cloud-operator test'
+    echo Running security scan
+    docker run --rm -v $PWD/ckan_cloud_operator:/target -v $PWD:/results -v $PWD:/src drydockcloud/ci-bandit scan-text
+    scan_status=$?
+    cat bandit.txt
+    if [ $scan_status ]; then
+        exit $scan_status
+    fi
     echo Great Success! && exit 0
 
 elif [ "${1}" == "deploy" ]; then
