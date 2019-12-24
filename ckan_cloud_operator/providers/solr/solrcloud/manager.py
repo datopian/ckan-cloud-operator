@@ -97,10 +97,8 @@ def initialize(interactive=False, dry_run=False):
     expected_running = len(sc_host_names) + len(zk_host_names)
     while True:
         pods = kubectl.get('pods')
-        sc_app_name = _get_resource_labels(for_deployment=True, suffix='sc')['app']
-        zk_app_name = _get_resource_labels(for_deployment=True, suffix='zk')['app']
         running = len([x for x in pods['items']
-                       if x['status']['phase'] == 'Running' and x['metadata']['labels']['app'] in [zk_app_name, sc_app_name]])
+                       if x['status']['phase'] == 'Running' and x['metadata']['labels']['app'].startswith(_get_resource_labels(for_deployment=True)['app'])])
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
         for x in pods['items']:
             logs.info('  - %s: %s' % (x['metadata']['name'], x['status']['phase']))
