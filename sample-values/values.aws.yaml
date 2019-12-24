@@ -11,7 +11,6 @@ authUser_create_organizations: "false"
 authUser_delete_groups: "false"
 authUser_delete_organizations: "false"
 centralizedSecretName: ckan-infra
-ckanAdminEmail: adam.kariv@datopian.com
 ckanGunicornWorkers: 2
 ckanHelmChartVersion: v0.0.14-rc4
 # debugMode: NO
@@ -32,7 +31,7 @@ dbPersistentDiskSizeGB: 20
 dbResources: '{"requests": {"cpu": "100m", "memory": "200Mi"}, "limits": {"memory": "600Mi"}}'
 dbTerminationGracePeriodSeconds: 30
 displayTimezone: America/New_York
-domain: a-ckan-instance.ckan-aws-testing.gq
+domain: ckan-cloud-a-ckan-instance.ckan-aws-testing.gq
 favIcon: /base/images/ckan.ico
 id: a-ckan-instance
 jobsDbPersistentDiskSizeGB: 5
@@ -43,12 +42,12 @@ nginxResources: '{"requests": {"cpu": "60m", "memory": "300Mi"}, "limits": {"mem
 provisioningKindTitle: DataPusher / Catalog
 ready: true
 redisResources: '{"requests": {"cpu": "15m", "memory": "100Mi"}, "limits": {"memory": "300Mi"}}'
-registerSubdomain: a-ckan-instance
+registerSubdomain: ckan-cloud-a-ckan-instance
 replicas: 1
 siteDescription: Staging environment
 siteLogo: /base/images/ckan-logo.png
 siteTitle: A Sample CKAN Image
-siteUrl: https://a-ckan-instance.ckan-aws-testing.gq
+siteUrl: https://ckan-cloud-a-ckan-instance.ckan-aws-testing.gq
 solrPersistentDiskSizeGB: 10
 solrResources: '{"requests": {"cpu": "60m", "memory": "600Mi"}, "limits": {"memory": "1Gi"}}'
 storageClassName: cca-storage

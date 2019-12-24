@@ -14,7 +14,7 @@ def initialize(interactive=False):
         configmap_name='routers-config',
         interactive=interactive
     )
-    dns_provider = config_manager.get(key='dns-provider', configmap_name='routers-config')
+    dns_provider = get_dns_provider()
     logs.info(dns_provider=dns_provider)
     if dns_provider == 'cloudflare':
         config_manager.interactive_set(
@@ -42,6 +42,10 @@ def initialize(interactive=False):
 
 def get_env_id():
     return config_get('env-id') or 'p'
+
+
+def get_dns_provider():
+    return config_manager.get(key='dns-provider', configmap_name='routers-config')
 
 
 def get_default_root_domain():

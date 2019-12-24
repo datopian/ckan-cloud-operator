@@ -33,18 +33,24 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
                 values = yaml.load(f.read())
         else:
             values = yaml.load(sys.stdin.read())
-    if not exists_ok and crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False):
+    instance = crds_manager.get(INSTANCE_CRD_SINGULAR, name=instance_id, required=False)
+    if not exists_ok and instance:
         raise Exception('instance already exists')
     values_id = values.get('id')
     if values_id and values_id != instance_id:
         logs.warning(f'changing instance id in spec from {values_id} to the instance id {instance_id}')
     values['id'] = instance_id
-    logs.info('Creating instance', instance_id=instance_id)
-    kubectl.apply(crds_manager.get_resource(
-        INSTANCE_CRD_SINGULAR, instance_id,
-        extra_label_suffixes={'instance-type': instance_type},
-        spec=values
-    ), dry_run=dry_run)
+    if instance:
+        logs.info('Updating instance', instance_id=instance_id)
+        instance['spec'] = values
+        kubectl.apply(instance, dry_run=dry_run)
+    else:
+        logs.info('Creating instance', instance_id=instance_id)
+        kubectl.apply(crds_manager.get_resource(
+            INSTANCE_CRD_SINGULAR, instance_id,
+            extra_label_suffixes={'instance-type': instance_type},
+            spec=values
+        ), dry_run=dry_run)
     if instance_name:
         set_name(instance_id, instance_name, dry_run=dry_run)
     if update_:
