@@ -264,7 +264,7 @@ def get_resource(api_version, kind, name, labels, namespace='ckan-cloud', **kwar
             'name': name,
             'namespace': namespace,
             'labels': labels,
-            'annotations': {}
+            'annotations': {},
         },
     }
     resource.update(**kwargs)
@@ -302,8 +302,16 @@ def get_service(name, labels, ports, selector, namespace='ckan-cloud'):
     return service
 
 
+def now():
+    return datetime.datetime.now().isoformat()
+
+
+def timestamp():
+    return str(int(datetime.datetime.timestamp(datetime.datetime.now())))
+
+
 def add_operator_timestamp_annotation(metadata):
-    metadata.setdefault('annotations', {})['ckan-cloud/operator-timestamp'] = str(datetime.datetime.now())
+    metadata.setdefault('annotations', {})['ckan-cloud/operator-timestamp'] = now()
 
 
 def remove_finalizers(resource_kind, resource_name, ignore_not_found=False):
