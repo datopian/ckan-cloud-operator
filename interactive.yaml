@@ -5,7 +5,7 @@ default:
       default-root-domain: localhost
       dns-provider: none
     ckan-cloud-provider-storage-minio:
-      disk-size-gb: 1
+      disk-size-gb: "1"
       router-name: instances-default
   secrets:
     solr-config:
