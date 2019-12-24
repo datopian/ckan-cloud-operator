@@ -17,7 +17,7 @@ def initialize(interactive=False, provider_id=None, storage_suffix=None, use_exi
             provider_id = get_provider_id()
 
     provider = get_provider(
-        default=None,
+        default=minio_provider_id,
         provider_id=provider_id
     ).initialize(
         interactive=interactive,
