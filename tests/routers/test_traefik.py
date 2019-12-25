@@ -38,6 +38,7 @@ class RoutersManagerTestCase(unittest.TestCase):
             'spec': {
                 'default-root-domain': None,
                 'type': 'traefik',
+                'dns-provider': 'cloudflare',
                 'cloudflare': {
                 },
             }
