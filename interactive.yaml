@@ -14,3 +14,5 @@ default:
       replication-factor: "1"
     ckan-storage-config:
       default-storage-bucket: ckan
+    storage-config:
+      use-cloud-native-storage: n
