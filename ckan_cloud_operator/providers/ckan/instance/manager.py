@@ -14,6 +14,7 @@ from ckan_cloud_operator.crds import manager as crds_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 from ckan_cloud_operator.providers.storage.constants import CONFIG_NAME
+from ckan_cloud_operator.providers.storage.manager import get_provider_id as get_storage_provider_id
 from ckan_cloud_operator.routers import manager as routers_manager
 
 from ..constants import INSTANCE_NAME_CRD_SINGULAR
@@ -84,12 +85,8 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
 
         if config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME):
             cluster_provider_id = cluster_manager.get_provider_id()
-            if cluster_provider_id == 'gcloud':
-                provider_id = 'gcloud'
-            elif cluster_provider_id == 'aws':
-                provider_id = 's3'
 
-            bucket_credentials = instance['spec'].get('ckanStorageBucket', {}).get(provider_id)
+            bucket_credentials = instance['spec'].get('ckanStorageBucket', {}).get(get_storage_provider_id())
             if bucket_credentials:
                 literal = []
                 config_manager.set(

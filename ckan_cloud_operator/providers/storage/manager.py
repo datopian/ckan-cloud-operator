@@ -46,6 +46,7 @@ def get_provider_id():
         return gcloud_provider_id
     elif cluster_provider_id == aws_provider_id:
         return s3_provider_id
+    return 'minio'
 
 
 def get_provider(default=None, provider_id=None):
