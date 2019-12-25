@@ -61,7 +61,7 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
     if instance_name:
         set_name(instance_id, instance_name, dry_run=dry_run)
 
-    if use_native_storage:
+    if use_cloud_storage:
         set_storage(instance_id, instance_name, dry_run=dry_run)
 
     if update_:
