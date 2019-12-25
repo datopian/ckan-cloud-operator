@@ -6,7 +6,7 @@ default:
       dns-provider: none
     ckan-cloud-provider-storage-minio:
       disk-size-gb: "1"
-      router-name: instances-default
+      router-name: infra-1
   secrets:
     solr-config:
       self-hosted: y
