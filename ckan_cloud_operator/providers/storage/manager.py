@@ -1,5 +1,6 @@
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.providers import manager as providers_manager
+from ckan_cloud_operator import logs
 
 from .minio.constants import PROVIDER_ID as minio_provider_id
 from .s3.constants import PROVIDER_ID as s3_provider_id
@@ -16,6 +17,7 @@ def initialize(interactive=False, provider_id=None, storage_suffix=None, use_exi
         if config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME):
             provider_id = get_provider_id()
 
+    logs.info(f'Storage init: chosen provider_id: {provider_id}')
     provider = get_provider(
         default=minio_provider_id,
         provider_id=provider_id
