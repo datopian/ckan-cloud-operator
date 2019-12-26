@@ -235,5 +235,7 @@ default:
       rds-host: ${aws_db_instance.default.address}
       admin-user: ${aws_db_instance.default.username}
       admin-password: "${random_password.rds_password.result}"
+    storage-config:
+      use-cloud-native-storage: n
 YAML
 }
