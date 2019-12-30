@@ -9,7 +9,7 @@ from .constants import PROVIDER_ID
 
 
 def initialize(interactive=False, storage_suffix='', use_existing_disk_name=False, dry_run=False):
-    default_zone = aws_config_get('aws-default-region')
+    default_zone = aws_config_get('aws-default-region', is_secret=True)
     assert default_zone, 'No cluster region specified.'
 
     if interactive and not dry_run:
