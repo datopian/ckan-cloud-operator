@@ -97,7 +97,8 @@ def initialize(interactive=False, dry_run=False):
     # TODO - need to check the pod names and ensure these are solrcloud ones
     # TODO - actual number is _+ 1_ and not _+ 2_
     expected_running = len(sc_host_names) + len(zk_host_names) + 2
-    while True:
+    RETRIES = 40 # ~20 minutes
+    for retry in range(RETRIES):
         pods = kubectl.get('pods')
         running = len([x for x in pods['items']
                        if x['status']['phase'] == 'Running'])
@@ -107,6 +108,7 @@ def initialize(interactive=False, dry_run=False):
             logs.info('  - %-10s | %s: %s' % (x['metadata'].get('labels', {}).get('app'), x['metadata']['name'], x['status']['phase']))
         if running == expected_running:
             break
+        assert retry < RETRIES - 1, 'Gave up on waiting for SolrCloud'
 
     _set_provider()
 
