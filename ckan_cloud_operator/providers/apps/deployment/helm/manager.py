@@ -254,7 +254,10 @@ def _pre_update_hook_override_spec(override_spec, instance):
     if override_spec:
         for k, v in override_spec.items():
             logs.info(f'Applying override spec {k}={v}')
-            instance['spec'][k] = v
+            if k != 'values':
+                instance['spec'][k] = v
+            else:
+                instance['spec'].setdefault('values', {}).update(v)
 
 
 def _pre_update_hook_modify_spec(instance_id, instance, callback, dry_run=False):

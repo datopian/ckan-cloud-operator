@@ -65,7 +65,7 @@ def edit(what, *edit_args, namespace='ckan-cloud', **edit_kwargs):
     for item in items:
         name = item['metadata']['name']
         kind = item['kind']
-        logs.subprocess_check_call(f'kubectl -n {namespace} edit {kind}/{name} {extra_edit_args} {extra_edit_kwargs}', shell=True)
+        subprocess.check_call(f'kubectl -n {namespace} edit {kind}/{name} {extra_edit_args} {extra_edit_kwargs}', shell=True)
 
 
 def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cloud'):
