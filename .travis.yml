@@ -82,4 +82,4 @@ jobs:
       install: bash .travis.sh install-tools
       script:
         - cd terraform/aws/ami
-          ./packer build cco.json
+        - ./packer build cco.json
