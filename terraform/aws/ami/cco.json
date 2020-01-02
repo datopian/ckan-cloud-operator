@@ -22,7 +22,8 @@
               "most_recent": true
             },
             "ssh_username": "ubuntu",
-            "type": "amazon-ebs"
+            "type": "amazon-ebs",
+            "ami_groups": ["all"]
         }
     ],
     "provisioners": [
