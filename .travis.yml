@@ -42,6 +42,7 @@ jobs:
       script:
         - cd terraform/aws
         - ./init_cluster.sh ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY} eu-west-2 vpc-30aedd58 terraform-cco ckan-aws-testing.gq
+        - export KUBECONFIG=kubeconfig_terraform-cco
         - kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.aws.yaml
         - kubectl -n a-ckan-instance describe pods
