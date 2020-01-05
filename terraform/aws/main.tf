@@ -237,5 +237,8 @@ default:
       admin-password: "${random_password.rds_password.result}"
     storage-config:
       use-cloud-native-storage: n
+      storage-region: ${var.region}
+      aws-storage-access-key: ${var.aws_secret_access_key}
+      aws-storage-access-secret: ${var.aws_secret_access_key}
 YAML
 }
