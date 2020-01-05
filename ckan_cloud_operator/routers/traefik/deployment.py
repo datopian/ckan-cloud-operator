@@ -177,8 +177,8 @@ def _update(router_name, spec, annotations, routes):
 
 def get_load_balancer_ip(router_name, failfast=False):
     resource_name = _get_resource_name(router_name)
-    while True:
-        time.sleep(.2)
+    RETRIES = 10
+    for retries in range(RETRIES):
         load_balancer = kubectl.get(f'service loadbalancer-{resource_name}', required=False)
         if not load_balancer:
             if failfast:
@@ -192,10 +192,14 @@ def get_load_balancer_ip(router_name, failfast=False):
             load_balancer_hostname = ingresses[0].get('hostname')
             if load_balancer_hostname:
                 return load_balancer_hostname
+            logs.warning('Failed to get hostname, retrying %r' % ingresses[0])
         else:
             load_balancer_ip = ingresses[0].get('ip')
             if load_balancer_ip:
                 return load_balancer_ip
+            logs.warning('Failed to get ip, retrying %r' % ingresses[0])
+        time.sleep(60)
+        assert retries < RETRIES - 1, "Gave up on waiting for load balancer IP"
 
 
 def get_cloudflare_credentials():

@@ -35,8 +35,8 @@ def pre_update_hook(instance_id, instance, res, sub_domain, root_domain, modify_
     logs.debug(values_update_kwargs=values_update_kwargs)
     instance['spec'].update(**chart_update_kwargs)
     instance['spec'].setdefault('values', {}).update(**values_update_kwargs)
-    modify_spec_callback(lambda i: i['spec'].update(**chart_update_kwargs))
-    modify_spec_callback(lambda i: i['spec'].setdefault('values', {}).update(**values_update_kwargs))
+    modify_spec_callback(lambda i: i.update(**chart_update_kwargs))
+    modify_spec_callback(lambda i: i.setdefault('values', {}).update(**values_update_kwargs))
 
 
 def pre_deploy_hook(instance_id, instance, deploy_kwargs):
