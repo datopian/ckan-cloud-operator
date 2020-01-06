@@ -10,18 +10,20 @@ class S3ManagerTestCase(unittest.TestCase):
     @patch('ckan_cloud_operator.providers.storage.s3.manager.get_aws_credentials')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.aws_check_output')
-    def test_create_bucket(self, aws_check_output, list_s3_buckets, get_aws_credentials):
+    @patch('ckan_cloud_operator.providers.storage.s3.manager._generate_password')
+    def test_create_bucket(self, _generate_password, aws_check_output, list_s3_buckets, get_aws_credentials):
         aws_check_output.return_value = ''
         list_s3_buckets.return_value = []
         get_aws_credentials.return_value = {'region': 'us-west-1'}
+        _generate_password.return_value = 'abcdefabcdefabcdef'
 
         result = s3_manager.create_bucket('new-instance')
 
         get_aws_credentials.assert_called_once()
         list_s3_buckets.assert_called_once()
-        aws_check_output.assert_called_once_with('s3 mb s3://new-instance --region us-west-1')
+        aws_check_output.assert_called_once_with('s3 mb s3://new-instance-ccabcdefabcdefabcdef --region us-west-1')
         expected_result = {
-            'BUCKET_NAME': 's3://new-instance',
+            'BUCKET_NAME': 's3://new-instance-ccabcdefabcdefabcdef',
             'BUCKET_ACCESS_KEY': None,
             'BUCKET_ACCESS_SECRET': None
         }
@@ -30,16 +32,18 @@ class S3ManagerTestCase(unittest.TestCase):
     @patch('ckan_cloud_operator.providers.storage.s3.manager.get_aws_credentials')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.aws_check_output')
-    def test_create_bucket_that_already_exists(self, aws_check_output, list_s3_buckets, get_aws_credentials):
+    @patch('ckan_cloud_operator.providers.storage.s3.manager._generate_password')
+    def test_create_bucket_that_already_exists(self, _generate_password, aws_check_output, list_s3_buckets, get_aws_credentials):
         aws_check_output.return_value = ''
         list_s3_buckets.return_value = ['new-instance']
         get_aws_credentials.return_value = {'region': 'us-west-1'}
+        _generate_password.return_value = 'abcdefabcdefabcdef'
 
         with self.assertRaisesRegex(Exception, 'Bucket for this instance already exists'):
             s3_manager.create_bucket('new-instance')
 
         expected_result = {
-            'BUCKET_NAME': 's3://new-instance',
+            'BUCKET_NAME': 's3://new-instance-ccabcdefabcdefabcdef',
             'BUCKET_ACCESS_KEY': None,
             'BUCKET_ACCESS_SECRET': None
         }
@@ -55,10 +59,12 @@ class S3ManagerTestCase(unittest.TestCase):
     @patch('ckan_cloud_operator.providers.storage.s3.manager.get_aws_credentials')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.aws_check_output')
-    def test_create_bucket_dry_run(self, aws_check_output, list_s3_buckets, get_aws_credentials):
+    @patch('ckan_cloud_operator.providers.storage.s3.manager._generate_password')
+    def test_create_bucket_dry_run(self, _generate_password, aws_check_output, list_s3_buckets, get_aws_credentials):
         aws_check_output.return_value = ''
         list_s3_buckets.return_value = []
         get_aws_credentials.return_value = {'region': 'us-west-1'}
+        _generate_password.return_value = 'abcdefabcdefabcdef'
 
         result = s3_manager.create_bucket('new-instance', dry_run=True)
 
@@ -67,7 +73,7 @@ class S3ManagerTestCase(unittest.TestCase):
         aws_check_output.assert_not_called()
 
         expected_result = {
-            'BUCKET_NAME': 's3://new-instance',
+            'BUCKET_NAME': 's3://new-instance-ccabcdefabcdefabcdef',
             'BUCKET_ACCESS_KEY': None,
             'BUCKET_ACCESS_SECRET': None
         }
@@ -75,14 +81,24 @@ class S3ManagerTestCase(unittest.TestCase):
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.aws_check_output')
-    def test_delete_bucket(self, aws_check_output, list_s3_buckets):
-        list_s3_buckets.return_value = ['new-instance']
+    @patch('ckan_cloud_operator.providers.storage.s3.manager.kubectl.get')
+    def test_delete_bucket(self, kubectl_get, aws_check_output, list_s3_buckets):
+        list_s3_buckets.return_value = ['new-instance-ccabcdefabcdefabcdef']
+        kubectl_get.return_value = {
+            'spec': {
+                'ckanStorageBucket': {
+                    's3': {
+                        'BUCKET_NAME': 's3://new-instance-ccabcdefabcdefabcdef'
+                    }
+                }
+            }
+        }
 
         s3_manager.delete_bucket('new-instance')
 
         expected_calls = [
-            call('s3 rm s3://new-instance --recursive'),
-            call('s3 rb s3://new-instance')
+            call('s3 rm s3://new-instance-ccabcdefabcdefabcdef --recursive'),
+            call('s3 rb s3://new-instance-ccabcdefabcdefabcdef')
         ]
         self.assertEqual(aws_check_output.call_count, 2)
         self.assertEqual(aws_check_output.mock_calls, expected_calls)
@@ -98,28 +114,38 @@ class S3ManagerTestCase(unittest.TestCase):
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.aws_check_output')
-    def test_delete_bucket_dry_run(self, aws_check_output, list_s3_buckets):
-        list_s3_buckets.return_value = ['new-instance']
+    @patch('ckan_cloud_operator.providers.storage.s3.manager.kubectl.get')
+    def test_delete_bucket_dry_run(self, kubectl_get, aws_check_output, list_s3_buckets):
+        list_s3_buckets.return_value = ['new-instance-ccabcdefabcdefabcdef']
+        kubectl_get.return_value = {
+            'spec': {
+                'ckanStorageBucket': {
+                    's3': {
+                        'BUCKET_NAME': 's3://new-instance-ccabcdefabcdefabcdef'
+                    }
+                }
+            }
+        }
 
         s3_manager.delete_bucket('new-instance', dry_run=True)
 
-        aws_check_output.assert_called_once_with('s3 rm s3://new-instance --recursive --dryrun')
+        aws_check_output.assert_called_once_with('s3 rm s3://new-instance-ccabcdefabcdefabcdef --recursive --dryrun')
 
     @patch('ckan_cloud_operator.providers.storage.s3.manager.list_s3_buckets')
     @patch('ckan_cloud_operator.providers.storage.s3.manager.kubectl.get')
     def test_get_bucket(self, kubectl_get, list_s3_buckets):
-        list_s3_buckets.return_value = ['new-instance']
+        list_s3_buckets.return_value = ['new-instance-ccabcdefabcdefabcdef']
         kubectl_get.return_value = {
             'spec': {
                 'ckanStorageBucket': {
-                    's3': 's3://new-instance'
+                    's3': 's3://new-instance-ccabcdefabcdefabcdef'
                 }
             }
         }
 
         expected_result = {
             'instance_id': 'new-instance',
-            'ckanStorageBucket': 's3://new-instance'
+            'ckanStorageBucket': 's3://new-instance-ccabcdefabcdefabcdef'
         }
         self.assertEqual(s3_manager.get_bucket('new-instance'), expected_result)
 

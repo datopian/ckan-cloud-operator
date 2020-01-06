@@ -2,6 +2,7 @@ import json
 
 from ckan_cloud_operator import logs, kubectl
 from ckan_cloud_operator.config import manager as config_manager
+from ckan_cloud_operator.providers.cluster.manager import _generate_password
 from ckan_cloud_operator.providers.cluster.aws.manager import aws_check_output, get_aws_credentials, _config_get as aws_config_get
 
 from ..constants import CONFIG_NAME
@@ -40,33 +41,45 @@ def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
     if not exists_ok and bucket_exists:
         raise Exception('Bucket for this instance already exists')
 
+    bucket_name = '{}-cc{}'.format(instance_id, _generate_password(12))
+
     if not dry_run and not bucket_exists:
-        aws_check_output(f's3 mb s3://{instance_id} --region {region}')
+        aws_check_output(f's3 mb s3://{bucket_name} --region {region}')
 
     return {
-        'BUCKET_NAME': f's3://{instance_id}',
+        'BUCKET_NAME': f's3://{bucket_name}',
         'BUCKET_ACCESS_KEY': config_manager.get('aws-storage-access-key', secret_name=CONFIG_NAME),
         'BUCKET_ACCESS_SECRET': config_manager.get('aws-storage-access-secret', secret_name=CONFIG_NAME)
     }
     
 
 def delete_bucket(instance_id, dry_run=False):
-    if instance_id not in list_s3_buckets(names_only=True):
+    s3_buckets = list(filter(lambda x: x.startswith(f'{instance_id}-cc'), list_s3_buckets(names_only=True)))
+    if not s3_buckets:
         logs.warning(f'No bucket found for the instance "{instance_id}". Skipping.')
         return
 
-    cmd = f's3 rm s3://{instance_id} --recursive'
+    instance = kubectl.get(f'ckancloudckaninstance {instance_id}')
+    bucket = instance['spec'].get('ckanStorageBucket').get(PROVIDER_ID)
+    if not bucket:
+        logs.warning('This instance does not have S3 bucket attached.')
+        return
+
+    bucket_name = bucket.get('BUCKET_NAME')
+
+    cmd = f's3 rm {bucket_name} --recursive'
     if dry_run:
         cmd += ' --dryrun'
 
     # Two steps deletion. See the `aws s3 rb help`
     aws_check_output(cmd)
     if not dry_run:
-        aws_check_output(f's3 rb s3://{instance_id}')
+        aws_check_output(f's3 rb {bucket_name}')
 
 
 def get_bucket(instance_id):
-    if instance_id not in list_s3_buckets(names_only=True):
+    s3_buckets = list(filter(lambda x: x.startswith(f'{instance_id}-cc'), list_s3_buckets(names_only=True)))
+    if not s3_buckets:
         logs.warning(f'No bucket found for the instance "{instance_id}" on S3. Skipping.')
         return
 
