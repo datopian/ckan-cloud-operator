@@ -323,7 +323,7 @@ def set_storage(instance_id, instance_name, dry_run=False):
     storage_provider = get_provider(default=None, provider_id=get_provider_id())
     bucket = storage_provider.create_bucket(instance_id, exists_ok=True, dry_run=dry_run)
     resource['spec']['ckanStorageBucket'] = {
-        storage.PROVIDER_ID: bucket
+        storage_provider.PROVIDER_ID: bucket
     }
 
     if dry_run:
