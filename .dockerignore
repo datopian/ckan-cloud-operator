@@ -7,4 +7,5 @@ tests/data
 **/__pycache__
 **/*.pyc
 .checkpoints
+**/.terraform
 data

@@ -1,6 +1,6 @@
 # CKAN Cloud Operator
 
-CKAN Cloud operator manages, provisions and configures Ckan Cloud instances and related infrastructure.
+CKAN Cloud Operator manages, provisions and configures Ckan Cloud instances and related infrastructure.
 
 **WARNING!** For regular maintenance / development / debugging of ckan-cloud-operator managed cluster 
 you should **not** use the operator directly as described in this README. You should use some automation

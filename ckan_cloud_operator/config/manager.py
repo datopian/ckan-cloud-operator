@@ -1,6 +1,7 @@
 import base64
 import os
 import yaml
+from sys import stdout
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -141,7 +142,7 @@ def interactive_set(default_values, secret_name=None, configmap_name=None, names
         preset_value = get_preset_answer(namespace, configmap_name, secret_name, key)
         if preset_value:
             set_values[key] = preset_value
-        elif interactive:
+        elif interactive and stdout.isatty():
             if saved_value:
                 if from_file:
                     msg = ', leave empty to use the saved value'

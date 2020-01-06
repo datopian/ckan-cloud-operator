@@ -165,3 +165,7 @@ def test():
     """Run unittest suite and report coverage"""
     subprocess.check_call('coverage run -m unittest discover', shell=True)
     subprocess.check_call('coverage report', shell=True)
+
+
+if __name__ == '__main__':
+    main()

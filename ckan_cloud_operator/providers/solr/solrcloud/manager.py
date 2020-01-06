@@ -95,15 +95,17 @@ def initialize(interactive=False, dry_run=False):
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
     expected_running = len(sc_host_names) + len(zk_host_names)
-    while True:
+    RETRIES = 40 # ~20 minutes
+    for retry in range(RETRIES):
         pods = kubectl.get('pods')
         running = len([x for x in pods['items']
                        if x['status']['phase'] == 'Running' and x['metadata']['labels']['app'].startswith(_get_resource_labels(for_deployment=True)['app'])])
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
         for x in pods['items']:
-            logs.info('  - %s: %s' % (x['metadata']['name'], x['status']['phase']))
+            logs.info('  - %-10s | %s: %s' % (x['metadata'].get('labels', {}).get('app'), x['metadata']['name'], x['status']['phase']))
         if running == expected_running:
             break
+        assert retry < RETRIES - 1, 'Gave up on waiting for SolrCloud'
         time.sleep(30)
 
     _set_provider()
