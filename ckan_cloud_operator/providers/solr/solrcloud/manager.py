@@ -94,7 +94,7 @@ def initialize(interactive=False, dry_run=False):
     _config_set('sc-main-host-name', solrcloud_host_name)
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
-    expected_running = len(sc_host_names) + len(zk_host_names)
+    expected_running = len(sc_host_names) + len(zk_host_names) + 1
     RETRIES = 40 # ~20 minutes
     for retry in range(RETRIES):
         pods = kubectl.get('pods')
