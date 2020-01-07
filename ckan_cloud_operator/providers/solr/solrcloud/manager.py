@@ -100,13 +100,14 @@ def initialize(interactive=False, dry_run=False):
         pods = kubectl.get('pods')
         running = len([x for x in pods['items']
                        if x['status']['phase'] == 'Running' and x['metadata']['labels']['app'].startswith(_get_resource_labels(for_deployment=True)['app'])])
+        time.sleep(30)
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
         for x in pods['items']:
             logs.info('  - %-10s | %s: %s' % (x['metadata'].get('labels', {}).get('app'), x['metadata']['name'], x['status']['phase']))
+
         if running == expected_running:
             break
         assert retry < RETRIES - 1, 'Gave up on waiting for SolrCloud'
-        time.sleep(30)
 
     _set_provider()
 
