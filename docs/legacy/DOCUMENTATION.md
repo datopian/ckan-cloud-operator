@@ -68,11 +68,11 @@ CKAN Cloud operator (CCO) manages, provisions and configures Ckan Cloud instance
 
 
 
-# DevOps Giude
+# DevOps Guide
 ![infra overview](https://github.com/datopian/ckan-cloud-operator/raw/full-documentation/docs/resources/infra_overview.png)
 
 All the requirements needed to smoothly run CKAN instances runs inside `ckan-cloud` namespace.  
-Each CKAN instance has it's own namespace.
+Each CKAN instance has its own namespace.
 
 For each of CKAN intance there should be a Gitlab repo contains `Dockerfile` and `.env` file (which stores CKAN settings).  
 CCO creates or updates CKAN instance from the Docker image built on Gitlab CI.
