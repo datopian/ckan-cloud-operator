@@ -33,7 +33,7 @@ def initialize(interactive=False, storage_suffix='', use_existing_disk_name=Fals
 
 def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
     if not region:
-        region = get_aws_credentials().get('region')
+        region = config_manager.get('storage-region') or get_aws_credentials().get('region')
 
     assert region, 'No default region set for the cluster'
 
