@@ -43,8 +43,7 @@ jobs:
       install: bash .travis.sh install-tools
       script:
         - az login -u $AZ_USER -p $AZ_PASSWORD
-        - terraform
-        - ls -al ~/.azure
+        - python terraform/azure/debug.py 
         - cd terraform/azure &&
           terraform init -input=false &&
           terraform validate &&
