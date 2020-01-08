@@ -19,5 +19,5 @@ template = {
     ]
 }
 
-with open(os.path.expanduser('~/.azure/test.json'), 'w') as outfile:
+with open(os.path.expanduser('~/.azure/azureProfile.json'), 'w') as outfile:
     json.dump(template, outfile)
