@@ -2,6 +2,9 @@
 
 TAG="${TRAVIS_TAG:-${TRAVIS_COMMIT}}"
 AWS_IAM_AUTHENTICATOR_VERSION="1.14.6/2019-08-22"
+TERRAFORM_VERSION=0.12.18
+PACKER_VERSION=1.5.1
+HELM_VERSION=v2.16.1
 
 if [ "${1}" == "install" ]; then
     ! docker pull viderum/ckan-cloud-operator:latest && echo Failed to pull image && exit 1
@@ -25,6 +28,10 @@ elif [ "${1}" == "install-tools" ]; then
         curl -o tf.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
         unzip tf.zip && \
         ./terraform version)
+      (cd terraform/aws/ami/ && \
+        curl -o pk.zip https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip && \
+        unzip pk.zip && \
+        ./packer version)
 
       # Install AWS tools
       echo Installing AWS tools
@@ -46,7 +53,7 @@ elif [ "${1}" == "install-tools" ]; then
      helm version --client && rm ./get_helm.sh
     echo Helm Installed Successfully!
 
-    sudo apt-get update && sudo apt-get install socat jq
+    sudo apt-get update && sudo apt-get install -y socat jq
 
     echo Instalation Complete && exit 0
 
