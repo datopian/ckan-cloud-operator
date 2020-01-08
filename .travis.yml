@@ -33,6 +33,7 @@ jobs:
       after_failure:
         - minikube delete
     - name: AWS
+      if: branch = master OR tag IS present OR commit_message =~ /#aws/
       env:
         - K8_PROVIDER=aws
         - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc=" 
