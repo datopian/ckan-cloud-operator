@@ -19,6 +19,10 @@ variable "aws_secret_access_key" {
   default = "n"
 }
 
+variable "external_domain" {
+  default = "ckan-aws-testing.gq"
+}
+
 # AWS GENERIC
 provider "aws" {
   region  = var.region
@@ -213,7 +217,7 @@ default:
   config:
     routers-config:
       env-id: p
-      default-root-domain: ckan-aws-testing.gq
+      default-root-domain: ${var.external_domain}
       dns-provider: route53
     ckan-cloud-provider-storage-aws-efs:
       file.system.id: ${aws_efs_file_system.default.id}

@@ -6,7 +6,7 @@ dependencies:
   - psycopg2
   - pip
   - pip:
-    - pyyaml
+    - pyyaml<5.3
     - kubernetes
     - click
     - toml
