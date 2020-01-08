@@ -24,7 +24,7 @@ setup(
         'boto3',
         'coverage',
         'psycopg2',
-        'pyyaml<=5.2,>=3.10',
+        'pyyaml<6,>=5',
         'kubernetes',
         'click',
         'toml',
