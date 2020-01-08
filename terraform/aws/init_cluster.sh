@@ -9,6 +9,8 @@ Initialize AWS CCO Cluster using terraform and ckan-cloud-operator
 Usage:
 ${0} <aws-access-key-id> <aws-secret-access-key> <aws-region> <vpc-id> <cluster-name> <external-domain>
 
+Note: it will overwrite your ~/.kube/config file
+
 USAGE
     exit 1
 fi
@@ -26,5 +28,6 @@ export TF_VAR_external_domain="${6}"
 ./terraform output cco-interactive-yaml > interactive.yaml
 
 export CCO_INTERACTIVE_CI=interactive.yaml
-export KUBECONFIG="kubeconfig_${TF_VAR_cluster_name}"
+cp "kubeconfig_${TF_VAR_cluster_name}" ~/.kube/config
+cp terraform.tfstate ~/
 ckan-cloud-operator cluster initialize --interactive --cluster-provider=aws
