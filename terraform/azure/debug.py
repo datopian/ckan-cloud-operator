@@ -21,3 +21,5 @@ template = {
 
 with open(os.path.expanduser('~/.azure/azureProfile.json'), 'w') as outfile:
     json.dump(template, outfile)
+
+print('success')
