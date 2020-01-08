@@ -83,12 +83,12 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
         pre_update_hook_data = deployment_manager.pre_update_hook(instance_id, instance_type, instance, override_spec,
                                                                   skip_route)
 
-        use_cloud_storage = instance['spec'].get('ckanStorageBucket', {}).get(get_storage_provider_id()) and config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME)
+        bucket_credentials = instance['spec'].get('ckanStorageBucket', {}).get(get_storage_provider_id())
+        use_cloud_storage = bucket_credentials and config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME)
 
         if use_cloud_storage:
             cluster_provider_id = cluster_manager.get_provider_id()
 
-            bucket_credentials = instance['spec'].get('ckanStorageBucket', {}).get(get_storage_provider_id())
             if bucket_credentials:
                 literal = []
                 config_manager.set(
