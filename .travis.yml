@@ -44,7 +44,7 @@ jobs:
       script:
         - az login -u $AZ_USER -p $AZ_PASSWORD
         - terraform
-        - python terraform/azure/debug.py
+        - ls -al ~/.azure
         - cd terraform/azure &&
           terraform init -input=false &&
           terraform validate &&
