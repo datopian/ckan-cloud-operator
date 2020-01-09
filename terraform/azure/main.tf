@@ -2,6 +2,8 @@
 
 variable "client_id" {}
 variable "client_secret" {}
+variable "tenant_id" {}
+variable "subscription_id" {}
 
 variable "location" {
   default  = "North Europe"
@@ -14,6 +16,12 @@ variable "cluster_name" {
 resource "random_password" "cluster_name_suffix" {
   length = 4
   special = false
+}
+
+provider "azurerm" {
+  version = "1.39.0"
+  subscription_id = var.subscription_id
+  tenant_id       = var.tenant_id
 }
 
 resource "azurerm_resource_group" "ckan_cloud_k8" {

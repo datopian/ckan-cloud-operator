@@ -16,6 +16,7 @@ jobs:
   include:
     - stage: Cluster Providers
       name: minikube
+      if: (type = push AND (branch = master OR tag IS present)) OR commit_message =~ /#minikube/
       env:
         - K8_PROVIDER=minikube
         - K8_VERSION=v1.16.0
@@ -43,7 +44,6 @@ jobs:
       install: bash .travis.sh install-tools
       script:
         - az login -u $AZ_USER -p $AZ_PASSWORD
-        - az account list-locations
         - cd terraform/azure &&
           terraform init -input=false &&
           terraform validate &&
