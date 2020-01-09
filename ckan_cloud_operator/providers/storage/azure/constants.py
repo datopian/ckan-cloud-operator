@@ -1,1 +1,1 @@
-PROVIDER_ID = 'azure'
+PROVIDER_ID = 'abs'

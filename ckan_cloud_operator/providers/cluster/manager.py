@@ -2,6 +2,7 @@ import yaml
 import subprocess
 import binascii
 import os
+import sys
 
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
@@ -52,7 +53,8 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
     if interactive:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)
-        input('Verify you are connected to the right cluster and press <RETURN> to continue')
+        if sys.stdout.isatty():
+            input('Verify you are connected to the right cluster and press <RETURN> to continue')
 
     if not skip_to:
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))

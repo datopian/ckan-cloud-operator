@@ -72,9 +72,11 @@ def initialize(interactive=False):
         datapusher_initialize()
 
     from ckan_cloud_operator.routers import manager as routers_manager
+    from ckan_cloud_operator.providers.routers import manager as router_provider_manager
     router_name = get_default_instances_router_name()
     wildcard_ssl_domain = routers_manager.get_default_root_domain()
-    print(f'wildcard_ssl_domain={wildcard_ssl_domain}')
+    dns_provider = router_provider_manager.get_dns_provider()
+    logs.info(f'wildcard_ssl_domain={wildcard_ssl_domain} dns_provider={dns_provider}')
     allow_wildcard_ssl = routers_manager.get_env_id() == 'p'
     router = routers_manager.get(router_name, required=False)
     if router:
@@ -86,7 +88,10 @@ def initialize(interactive=False):
     else:
         routers_manager.create(
             router_name,
-            routers_manager.get_traefik_router_spec(wildcard_ssl_domain=wildcard_ssl_domain)
+            routers_manager.get_traefik_router_spec(
+                dns_provider=dns_provider,
+                wildcard_ssl_domain=wildcard_ssl_domain
+            )
         )
 
     from .storage.manager import initialize as ckan_storage_initialize

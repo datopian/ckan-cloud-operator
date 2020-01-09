@@ -65,7 +65,7 @@ def edit(what, *edit_args, namespace='ckan-cloud', **edit_kwargs):
     for item in items:
         name = item['metadata']['name']
         kind = item['kind']
-        logs.subprocess_check_call(f'kubectl -n {namespace} edit {kind}/{name} {extra_edit_args} {extra_edit_kwargs}', shell=True)
+        subprocess.check_call(f'kubectl -n {namespace} edit {kind}/{name} {extra_edit_args} {extra_edit_kwargs}', shell=True)
 
 
 def get_items_by_labels(resource_kind, labels, required=True, namespace='ckan-cloud'):
@@ -264,7 +264,7 @@ def get_resource(api_version, kind, name, labels, namespace='ckan-cloud', **kwar
             'name': name,
             'namespace': namespace,
             'labels': labels,
-            'annotations': {}
+            'annotations': {},
         },
     }
     resource.update(**kwargs)
@@ -302,8 +302,16 @@ def get_service(name, labels, ports, selector, namespace='ckan-cloud'):
     return service
 
 
+def now():
+    return datetime.datetime.now().isoformat()
+
+
+def timestamp():
+    return str(int(datetime.datetime.timestamp(datetime.datetime.now())))
+
+
 def add_operator_timestamp_annotation(metadata):
-    metadata.setdefault('annotations', {})['ckan-cloud/operator-timestamp'] = str(datetime.datetime.now())
+    metadata.setdefault('annotations', {})['ckan-cloud/operator-timestamp'] = now()
 
 
 def remove_finalizers(resource_kind, resource_name, ignore_not_found=False):

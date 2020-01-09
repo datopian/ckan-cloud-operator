@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
 TAG="${TRAVIS_TAG:-${TRAVIS_COMMIT}}"
+AWS_IAM_AUTHENTICATOR_VERSION="1.14.6/2019-08-22"
+TERRAFORM_VERSION=0.12.18
+PACKER_VERSION=1.5.1
+HELM_VERSION=v2.16.1
 
 if [ "${1}" == "install" ]; then
     ! docker pull viderum/ckan-cloud-operator:latest && echo Failed to pull image && exit 1
-    ! docker pull viderum/ckan-cloud-operator:jnlp-latest && echo Failed to pull jnlp image && exit 1
+    # ! docker pull viderum/ckan-cloud-operator:jnlp-latest && echo Failed to pull jnlp image && exit 1
     echo Great Success! && exit 0
 
 elif [ "${1}" == "install-tools" ]; then
@@ -17,6 +21,28 @@ elif [ "${1}" == "install-tools" ]; then
       echo Minikube Installed Successfully!
     fi
 
+    if [ "${K8_PROVIDER}" == "aws" ]; then
+      # Install terraform
+      echo Installing Terraform
+      (cd terraform/aws/ && \
+        curl -o tf.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip && \
+        unzip tf.zip && \
+        ./terraform version)
+      (cd terraform/aws/ami/ && \
+        curl -o pk.zip https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip && \
+        unzip pk.zip && \
+        ./packer version)
+
+      # Install AWS tools
+      echo Installing AWS tools
+      pip install awscli
+      curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/${AWS_IAM_AUTHENTICATOR_VERSION}/bin/linux/amd64/aws-iam-authenticator
+      chmod +x aws-iam-authenticator && sudo mv aws-iam-authenticator /usr/local/bin/
+      aws --version
+      aws-iam-authenticator version
+      echo AWS Dependencies Installed Successfully!
+    fi
+    
     if [ "${K8_PROVIDER}" == "azure" ]; then
       # Install  terraform
       wget -O terraform.zip https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip &&\
@@ -38,6 +64,7 @@ elif [ "${1}" == "install-tools" ]; then
       sudo apt-get install azure-cli
       echo Azure CLI Installed Successfully!
    fi
+
     curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
     chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
     echo Kubectl Installed Successfully!
@@ -48,7 +75,7 @@ elif [ "${1}" == "install-tools" ]; then
      helm version --client && rm ./get_helm.sh
     echo Helm Installed Successfully!
 
-    sudo apt-get update && sudo apt-get install socat
+    sudo apt-get update && sudo apt-get install -y socat jq
 
     echo Instalation Complete && exit 0
 
@@ -60,6 +87,13 @@ elif [ "${1}" == "script" ]; then
 elif [ "${1}" == "test" ]; then
     echo Run tests
     docker run --env NO_KUBE_CONFIG=1 --rm --entrypoint '/bin/bash' ckan-cloud-operator -lc 'cd /usr/src/ckan-cloud-operator && ckan-cloud-operator test'
+    echo Running security scan
+    docker run --rm -v $PWD/ckan_cloud_operator:/target -v $PWD:/results -v $PWD:/src drydockcloud/ci-bandit scan-text
+    scan_status=$?
+    cat bandit.txt
+    if [ $scan_status ]; then
+        exit $scan_status
+    fi
     echo Great Success! && exit 0
 
 elif [ "${1}" == "deploy" ]; then

@@ -37,6 +37,8 @@ def initialize(interactive=False):
         _config_interactive_set({'azure-default-location': None}, is_secret=False)
         print('\nEnter the name of your cluster\n')
         _config_interactive_set({'azure-cluster-name': None}, is_secret=False)
+
+        _create_storage_classes()
     else:
         logs.info('Skipping initial cluster set up as `--interactive` flag was not set')
     _create_storage_classes()
@@ -97,6 +99,23 @@ def get_info(debug=False):
 
 def get_name():
     return _config_get('cluster-name')
+
+
+def _create_storage_classes():
+    kubectl.apply({
+        'apiVersion': 'storage.k8s.io/v1',
+        'kind': 'StorageClass',
+        'metadata': {
+            'name': 'cca-ckan',
+        },
+        'parameters': {
+            'skuName': 'Standard_LRS',
+            'location': _config_get('azure-default-location')
+        },
+        'provisioner': 'kubernetes.io/azure-disk',
+        'reclaimPolicy': 'Delete',
+        'volumeBindingMode': 'Immediate'
+    })
 
 
 def get_cluster_kubeconfig_spec():

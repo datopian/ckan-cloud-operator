@@ -1,127 +1,51 @@
 # CKAN Cloud Operator
 
-CKAN Cloud operator manages, provisions and configures Ckan Cloud instances and related infrastructure.
+CKAN Cloud Operator manages, provisions and configures CKAN Cloud instances and related infrastructure.
 
-**WARNING!** For regular maintenance / development / debugging of ckan-cloud-operator managed cluster 
-you should **not** use the operator directly as described in this README. You should use some automation
-tool for synchronized, centralized, audited interaction with the operator and the cluster. See [docs/JENKINS.md](/docs/JENKINS.md).   
+## Components
 
-## Install
+- Terraform configurations for first setup of a Kubernets cluster and peripheral services for multiple cloud providers:
+  - AWS
+  - GCP
+  - Azure
+  - Minikube for local development
+- `ckan-cloud-operator` CLI will manage the cluster and any other services necessary for day-to-day operations
+- Management server, comes preinstalled with ckan-cloud-operator, required tools (terraform, kubectl, helm, awscli etc.) and [a Jenkins Server](/docs/JENKINS.md).
 
-`ckan-cloud-operator-env` is used to install and manage CKAN Cloud operator environments on your local PC
+## Quick Start
 
-**Prerequisites:**
+In order to start using ckan-cloud-operator, you need to
+1. [Create a CKAN Cloud Operator working environment](docs/WORKING-ENVIRONMENT.md).
 
-* `.kube-config` file with permissions to the relevant cluster
+   You can choose to: 
+   - Use our pre-built Docker image
+   - Run the AMI (on AWS)
+   - Run the TBD (on GCP)
+   - Run the TBD (on Azure)
 
-Install latest ckan-cloud-operator-env
+   Note: While technically possible, we recommend not to run ckan-cloud-operator directly on you machine to avoid version incompatibilities between the various tools involved in the process. You should use one of our pre-built images or our Docker image instead.
 
-```
-curl -s https://raw.githubusercontent.com/datopian/ckan-cloud-operator/master/ckan-cloud-operator-env.sh \
-| sudo tee /usr/local/bin/ckan-cloud-operator-env >/dev/null && sudo chmod +x /usr/local/bin/ckan-cloud-operator-env
-```
+2. Create a Kubernetes cluster and provision it.
+    - [Instructions for AWS](docs/PRODUCTION-AWS-CLUSTER.md):
+        - Create a cluster using terraform
+        - Initialize the cluster using ckan-cloud-operator
 
-Add an environment (sudo is required to install the executable)
+    - Instructions for GCP:
+        - Create a cluster using terraform
+        - Initialize the cluster using ckan-cloud-operator
+    
+    - Instructions for Azure:
+        - Create a cluster using terraform
+        - Initialize the cluster using ckan-cloud-operator
+    
+    - Instructions for Minikube:
+        - Initialize the cluster using ckan-cloud-operator
 
-```
-sudo ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE>
-```
+3. Then you can [create a CKAN Instance on the cluster](docs/CREATE-CKAN-INSTANCE.md):
+    - Create a values file
+    - Create the instance on the cluster
 
-Verify conection to the cluster and installed operator version (may take a while on first run or after upgrade of operator version)
+## Reference
 
-```
-ckan-cloud-operator cluster info
-```
-
-**Important** Re-run the add command and cluster info to verify compatible version is installed.
-
-## Usage
-
-Use the CLI help messages for the reference documentation and usage examples.
-
-```
-ckan-cloud-operator --help
-ckan-cloud-operator deis-instance --help
-.
-.
-```
-
-You can use bash completion inside this shell
-
-```
-ckan-cloud-operator <TAB><TAB>
-```
-
-
-## Managing multiple environments
-
-ckan-cloud-operator-env supports managing multiple environments
-
-Add environments using `ckan-cloud-operator-env add <ENVIRONMENT_NAME> <PATH_TO_KUBECONFIG_FILE>`
-
-Each environment is accessible using executable `ckan-cloud-operator-<ENVIRONMENT_NAME>`
-
-Activating an environment sets the `ckan-cloud-operator` executable to use to the relevant environment executable
-
-```
-ckan-cloud-operator-env activate <ENVIRONMENT_NAME>
-```
-
-## Run ckan-cloud-operator locally
-
-Ensure you have `kubectl` and `gcloud` binaries, authenticated to the relevant gcloud account / kubernetes cluster.
-
-See the required system dependencies: [environment.yaml](environment.yaml)
-
-You can [Install miniconda3](https://conda.io/miniconda.html), then create the environment using: `conda env create -f environment.yaml`
-
-Activate the conda environment using `conda activate ckan-cloud-operator`
-
-Install the Python package:
-
-```
-python3 -m pip install -e .
-```
-
-Authenticate the gcloud CLI to the relevant account:
-
-```
-ckan-cloud-operator activate-gcloud-auth
-```
-
-Run ckan-cloud-operator without arguments to get a help message:
-
-```
-ckan-cloud-operator
-```
-
-Enable Bash completion
-
-```
-eval "$(ckan-cloud-operator bash-completion)"
-```
-
-## Using Jupyter Lab
-
-Jupyter Lab can be used to run bulk operations or aggregate data from ckan-cloud-operator
-
-You should run ckan-cloud-operator locally and run the following from the activated ckan-cloud-operator environment
-
-Install jupyterlab
-
-```
-python3 -m pip install jupyterlab
-```
-
-Run jupyterlab
-
-```
-jupyter lab
-```
-
-Open notebooks from the `notebooks` directory
-
-## Run tests
-If you already have `ckan-cloud-operator` executable in your PATH, you could run test suite with `ckan-cloud-operator test` command.
-
-The other way to run test suite is `coverage run -m unittest discover`.
+- Command Line Interface parameters
+- CKAN Values file reference

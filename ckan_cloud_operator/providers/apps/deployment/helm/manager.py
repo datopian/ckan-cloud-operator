@@ -80,7 +80,7 @@ def update(instance_id, instance, dry_run=False):
     logs.info(chart_version=chart_version)
     release_name = _get_helm_release_name(instance_id, instance)
     logs.info(release_name=release_name,)
-    _pre_update_hook_modify_spec(instance_id, instance, lambda i: i['spec'].update(**{
+    _pre_update_hook_modify_spec(instance_id, instance, lambda i: i.update(**{
         'release-name': release_name,
         'chart-version': chart_version,
         'chart-name': chart_name,
@@ -223,28 +223,28 @@ def _pre_update_hook_route(instance_id, skip_route, instance, res, dry_run=False
         if instance_domain and instance_domain != f'{sub_domain}.{root_domain}':
             logs.warning(f'instance domain was changed from {instance_domain} to {sub_domain}.{root_domain}')
             _pre_update_hook_modify_spec(instance_id, instance,
-                                         lambda i: i['spec'].update(domain=f'{sub_domain}.{root_domain}'),
+                                         lambda i: i.update(domain=f'{sub_domain}.{root_domain}'),
                                          dry_run=dry_run)
         # instance is added to router only if this is true, as all routers must use SSL and may use sans SSL too
         with_sans_ssl = instance['spec'].get('withSansSSL')
         if not with_sans_ssl:
             logs.warning(f'forcing with_sans_ssl, even though withSansSSL is disabled')
             _pre_update_hook_modify_spec(instance_id, instance,
-                                         lambda i: i['spec'].update(withSansSSL=True),
+                                         lambda i: i.update(withSansSSL=True),
                                          dry_run=dry_run)
         # subdomain to register on the default root domain
         register_subdomain = instance['spec'].get('registerSubdomain')
         if register_subdomain != sub_domain:
             logs.warning(f'instance register sub domain was changed from {register_subdomain} to {sub_domain}')
             _pre_update_hook_modify_spec(instance_id, instance,
-                                         lambda i: i['spec'].update(registerSubdomain=sub_domain),
+                                         lambda i: i.update(registerSubdomain=sub_domain),
                                          dry_run=dry_run)
         res.update(**{'root-domain': root_domain, 'sub-domain': sub_domain})
         site_url = instance['spec'].get('siteUrl')
         if site_url != f'https://{sub_domain}.{root_domain}':
             logs.warning(f'instance siteUrl was changed from {site_url} to https://{sub_domain}.{root_domain}')
             _pre_update_hook_modify_spec(instance_id, instance,
-                                         lambda i: i['spec'].update(siteUrl=f'https://{sub_domain}.{root_domain}'),
+                                         lambda i: i.update(siteUrl=f'https://{sub_domain}.{root_domain}'),
                                          dry_run=dry_run)
     return sub_domain, root_domain
 
@@ -254,14 +254,17 @@ def _pre_update_hook_override_spec(override_spec, instance):
     if override_spec:
         for k, v in override_spec.items():
             logs.info(f'Applying override spec {k}={v}')
-            instance['spec'][k] = v
+            if k != 'values':
+                instance['spec'][k] = v
+            else:
+                instance['spec'].setdefault('values', {}).update(v)
 
 
 def _pre_update_hook_modify_spec(instance_id, instance, callback, dry_run=False):
     # applies changes to both the non-persistent spec and persists the changes on latest instance spec
     latest_instance = crds_manager.get(APP_CRD_SINGULAR, name=instance_id, required=True)
-    callback(instance)
-    callback(latest_instance)
+    callback(instance['spec'])
+    callback(latest_instance['spec'])
     kubectl.apply(latest_instance, dry_run=dry_run)
 
 

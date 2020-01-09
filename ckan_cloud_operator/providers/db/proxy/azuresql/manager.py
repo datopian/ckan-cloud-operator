@@ -103,9 +103,7 @@ def _apply_deployment(db_prefix=None):
             'revisionHistoryLimit': 10,
             'strategy': {'type': 'RollingUpdate', },
             'selector': {
-                'matchLabels': {
-                    'app': 'provider-db-proxy-azuresql'
-                }
+                'matchLabels': _get_resource_labels(for_deployment=True, suffix=db_prefix or '')
             },
             'template': {
                 'metadata': {

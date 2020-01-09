@@ -209,7 +209,7 @@ def pre_update_hook(instance_id, instance, override_spec, skip_route=False, dry_
     _pre_update_hook_override_spec(override_spec, instance)
     if not instance['spec'].get('useCentralizedInfra'):
         logs.warning('Forcing centralized infra even though useCentralizedInfra is disabled')
-        _pre_update_hook_modify_spec(instance_id, instance, lambda i: i['spec'].update(useCentralizedInfra=True),
+        _pre_update_hook_modify_spec(instance_id, instance, lambda i: i.update(useCentralizedInfra=True),
                                      dry_run=dry_run)
     res = {}
     sub_domain, root_domain = _pre_update_hook_route(instance_id, skip_route, instance, res, dry_run=dry_run)
@@ -354,10 +354,10 @@ def _check_instance_events(instance_id):
 
 def _wait_instance_events(instance_id):
     start_time = datetime.datetime.now()
+    last_message = 0
     logs.info('Waiting for instance events', start_time=start_time)
     missing_events = None
     while True:
-        logs.debug('sleeping 15 seconds')
         time.sleep(15)
         currently_missing = _check_instance_events(instance_id)
         if len(currently_missing) == 0:
@@ -366,8 +366,13 @@ def _wait_instance_events(instance_id):
         if currently_missing != missing_events:
             missing_events = currently_missing
             logs.info('Still waiting for', repr(sorted(missing_events)))
-        if (datetime.datetime.now() - start_time).total_seconds() > 1200:
-            raise Exception('time out waiting for instance events')
+            start_time = datetime.datetime.now()
+        time_passed = (datetime.datetime.now() - start_time).total_seconds()
+        if time_passed - last_message >= 60:
+            logs.info('%d seconds since started waiting' % time_passed)
+            last_message += 60 
+        if time_passed > 1200:
+            raise Exception('timed out waiting for instance events')
 
 
 def _pre_update_hook_admin_user(instance, sub_domain, root_domain, instance_id, res, dry_run=False):
@@ -436,6 +441,6 @@ def _pre_update_hook_modify_spec(instance_id, instance, callback, dry_run=False)
     latest_instance = crds_manager.get(INSTANCE_CRD_SINGULAR, crds_manager.get_resource_name(
         INSTANCE_CRD_SINGULAR, instance_id
     ), required=True)
-    callback(instance)
-    callback(latest_instance)
+    callback(instance['spec'])
+    callback(latest_instance['spec'])
     kubectl.apply(latest_instance, dry_run=dry_run)

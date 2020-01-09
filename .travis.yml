@@ -22,7 +22,6 @@ jobs:
         - K8_VERSION=v1.16.0
         - CHANGE_MINIKUBE_NONE_USER=true
         - CCO_INTERACTIVE_CI=interactive.yaml
-        - HELM_VERSION=v2.16.1
       before_install: pip install -e .
       install: bash .travis.sh install-tools
       before_script:
@@ -32,8 +31,37 @@ jobs:
         - ckan-cloud-operator cluster initialize --cluster-provider=minikube || travis_terminate 1;
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
-      after_script:
+      after_success:
         - minikube delete
+      after_failure:
+        - minikube delete
+    - name: AWS
+      if: (type = push AND (branch = master OR tag IS present)) OR commit_message =~ /#aws/
+      env:
+        - K8_PROVIDER=aws
+        - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc="
+        - secure: "K4IUX35tZr3kAEsy6Af3HlJqQDVywoHKPPq4dhZo9EyAcDASEn3jm8dg8re2DNdvOriiUkSrFQyl5WDqbsJaK+nBoGC0eH0b+lzEzGE7Fh/+sm39dmEt29EVXymIutjGYnCiz5dTJKng2VouT2CzgUude8vYUT/bDuYZZmfhA+iS/Bk+X2ex2dknepe7ODnBSgK5YDr82HLZUIn0GhlZ6pHDKhUw0qObQovYhIT5nTcHPgM+m2DFDuo19v9eUCyzPc3YoIMVhInz9BkvhYF1JgeRFvr9cSz27CSnPEx7aJVd4H6xIh4sII/RUOicFvcNiUlALogxr8Vt0swstlvHnjuISkrzW84k2oe5aBf19f7yXAUKWGrhlTz8dsr1TUqGyAc2FYzILpNc0Gl7UwvO2jUam+G/Um1R9k8n8napDG1WSxryc/Fxpfa/FipTv7JaboudmV+6HfsdtrbXoSq2edQ27N3gbMBh5FWeD82NwmxEtQ4GOhhxCjKuVrs8bzIWNvzE6BEQL8fVhYZ0jFJ8Po22gx/gsFva1p9sgGkGXzCBxqT9xaOYOeDRxv1lEjGZth7+N61MPbR2G04B+/AopI/3iQiDuncrgj6hWrPLwYCJRVuxG+UU/S+cFS+G4x4wltOF05eKB3VbAEAg1J5VmpoQpYB1IbtN2wC8LbXVGhE="
+      before_install: pip install -e .
+      install: bash .travis.sh install-tools
+      script:
+        - cd terraform/aws
+        - ./init_cluster.sh ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY} eu-west-2 vpc-30aedd58 terraform-cco ckan-aws-testing.gq
+        - export KUBECONFIG=kubeconfig_terraform-cco
+        - kubectl get ns && kubectl get pods --all-namespaces
+        - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.aws.yaml
+        - kubectl -n a-ckan-instance describe pods
+      after_success:
+        - ./destroy_aws.sh
+      after_failure:
+        - ./destroy_aws.sh
+    - stage: Unit Tests
+      install:
+        - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+        - bash $HOME/bin/travis_ci_operator.sh init
+        - bash .travis.sh install
+      script:
+        - bash .travis.sh script
+        - bash .travis.sh test
     - name: azure
       env:
         - K8_PROVIDER=azure
@@ -60,6 +88,8 @@ jobs:
       after_failure:
         - terraform destroy -auto-approve
     - stage: Deploy
+      if: branch = master OR tag IS present
+      name: docker
       install:
       - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
       - bash $HOME/bin/travis_ci_operator.sh init
@@ -67,15 +97,17 @@ jobs:
       - bash .travis.sh install
       script:
       - bash .travis.sh script
-      - bash .travis.sh test
       deploy:
         - provider: script
           skip_cleanup: true
           script: bash .travis.sh deploy
-          on:
-            branch: master
-        - provider: script
-          skip_cleanup: true
-          script: bash .travis.sh deploy
-          on:
-            tags: true
+    - name: AWS AMI
+      if: tag IS present
+      env:
+        - K8_PROVIDER=aws
+        - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc="
+        - secure: "K4IUX35tZr3kAEsy6Af3HlJqQDVywoHKPPq4dhZo9EyAcDASEn3jm8dg8re2DNdvOriiUkSrFQyl5WDqbsJaK+nBoGC0eH0b+lzEzGE7Fh/+sm39dmEt29EVXymIutjGYnCiz5dTJKng2VouT2CzgUude8vYUT/bDuYZZmfhA+iS/Bk+X2ex2dknepe7ODnBSgK5YDr82HLZUIn0GhlZ6pHDKhUw0qObQovYhIT5nTcHPgM+m2DFDuo19v9eUCyzPc3YoIMVhInz9BkvhYF1JgeRFvr9cSz27CSnPEx7aJVd4H6xIh4sII/RUOicFvcNiUlALogxr8Vt0swstlvHnjuISkrzW84k2oe5aBf19f7yXAUKWGrhlTz8dsr1TUqGyAc2FYzILpNc0Gl7UwvO2jUam+G/Um1R9k8n8napDG1WSxryc/Fxpfa/FipTv7JaboudmV+6HfsdtrbXoSq2edQ27N3gbMBh5FWeD82NwmxEtQ4GOhhxCjKuVrs8bzIWNvzE6BEQL8fVhYZ0jFJ8Po22gx/gsFva1p9sgGkGXzCBxqT9xaOYOeDRxv1lEjGZth7+N61MPbR2G04B+/AopI/3iQiDuncrgj6hWrPLwYCJRVuxG+UU/S+cFS+G4x4wltOF05eKB3VbAEAg1J5VmpoQpYB1IbtN2wC8LbXVGhE="
+      install: bash .travis.sh install-tools
+      script:
+        - cd terraform/aws/ami
+        - ./packer build cco.json

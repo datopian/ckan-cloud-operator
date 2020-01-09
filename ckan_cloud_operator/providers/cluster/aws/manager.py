@@ -41,8 +41,6 @@ def initialize(interactive=False):
         _config_interactive_set({'aws-default-region': None}, is_secret=True)
         print('\nEnter the name of your Amazon EKS cluster\n')
         _config_interactive_set({'eks-cluster-name': None}, is_secret=True)
-    else:
-        logs.info('Skipping initial cluster set up as `--interactive` flag was not set')
     print(yaml.dump(get_info(), default_flow_style=False))
     from ckan_cloud_operator.providers.storage.efs import manager as efs_manager
     efs_manager.initialize(interactive=interactive)
@@ -124,29 +122,29 @@ def get_aws_credentials():
         'region': _config_get('aws-default-region', is_secret=True)
     }
 
-
-def aws_check_output(cmd):
+def aws_process_cmd(cmd):
     access = _config_get('aws-access-key-id', is_secret=True)
     secret = _config_get('aws-secret-access-key', is_secret=True)
     region = _config_get('aws-default-region', is_secret=True)
-    return subprocess.check_output(f"AWS_ACCESS_KEY_ID={access} AWS_SECRET_ACCESS_KEY={secret} AWS_DEFAULT_REGION={region} aws {cmd}", shell=True)
+    cmd = f"AWS_DEFAULT_REGION={region} aws {cmd}"
+    if len(access) >= 20 and len(secret) >= 40:
+        cmd = f"AWS_ACCESS_KEY_ID={access} AWS_SECRET_ACCESS_KEY={secret} " + cmd
+    return cmd
+
+def aws_check_output(cmd):
+    return subprocess.check_output(aws_process_cmd(cmd), shell=True)
 
 
 def exec(cmd):
-    access = _config_get('aws-access-key-id', is_secret=True)
-    secret = _config_get('aws-secret-access-key', is_secret=True)
-    region = _config_get('aws-default-region', is_secret=True)
-    subprocess.check_call(
-        f"AWS_ACCESS_KEY_ID={access} AWS_SECRET_ACCESS_KEY={secret} AWS_DEFAULT_REGION={region} aws {cmd}",
-        shell=True
-    )
+    subprocess.check_call(aws_process_cmd(cmd), shell=True)
 
 
 def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=0):
     assert not use_existing_disk_name, 'using existing disk name is not supported yet'
     availability_zone = get_storage_availability_zone(zone)
     logs.info(f'creating persistent disk with size {disk_size_gb} in availability zone {availability_zone}')
-    data = json.loads(aws_check_output(f'ec2 create-volume -- --size {disk_size_gb} --availability-zone {availability_zone}'))
+    tags = 'ResourceType=volume,Tags=[{Key=Owner,Value=cco}]'
+    data = json.loads(aws_check_output(f'ec2 create-volume -- --size {disk_size_gb} --availability-zone {availability_zone} --tag-specification "{tags}"'))
     volume_id = data['VolumeId']
     logs.info(f'volume_id={volume_id}')
     kubectl.apply({
@@ -197,7 +195,10 @@ def get_boto3_client(service_name):
     import boto3
     access = _config_get('aws-access-key-id', is_secret=True)
     secret = _config_get('aws-secret-access-key', is_secret=True)
-    return boto3.client(service_name, aws_access_key_id=access, aws_secret_access_key=secret)
+    kwargs = {}
+    if len(access) >= 20 and len(secret) >= 40:
+        kwargs = dict(aws_access_key_id=access, aws_secret_access_key=secret)
+    return boto3.client(service_name, **kwargs)
 
 
 def get_dns_hosted_zone_id(root_domain):

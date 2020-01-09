@@ -95,25 +95,6 @@ def get_external_admin_connection_string(db_name=None, db_prefix=None):
     return f'postgresql://{admin_user}:{admin_password}@{db_host}:{db_port}/{db_name}'
 
 
-def get_external_admin_connection_kwargs(db_name=None, db_prefix=None):
-    """Get an admin connection string for access from outside the cluster"""
-    admin_user, admin_password, admin_db_name = get_admin_db_credentials(db_prefix=db_prefix)
-    if not db_name:
-        db_name = admin_db_name
-    db_host, db_port = get_external_proxy_host_port(db_prefix=db_prefix)
-
-    if cluster_manager.get_provider_id() == 'azure':
-        admin_user = '{}@{}'.format(admin_user, db_host)
-
-    return {
-        'user': admin_user,
-        'password': admin_password,
-        'host': db_host,
-        'port': db_port,
-        'dbname': db_name
-    }
-
-
 def get_deis_instsance_external_connection_string(instance_id, is_datastore=False, is_datastore_readonly=False, admin=False, db_prefix=None):
     user, password, db_name, db_host, db_port = get_deis_instance_external_connection_details(
         instance_id, is_datastore=is_datastore, is_datastore_readonly=is_datastore_readonly,

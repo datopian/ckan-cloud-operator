@@ -9,7 +9,7 @@ from . import manager
 
 @click.group()
 def azuresql():
-    """Manage the RDS centralized db proxy"""
+    """Manage the Azure SQL centralized db proxy"""
     pass
 
 

@@ -24,7 +24,7 @@ setup(
         'boto3',
         'coverage',
         'psycopg2',
-        'pyyaml<5.2,>=3.10',
+        'pyyaml<5.3,>=5',
         'kubernetes',
         'click',
         'toml',
@@ -35,7 +35,7 @@ setup(
         'urllib3<1.25',
         'ruamel.yaml<1',
         'requests==2.21',
-        'python-dateutil<2.8.1',
+        'python-dateutil<3',
         'botocore',
     ],
     entry_points={

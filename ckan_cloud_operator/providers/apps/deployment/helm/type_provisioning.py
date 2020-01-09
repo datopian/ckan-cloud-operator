@@ -23,11 +23,11 @@ DEFAULT_VALUES = {
 
 
 def pre_update_hook(instance_id, instance, res, sub_domain, root_domain, modify_spec_callback):
-    modify_spec_callback(lambda i: i['spec'].update(**{
+    modify_spec_callback(lambda i: i.update(**{
         k: v for k, v in DEFAULT_CHART_VALUES.items()
         if not instance['spec'].get(k)
     }))
-    modify_spec_callback(lambda i: i['spec'].setdefault('values', {}).update(**{
+    modify_spec_callback(lambda i: i.setdefault('values', {}).update(**{
         k: v for k, v in DEFAULT_VALUES.items()
         if not instance['spec'].get('values', {}).get(k)
     }))
