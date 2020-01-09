@@ -20,13 +20,13 @@ resource "random_password" "cluster_name_suffix" {
 
 provider "azurerm" {
   version = "1.39.0"
-  subscription_id = var.subscription_id
-  tenant_id       = var.tenant_id
+  subscription_id = "${var.subscription_id}"
+  tenant_id       = "${var.tenant_id}"
 }
 
 resource "azurerm_resource_group" "ckan_cloud_k8" {
   name     = "CkanCLoudk8Test"
-  location = var.location
+  location = "${var.location}"
 }
 
 resource "azurerm_kubernetes_cluster" "ckan_cloud_k8" {
@@ -42,8 +42,8 @@ resource "azurerm_kubernetes_cluster" "ckan_cloud_k8" {
   }
 
   service_principal {
-    client_id     = var.client_id
-    client_secret = var.client_secret
+    client_id     = "${var.client_id}"
+    client_secret = "${var.client_secret}"
   }
 }
 
@@ -65,7 +65,7 @@ resource "random_password" "azuresql_password" {
 
 resource "azurerm_resource_group" "ckan_cloud_db" {
   name     = "CkanCLoudk8Test"
-  location = var.location
+  location = "${var.location}"
 }
 
 resource "azurerm_postgresql_server" "ckan_cloud_db" {
