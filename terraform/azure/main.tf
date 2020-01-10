@@ -122,7 +122,7 @@ default:
     ckan-cloud-provider-db-azuresql-credentials:
       azuresql-instance-name: "${azurerm_postgresql_server.ckan_cloud_db.name}"
       azuresql-host: "${azurerm_postgresql_server.ckan_cloud_db.name}.postgres.database.azure.com"
-      admin-user: "${azurerm_postgresql_server.ckan_cloud_db.administrator_login}@ckan-cloud-db-test"
+      admin-user: "${azurerm_postgresql_server.ckan_cloud_db.administrator_login}@${azurerm_postgresql_server.ckan_cloud_db.name}"
       admin-password: "${azurerm_postgresql_server.ckan_cloud_db.administrator_login_password}"
 YAML
 }
