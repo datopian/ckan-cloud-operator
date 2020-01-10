@@ -92,6 +92,14 @@ resource "azurerm_postgresql_database" "ckan_cloud_db" {
   collation           = "English_United States.1252"
 }
 
+resource "azurerm_postgresql_firewall_rule" "ckan_cloud_db" {
+  name                = "firewallDB"
+  resource_group_name = azurerm_resource_group.ckan_cloud_db.name
+  server_name         = azurerm_postgresql_server.ckan_cloud_db.name
+  start_ip_address    = "0.0.0.0"
+  end_ip_address      = "0.0.0.0"
+}
+
 output "cco-interactive-yaml" {
   value = <<YAML
 default:
