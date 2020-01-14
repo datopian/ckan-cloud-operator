@@ -1,5 +1,20 @@
 # CKAN Values File Reference
 
+## Options Processed by CKAN Cloud Operator [working environment](./WORKING-ENVIRONMENT.md)
+
+- `ckanHelmChartRepo` - URL for a Helm Chart Repository (uses [ckan-cloud-helm](https://github.com/ViderumGlobal/ckan-cloud-helm/tree/master/charts_repository) by default)
+- `ckanHelmChartVersion` - which chart version to pick (e.g. `v0.0.15`)
+
+- `ckanSolrSchema` - name of the solr schema to use (will use `ckan_default` by default)
+- `ckanAdminEmail` - email address to use when creating the `admin` account 
+
+- `sub-domain` - Sub domain to use for this instance (defaults to `ckan-cloud-<instance-id>`)
+
+- `domain` - Ignored, will always be equal to `<sub-domain>.<cluster-root-domain>`
+- `withSansSSL` - Ignored, will always be considered as True
+- `registerSubdomain` - Ignored, will always be equal to `sub-domain`
+
+
 ## Options Defined in the [standard Helm Chart](https://github.com/ViderumGlobal/ckan-cloud-helm/tree/master/ckan)
 
 ### Options that affect the CKAN deployments
@@ -43,7 +58,7 @@
 
 ### Options that affect CKAN's production.ini file
 
-- `siteUrl` - value for the `ckan.site_url` CKAN configuration entry
+- `siteUrl` - value for the `ckan.site_url` CKAN configuration entry, will be automatically set according to `sub-domain`
 - `siteTitle` - value for the `ckan.site_title` CKAN configuration entry
 - `siteLogo` - value for the `ckan.site_logo` CKAN configuration entry
 - `siteDescription` - value for the `ckan.site_description` CKAN configuration entry
