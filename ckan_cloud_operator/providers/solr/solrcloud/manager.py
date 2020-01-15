@@ -102,7 +102,7 @@ def initialize(interactive=False, dry_run=False):
         pods = kubectl.get('pods')
         running = len([x for x in pods['items']
                        if x['status']['phase'] == 'Running'])
-        time.sleep(30)
+        time.sleep(45)
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
         for x in pods['items']:
             logs.info('  - %-10s | %s: %s' % (x['metadata'].get('labels', {}).get('app'), x['metadata']['name'], x['status']['phase']))

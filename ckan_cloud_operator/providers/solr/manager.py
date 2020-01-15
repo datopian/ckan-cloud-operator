@@ -183,22 +183,22 @@ def zk_put_configs(configs_dir):
     for input_filename in glob.glob(f'{configs_dir}/**/*', recursive=True):
         if not os.path.isfile(input_filename): continue
         output_filename = '/configs' + input_filename.replace(configs_dir, '')
-        print(f'{input_filename} --> {output_filename}')
+        logs.info(f'{input_filename} --> {output_filename}')
         output_filepath = ''
         for output_filepart in output_filename.split('/')[:-1]:
             output_filepart = output_filepart.strip()
             if not output_filepart:
                 continue
             output_filepath += f'/{output_filepart}'
-            print(f'create {output_filepath} null')
-            print(kubectl.call(
-                f'exec {pod_name} zkCli.sh create {output_filepath} null'
+            logs.info(f'create {output_filepath} null')
+            logs.info(kubectl.call(
+                      f'exec {pod_name} zkCli.sh create {output_filepath} null'
             ))
-        print(f'copy {output_filename}')
-        print(kubectl.call(
-            f'cp {input_filename} {pod_name}:/tmp/zk_input'
+        logs.info(f'copy {output_filename}')
+        logs.info(kubectl.call(
+                  f'cp {input_filename} {pod_name}:/tmp/zk_input'
         ))
-        print(f'create {output_filename}')
-        print(kubectl.call(
-            f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'"
+        logs.info(f'create {output_filename}')
+        logs.info(kubectl.call(
+                  f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'"
         ))

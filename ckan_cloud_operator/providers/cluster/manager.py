@@ -34,7 +34,6 @@ def print_info(debug=False, minimal=False):
     print(yaml.dump([dict(
         get_kubeconfig_info(), 
         nodes=get_node_names(),
-        operator_version=get_operator_version(verify=True)
     )], default_flow_style=False))
     if not minimal:
         from ckan_cloud_operator.providers import manager as providers_manager

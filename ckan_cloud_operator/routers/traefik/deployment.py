@@ -184,6 +184,7 @@ def get_load_balancer_ip(router_name, failfast=False):
             if failfast:
                 return None
             else:
+                time.sleep(60)
                 continue
         ingresses = load_balancer.get('status', {}).get('loadBalancer', {}).get('ingress', [])
         if len(ingresses) == 0: continue
