@@ -81,7 +81,7 @@ jobs:
         - kubectl get pods --all-namespaces
         - echo " " | ckan-cloud-operator cluster initialize --interactive --cluster-provider=azure
         - kubectl get ns && kubectl get pods -n ckan-cloud
-        - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.datagov.yaml
+        - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.azure.yaml
         - kubectl -n a-ckan-instance describe pods
       after_success:
         - terraform destroy -auto-approve
