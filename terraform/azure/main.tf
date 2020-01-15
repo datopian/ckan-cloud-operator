@@ -81,7 +81,7 @@ resource "azurerm_postgresql_server" "ckan_cloud_db" {
   administrator_login          = "ckan_cloud"
   administrator_login_password = random_password.azuresql_password.result
   version                      = "9.6"
-  ssl_enforcement              = "Enabled"
+  ssl_enforcement              = "Disabled"
 }
 
 resource "azurerm_postgresql_database" "ckan_cloud_db" {
@@ -105,7 +105,7 @@ output "cco-interactive-yaml" {
 default:
   config:
     routers-config:
-      env-id: t
+      env-id: p
       default-root-domain: localhost
       dns-provider: none
     ckan-cloud-provider-cluster-azure:
