@@ -3,7 +3,7 @@
 ## Prerequisites
 
 * An Amazon Account with admin privileges and matching access and secret keys.
-* An existing VPC
+* An existing VPC with an existing subnet in each availability zone
 * An external domain registered to Amazon Route53
 * A CKAN Cloud Operator [working environment](./WORKING-ENVIRONMENT.md)
 
