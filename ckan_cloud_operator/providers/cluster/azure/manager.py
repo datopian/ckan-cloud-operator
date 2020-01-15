@@ -102,7 +102,6 @@ def _create_storage_classes():
         'volumeBindingMode': 'Immediate',
         'parameters': {
             'skuName': 'Standard_LRS',
-            'storageAccount': 'k8ssbxgdxdata',
             'location': _config_get('azure-default-location')
         }
     })
