@@ -191,14 +191,8 @@ def zk_put_configs(configs_dir):
                 continue
             output_filepath += f'/{output_filepart}'
             logs.info(f'create {output_filepath} null')
-            logs.info(kubectl.call(
-                      f'exec {pod_name} zkCli.sh create {output_filepath} null'
-            ))
+            kubectl.check_output(f'exec {pod_name} zkCli.sh create {output_filepath} null')
         logs.info(f'copy {output_filename}')
-        logs.info(kubectl.call(
-                  f'cp {input_filename} {pod_name}:/tmp/zk_input'
-        ))
+        kubectl.check_output(f'cp {input_filename} {pod_name}:/tmp/zk_input')
         logs.info(f'create {output_filename}')
-        logs.info(kubectl.call(
-                  f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'"
-        ))
+        kubectl.check_output(f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'")
