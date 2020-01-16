@@ -45,6 +45,8 @@ In order to start using ckan-cloud-operator, you need to
     - Create a values file
     - Create the instance on the cluster
 
+4. (Optional) [Set-up Jenkins and the Provisioning UI](docs/PROVISIONING-SERVER.md)
+
 ## Reference
 
 - Command Line Interface parameters
