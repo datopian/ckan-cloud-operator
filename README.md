@@ -48,4 +48,4 @@ In order to start using ckan-cloud-operator, you need to
 ## Reference
 
 - Command Line Interface parameters
-- CKAN Values file reference
+- [CKAN Values file reference](docs/VALUES-FILE-REFERENCE.md)
