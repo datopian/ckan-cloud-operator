@@ -1,0 +1,7 @@
+backend-url: http://ui.{instance_id}:8000
+sub-domain: ckan-cloud-app-provisioning
+values:
+  apiDbImage: postgres:11
+  apiExternalAddress: https://ckan-cloud-app-provisioning.datagov.us
+  apiImage: viderum/datagov-ckan-cloud-provisioning-api:6ca451b7fc36a5a837b9327ebd16497c8b8adec0
+  uiImage: viderum/ckan-cloud-provisioning-ui:3e8f17bb7ce17f03506ea8707d804e3ebad2d98f

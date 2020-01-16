@@ -272,6 +272,7 @@ def _helm_deploy(values, tiller_namespace_name, chart_repo, chart_name, chart_ve
                  dry_run=False, chart_repo_name=None):
     assert chart_repo_name, 'chart-repo-name is required'
     helm_driver.init(tiller_namespace_name)
+    time.sleep(10) # wait for tiller pod to be ready
     logs.info(f'Deploying helm chart {chart_repo_name} {chart_repo} {chart_version} {chart_name} to release {release_name} '
               f'(instance_id={instance_id})')
     with tempfile.NamedTemporaryFile('w') as f:
@@ -293,7 +294,7 @@ def _get_tiller_namespace_name(instance_id, instance):
 
 
 def _get_helm_release_name(instance_id, instance):
-    return instance['spec'].get('chart-release-name', _get_resource_name(instance_id, short=True))
+    return instance['spec'].get('chart-release-name', _get_resource_name(instance_id, short=False))
 
 
 def _get_app_type_manager(app_type):
