@@ -12,6 +12,25 @@
 
 - In the admin user profile page, use 'configure' to generate an API Token (copy it to somewhere safe to be used later)
 
+- Create the following Jenkins Jobs:
+
+  - `Provisioning - instance status`, to run every minute (`* * * * *`) with the command `sudo su ubuntu -c 'bash -l -c "ckan-cloud-operator ckan instance list -c"'`
+  - `Provisioning - new instance`, with the string parameters `VALUES` and `INSTANCE_ID` and the command:
+
+```bash
+(cat <<EOF
+${VALUES}
+EOF
+) | sudo su ubuntu -c "bash -l -c 'ckan-cloud-operator ckan instance create helm - --instance-id \"${INSTANCE_ID}\" --instance-name \"${INSTANCE_ID}\" --update --exists-ok --wait-ready'"
+```
+
+  - `Provisioning - delete instance`, with the string parameter `INSTANCE_ID` and the command:
+
+```bash
+sudo su ubuntu -c "bash -l -c 'ckan-cloud-operator ckan instance delete \"${INSTANCE_ID}\" --no-dry-run'"
+```
+
+
 ## Create the provisioning app
 
 - Update `sample-values/provisioning.yaml` to contain the correct domain name (look for `apiExternalAddress`)
