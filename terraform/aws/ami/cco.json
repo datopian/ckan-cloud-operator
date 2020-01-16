@@ -55,7 +55,8 @@
                 "python --version",
                 "pip --version",
                 "K8_PROVIDER=aws TERRAFORM_VERSION=0.12.18 /home/ubuntu/.travis.sh install-tools",
-                "python3 -m pip install /home/ubuntu/",
+                "python3 -m pip install -e /home/ubuntu/",
+                "sudo sh -c \"echo 'jenkins ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/91-jenkins\"",
                 "sudo cp /var/lib/jenkins/secrets/initialAdminPassword /tmp/initialAdminPassword ; sudo chmod a+r /tmp/initialAdminPassword"
             ]
         },
