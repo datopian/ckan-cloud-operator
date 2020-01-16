@@ -47,6 +47,7 @@ def create(tiller_namespace_name=None, chart_repo=None, chart_version=None, char
     elif values_json:
         assert not values_filename and not values
         values = json.loads(values_json)
+    values = values or {}
     spec = {
         **({'tiller-namespace-name': tiller_namespace_name} if tiller_namespace_name else {}),
         **({'chart-name': chart_name} if chart_name else {}),
@@ -55,8 +56,8 @@ def create(tiller_namespace_name=None, chart_repo=None, chart_version=None, char
         **({'chart-version': chart_version} if chart_version else {}),
         **({'chart-release-name': chart_release_name} if chart_release_name else {}),
         **({'with-service-account': True} if with_service_account else {}),
-        **({'values': values} if values else {}),
         **({'app-type': app_type} if app_type else {}),
+        **values,
     }
     assert 'values' not in create_kwargs
     from ckan_cloud_operator.providers.apps import manager as apps_manager
