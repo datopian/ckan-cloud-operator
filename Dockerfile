@@ -7,7 +7,10 @@ RUN apt-get install -y nano curl unzip sudo bash libpq-dev build-essential
 ENV EDITOR nano
 
 COPY . .
-RUN K8_PROVIDER=aws TERRAFORM_VERSION=0.12.18 /cco/.travis.sh install-tools
+ARG K8_PROVIDER=aws
+ENV K8_PROVIDER=$K8_PROVIDER
+ARG K8_PROVIDER_CUSTOM_DOWNLOAD_URL=""
+RUN /cco/.travis.sh install-tools
 RUN pip install .
 
 ENTRYPOINT [ "/bin/bash" ]

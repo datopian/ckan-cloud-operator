@@ -56,7 +56,7 @@
                 "pyenv global 3.7.6",
                 "python --version",
                 "pip --version",
-                "K8_PROVIDER=aws TERRAFORM_VERSION=0.12.18 /home/ubuntu/.travis.sh install-tools",
+                "K8_PROVIDER=aws /home/ubuntu/.travis.sh install-tools",
                 "python3 -m pip install /home/ubuntu/"
             ]
         }

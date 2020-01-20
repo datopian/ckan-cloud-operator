@@ -6,10 +6,17 @@ In order to ensure that there are no version incompatibilities among the differe
 
 ## Using the Docker images
 
-To use the docker image run this from the command line:
+Choose a Docker image for your target environment:
+
+* AWS: `viderum/ckan-cloud-operator`
+* Minikube: `viderum/ckan-cloud-operator:minikube-latest`
+* Custom providers:
+    * Kamatera: `orihoch/ckan-cloud-operator:kamatera-latest`
+
+Run the selected docker image:
 
 ```bash
-$ docker run -it -v $PWD/.cco:/root/ viderum/ckan-cloud-operator:latest 
+$ docker run -it -v $PWD/.cco:/root/ viderum/ckan-cloud-operator
 ```
 
 We are mapping a directory named `.cco` in the current working directory to store important state (e.g. kubectl config, terraform state), but you can choose to map a different directory on you machine.

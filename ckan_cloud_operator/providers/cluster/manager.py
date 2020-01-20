@@ -49,6 +49,9 @@ def print_info(debug=False, minimal=False):
 
 
 def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None, skip_to=None):
+    if os.environ.get('CCO_INTERACTIVE_CI'):
+        interactive = True
+
     if interactive:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)

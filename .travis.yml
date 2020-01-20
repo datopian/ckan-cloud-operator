@@ -25,7 +25,7 @@ jobs:
         - minikube config set cpus 4 && minikube config set memory 8192 && minikube config set vm-driver none && minikube config set kubernetes-version "${K8_VERSION}" 
         - sudo minikube start
       script:
-        - ckan-cloud-operator cluster initialize --interactive --cluster-provider=minikube
+        - ckan-cloud-operator cluster initialize --cluster-provider=minikube
         - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud 
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
       after_success:

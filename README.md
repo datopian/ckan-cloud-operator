@@ -8,6 +8,7 @@ CKAN Cloud Operator manages, provisions and configures CKAN Cloud instances and 
   - AWS
   - GCP
   - Azure
+  - Custom / Self-hosted Provider
   - Minikube for local development
 - `ckan-cloud-operator` CLI will manage the cluster and any other services necessary for day-to-day operations
 - Management server, comes preinstalled with ckan-cloud-operator, required tools (terraform, kubectl, helm, awscli etc.) and [a Jenkins Server](/docs/JENKINS.md).
@@ -24,6 +25,8 @@ In order to start using ckan-cloud-operator, you need to
    - Run the TBD (on Azure)
 
    Note: While technically possible, we recommend not to run ckan-cloud-operator directly on you machine to avoid version incompatibilities between the various tools involved in the process. You should use one of our pre-built images or our Docker image instead.
+   
+   If you do want to run locally for development, refer to the [local development doc](development/LOCAL-DEVELOPMENT.md)  
 
 2. Create a Kubernetes cluster and provision it.
     - [Instructions for AWS](docs/PRODUCTION-AWS-CLUSTER.md):
@@ -36,6 +39,10 @@ In order to start using ckan-cloud-operator, you need to
     
     - Instructions for Azure:
         - Create a cluster using terraform
+        - Initialize the cluster using ckan-cloud-operator
+    
+    - [Instructions for Custom / Self-hosted providers](docs/PRODUCTION-CUSTOM-CLUSTER.md):
+        - Create servers using custom provisioning tools
         - Initialize the cluster using ckan-cloud-operator
     
     - Instructions for Minikube:

@@ -10,3 +10,7 @@ tests/data
 **/.terraform
 data
 *.kube*
+Dockerfile*
+README.md
+docs
+.cco

@@ -38,4 +38,4 @@ CREDENTIALS
 export CCO_INTERACTIVE_CI=interactive.yaml
 cp ./kubeconfig_terraform-cco ~/.kube/config
 cp terraform.tfstate ~/
-ckan-cloud-operator cluster initialize --interactive --cluster-provider=aws
+ckan-cloud-operator cluster initialize --cluster-provider=aws
