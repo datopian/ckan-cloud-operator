@@ -73,7 +73,8 @@ def update(instance_id, instance, force=False, dry_run=False):
             "replicas": 1,
             "nginxReplicas": 1,
             "disableJobs": True,
-            "noProbes": True
+            "noProbes": True,
+            "enableHarvesterNG": False
         }
     _helm_deploy(
         values, tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version,
