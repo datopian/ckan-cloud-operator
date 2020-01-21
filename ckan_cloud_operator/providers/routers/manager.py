@@ -76,5 +76,8 @@ def update_dns_record(dns_provider, sub_domain, root_domain, load_balancer_ip_or
     elif dns_provider == 'route53':
         from ckan_cloud_operator.providers.cluster.aws import manager as aws_manager
         aws_manager.update_dns_record(sub_domain, root_domain, load_balancer_ip_or_hostname)
+    elif dns_provider == 'azure':
+        from ckan_cloud_operator.providers.cluster.azure import manager as azure_manager
+        azure_manager.create_dns_record(sub_domain, root_domain, load_balancer_ip_or_hostname)
     else:
         raise NotImplementedError()

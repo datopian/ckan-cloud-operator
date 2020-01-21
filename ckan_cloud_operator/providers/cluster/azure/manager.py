@@ -160,4 +160,17 @@ def _generate_password(l):
 
 
 def az_check_output(cmd):
-    return subprocess.az_check_output(f'az {cmd}', shell=True)
+    return subprocess.check_output(f'az {cmd}', shell=True)
+
+
+def create_dns_record(sub_domain, root_domain, load_balancer_ip_or_hostname):
+    logs.info('updating Azure DNS record', sub_domain=sub_domain, root_domain=root_domain, load_balancer_hostname=load_balancer_ip_or_hostname)
+    resource_group = _config_get('azure-rg')
+    # az network dns record-set a show exits with non 0 if DNS record name not found
+    try:
+        # Check if exists and do nothing...
+        cmd = f'network dns record-set a show  -g {resource_group} -z {root_domain} -n {sub_domain}'
+    except:
+        # Create if does not
+        cmd = f'network dns record-set a add-record  -g {resource_group} -z {root_domain} -n {sub_domain} -a {load_balancer_ip_or_hostname}'
+    output = az_check_output(cmd)
