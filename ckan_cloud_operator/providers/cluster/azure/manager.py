@@ -170,7 +170,8 @@ def create_dns_record(sub_domain, root_domain, load_balancer_ip_or_hostname):
     try:
         # Check if exists and do nothing...
         cmd = f'network dns record-set a show  -g {resource_group} -z {root_domain} -n {sub_domain}'
+        az_check_output(cmd)
     except:
         # Create if does not
         cmd = f'network dns record-set a add-record  -g {resource_group} -z {root_domain} -n {sub_domain} -a {load_balancer_ip_or_hostname}'
-    output = az_check_output(cmd)
+        az_check_output(cmd)
