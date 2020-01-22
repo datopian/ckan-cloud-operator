@@ -2,6 +2,7 @@ from ckan_cloud_operator import logs
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 from ckan_cloud_operator.annotations import manager as annotations_manager
+import importlib
 
 
 def get_provider(submodule, required=True, supported_provider_ids=None, default=None, verbose=False, provider_id=None):
@@ -349,6 +350,11 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.solr.solrcloud import manager as solr_solrcloud_manager
 
             return solr_solrcloud_manager
+
+    try:
+        return importlib.import_module(f'cco_provider_{provider_id}.manager')
+    except ModuleNotFoundError as e:
+        logs.warning(str(e))
 
     if not provider_id:
         return []

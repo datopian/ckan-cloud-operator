@@ -9,3 +9,8 @@ tests/data
 .checkpoints
 **/.terraform
 data
+*.kube*
+Dockerfile*
+README.md
+docs
+.cco

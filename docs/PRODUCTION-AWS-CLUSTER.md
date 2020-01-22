@@ -57,7 +57,7 @@ For an unattended initialization, using the outputs of `terraform apply`, run:
 
 ```bash
 export CCO_INTERACTIVE_CI=interactive.yaml
-ckan-cloud-operator cluster initialize --interactive --cluster-provider=aws
+ckan-cloud-operator cluster initialize --cluster-provider=aws
 ```
 
 You can also run the same without setting the `CCO_INTERACTIVE_CI` environment variable for an interactive initialization session.

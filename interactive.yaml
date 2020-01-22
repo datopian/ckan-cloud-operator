@@ -1,5 +1,17 @@
 default:
   config:
+    cluster-init:
+      ckan-cloud-operator-image: viderum/ckan-cloud-operator
+      components:
+        - labels
+        - cluster
+        - crds
+        - db
+        - routers
+        - solr
+        - storage
+        - ckan
+        - apps
     routers-config:
       env-id: p
       default-root-domain: localhost

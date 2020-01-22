@@ -6,7 +6,6 @@ from sys import stdout
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
 
-from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 
 
@@ -88,7 +87,9 @@ def delete_by_extra_operator_labels(extra_operator_labels):
 
 def list_configs(namespace=None, full=False, show_secrets=False):
     label_prefix = labels_manager.get_label_prefix()
-    if not namespace: namespace = cluster_manager.get_operator_namespace_name()
+    if not namespace:
+        from ckan_cloud_operator.providers.cluster import manager as cluster_manager
+        namespace = cluster_manager.get_operator_namespace_name()
     what = 'configmaps'
     if show_secrets:
         what += ',secrets'
@@ -110,6 +111,7 @@ def list_configs(namespace=None, full=False, show_secrets=False):
                 else:
                     data['values'] = None
             yield data
+
 
 def get_preset_answer(namespace, configmap_name, secret_name, key):
     interactive_file = os.environ.get('CCO_INTERACTIVE_CI')
@@ -254,6 +256,7 @@ def _get_labels(cache_key=None, secret_name=None, configmap_name=None, namespace
 def _get_cache_key(secret_name, configmap_name, namespace):
     if secret_name:
         assert not configmap_name, f'Invalid arguments: cannot specify both secret_name and configmap_name: {secret_name}, {configmap_name}'
+    from ckan_cloud_operator.providers.cluster import manager as cluster_manager
     configmap_name, namespace = cluster_manager.get_operator_configmap_namespace_defaults(configmap_name, namespace)
     return f'secret:{namespace}:{secret_name}' if secret_name else f'configmap:{namespace}:{configmap_name}'
 

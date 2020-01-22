@@ -43,6 +43,19 @@ elif [ "${1}" == "install-tools" ]; then
       echo AWS Dependencies Installed Successfully!
     fi
 
+    if [[ $K8_PROVIDER == custom-* ]]; then
+      echo Installing ${K8_PROVIDER} from ${K8_PROVIDER_CUSTOM_DOWNLOAD_URL} &&\
+      mkdir -p /usr/local/lib/cco/${K8_PROVIDER} &&\
+      cd /usr/local/lib/cco/${K8_PROVIDER} &&\
+      curl -Lo custom.tar.gz ${K8_PROVIDER_CUSTOM_DOWNLOAD_URL} &&\
+      tar -xzvf custom.tar.gz && rm custom.tar.gz &&\
+      mv `ls`/* ./ &&\
+      source "/usr/local/lib/cco/${K8_PROVIDER}/install_tools_constants.sh"
+      [ "$?" != "0" ] && exit 1
+      ! bash "/usr/local/lib/cco/${K8_PROVIDER}/install_tools.sh" && exit 2
+      echo ${K8_PROVIDER} Dependencies Installed Successfully!
+    fi
+
     curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
     chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl
     echo Kubectl Installed Successfully!
@@ -58,8 +71,18 @@ elif [ "${1}" == "install-tools" ]; then
     echo Instalation Complete && exit 0
 
 elif [ "${1}" == "script" ]; then
-    ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:latest -t ckan-cloud-operator . && echo Failed to build image && exit 1
-    ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:jnlp-latest -t ckan-cloud-operator-jnlp -f Dockerfile.jenkins-jnlp . && echo Failed to build jnlp image && exit 1
+    ! docker build --cache-from viderum/ckan-cloud-operator:latest \
+                   -t ckan-cloud-operator \
+                   . && echo Failed to build image && exit 1
+    ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" \
+                   --cache-from viderum/ckan-cloud-operator:jnlp-latest \
+                   -t ckan-cloud-operator-jnlp \
+                   -f Dockerfile.jenkins-jnlp \
+                   . && echo Failed to build jnlp image && exit 1
+    ! docker build --build-arg "K8_PROVIDER=minikube" \
+                   --cache-from viderum/ckan-cloud-operator:minikube-latest \
+                   -t ckan-cloud-operator-minikube \
+                   . && echo Failed to build minikube image && exit 1
     echo Great Success! && exit 0
 
 elif [ "${1}" == "test" ]; then
@@ -79,20 +102,34 @@ elif [ "${1}" == "deploy" ]; then
     echo && echo "viderum/ckan-cloud-operator:${TAG}" && echo &&\
     docker push "viderum/ckan-cloud-operator:${TAG}"
     [ "$?" != "0" ] && echo Failed to tag and push && exit 1
+
     docker tag ckan-cloud-operator-jnlp "viderum/ckan-cloud-operator:jnlp-${TAG}" &&\
     echo && echo "viderum/ckan-cloud-operator:jnlp-${TAG}" && echo &&\
     docker push "viderum/ckan-cloud-operator:jnlp-${TAG}"
     [ "$?" != "0" ] && echo Failed to tag and push jnlp image && exit 1
+
+    docker tag ckan-cloud-operator-minikube "viderum/ckan-cloud-operator:minikube-${TAG}" &&\
+    echo && echo "viderum/ckan-cloud-operator:minikube-${TAG}" && echo &&\
+    docker push "viderum/ckan-cloud-operator:minikube-${TAG}"
+    [ "$?" != "0" ] && echo Failed to tag and push minikube image && exit 1
+
     if [ "${TRAVIS_BRANCH}" == "master" ]; then
         docker tag ckan-cloud-operator viderum/ckan-cloud-operator:latest &&\
         echo && echo viderum/ckan-cloud-operator:latest && echo &&\
         docker push viderum/ckan-cloud-operator:latest
         [ "$?" != "0" ] && echo Failed to tag and push latest image && exit 1
+
         docker tag ckan-cloud-operator-jnlp viderum/ckan-cloud-operator:jnlp-latest &&\
         echo && echo viderum/ckan-cloud-operator:jnlp-latest && echo &&\
         docker push viderum/ckan-cloud-operator:jnlp-latest
         [ "$?" != "0" ] && echo Failed to tag and push jnlp latest image && exit 1
+
+        docker tag ckan-cloud-operator-minikube viderum/ckan-cloud-operator:minikube-latest &&\
+        echo && echo viderum/ckan-cloud-operator:minikube-latest && echo &&\
+        docker push viderum/ckan-cloud-operator:minikube-latest
+        [ "$?" != "0" ] && echo Failed to tag and push minikube latest image && exit 1
     fi
+
     if [ "${TRAVIS_TAG}" != "" ]; then
         export DEPLOY_JNLP_IMAGE="viderum/ckan-cloud-operator:jnlp-${TAG}"
         echo "Running Jenkins deploy jnlp job (JNLP_IMAGE=${DEPLOY_JNLP_IMAGE})"
@@ -100,6 +137,7 @@ elif [ "${1}" == "deploy" ]; then
         echo "jenkins jnlp deploy job status code: ${STATUS_CODE}"
         [ "${STATUS_CODE}" != "200" ] && [ "${STATUS_CODE}" != "201" ] && echo Deploy failed && exit 1
     fi
+
     echo Great Success! && exit 0
 
 else
