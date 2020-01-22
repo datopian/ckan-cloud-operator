@@ -7,6 +7,7 @@ import sys
 from ckan_cloud_operator import kubectl
 from ckan_cloud_operator import logs
 from ckan_cloud_operator.labels import manager as labels_manager
+from ckan_cloud_operator.config.manager import get_preset_answer
 
 from .constants import OPERATOR_NAMESPACE, OPERATOR_CONFIGMAP
 
@@ -48,6 +49,18 @@ def print_info(debug=False, minimal=False):
             return True
 
 
+def _initialize_cluster(default_cluster_provider, interactive):
+    from ckan_cloud_operator.providers import manager as providers_manager
+
+    default_provider_id = default_cluster_provider
+    if default_cluster_provider.startswith('custom-'):
+        default_provider_id = default_cluster_provider.replace('custom-', '')
+    providers_manager.get_provider(
+        'cluster',
+        default=default_provider_id
+    ).initialize(interactive=interactive)
+
+
 def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None, skip_to=None):
     if os.environ.get('CCO_INTERACTIVE_CI'):
         interactive = True
@@ -60,12 +73,27 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
 
     if not skip_to:
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
-        subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
-        assert default_cluster_provider in ['gcloud', 'aws', 'minikube'], f'invalid cluster provider: {default_cluster_provider}'
-        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create secret generic ckan-cloud-provider-cluster-{default_cluster_provider}', shell=True)
-        subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix={OPERATOR_NAMESPACE}', shell=True)
+        if subprocess.call(f'kubectl get ns {OPERATOR_NAMESPACE}'.split(' ')) != 0:
+            subprocess.check_call(f'kubectl create ns {OPERATOR_NAMESPACE}'.split(' '))
+        assert (default_cluster_provider in ['gcloud', 'aws', 'minikube']
+                or default_cluster_provider.startswith('custom-')), \
+            f'invalid cluster provider: {default_cluster_provider}'
+        if subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} '
+                           f'get secret ckan-cloud-provider-cluster-{default_cluster_provider}'.split(' ')) != 0:
+            subprocess.check_call(f'kubectl -n {OPERATOR_NAMESPACE} '
+                                  f'create secret generic '
+                                  f'ckan-cloud-provider-cluster-{default_cluster_provider}'.split(' '))
+        if subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} get configmap operator-conf'.split(' ')) != 0:
+            try:
+                ckan_cloud_operator_image = get_preset_answer('default', 'cluster-init', None,
+                                                              'ckan-cloud-operator-image')
+            except Exception:
+                ckan_cloud_operator_image = 'viderum/ckan-cloud-operator:latest'
+            subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} '
+                            f'create configmap operator-conf '
+                            f'--from-literal=ckan-cloud-operator-image={ckan_cloud_operator_image} '
+                            f'--from-literal=label-prefix={OPERATOR_NAMESPACE}'.split(' '))
 
-    from ckan_cloud_operator.providers import manager as providers_manager
     from ckan_cloud_operator.labels import manager as labels_manager
     from ckan_cloud_operator.crds import manager as crds_manager
     from ckan_cloud_operator.providers.db import manager as db_manager
@@ -75,22 +103,31 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
     from ckan_cloud_operator.providers.storage import manager as storage_manager
     from ckan_cloud_operator.providers.apps import manager as apps_manager
 
-    for component, func in (
-            ('labels', lambda lk: labels_manager.initialize(log_kwargs=lk)),
-            ('cluster', lambda lk: providers_manager.get_provider('cluster', default=default_cluster_provider).initialize(interactive=interactive)),
-            ('crds', lambda lk: crds_manager.initialize(log_kwargs=lk)),
-            ('db', lambda lk: db_manager.initialize(log_kwargs=lk, interactive=interactive, default_cluster_provider=default_cluster_provider)),
-            ('routers', lambda lk: routers_manager.initialize(interactive=interactive)),
-            ('solr', lambda lk: solr_manager.initialize(interactive=interactive)),
-            ('storage', lambda lk: storage_manager.initialize(interactive=interactive)),
-            ('ckan', lambda lk: ckan_manager.initialize(interactive=interactive)),
-            ('apps', lambda lk: apps_manager.initialize(interactive=interactive)),
-    ):
+    components = dict((
+        ('labels', lambda lk: labels_manager.initialize(log_kwargs=lk)),
+        ('cluster', lambda lk: _initialize_cluster(default_cluster_provider, interactive)),
+        ('crds', lambda lk: crds_manager.initialize(log_kwargs=lk)),
+        ('db', lambda lk: db_manager.initialize(log_kwargs=lk, interactive=interactive,
+                                                default_cluster_provider=default_cluster_provider)),
+        ('routers', lambda lk: routers_manager.initialize(interactive=interactive)),
+        ('solr', lambda lk: solr_manager.initialize(interactive=interactive)),
+        ('storage', lambda lk: storage_manager.initialize(interactive=interactive)),
+        ('ckan', lambda lk: ckan_manager.initialize(interactive=interactive)),
+        ('apps', lambda lk: apps_manager.initialize(interactive=interactive)),
+    ))
+
+    try:
+        selected_components = list(get_preset_answer('default', 'cluster-init', None, 'components'))
+    except Exception:
+        selected_components = list(components.keys())
+
+    for component, func in components.items():
         if not skip_to or skip_to == component:
             skip_to = None
-            log_kwargs = {'cluster-init': component}
-            logs.info(f'Initializing', **log_kwargs)
-            func(log_kwargs)
+            if component in selected_components:
+                log_kwargs = {'cluster-init': component}
+                logs.info(f'Initializing', **log_kwargs)
+                func(log_kwargs)
 
 
 def get_kubeconfig_info():
