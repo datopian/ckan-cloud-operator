@@ -12,7 +12,7 @@ RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.s
     conda env create -f ./environment.yaml &&\
     conda clean -ya
 COPY ckan_cloud_operator ./ckan-cloud-operator/ckan_cloud_operator
-COPY *.sh *.py ./ckan-cloud-operator/
+COPY *.sh *.py requirements.in requirements.txt ./ckan-cloud-operator/
 COPY scripts /usr/src/ckan-cloud-operator/scripts
 ENV CKAN_CLOUD_OPERATOR_SCRIPTS=/usr/src/ckan-cloud-operator/scripts
 
@@ -25,7 +25,7 @@ RUN chown -R jenkins:jenkins /home/jenkins/ckan-cloud-operator &&\
 
 USER jenkins
 RUN bash -c "source miniconda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
-             cd ckan-cloud-operator && python3 -m pip install -e ."
+             cd ckan-cloud-operator && python3 -m pip install -r requirements.txt && python3 -m pip install -e ."
 ENV PATH=/home/jenkins/miniconda/envs/ckan-cloud-operator/bin:/home/jenkins/miniconda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV CKAN_CLOUD_OPERATOR_USE_PROXY=n
 WORKDIR /home/jenkins
