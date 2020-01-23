@@ -11,6 +11,10 @@ variable "cluster_name" {
    default = "terraform-cco"
 }
 
+variable "dns_zone_name" {
+   default = "viderum.xyz"
+}
+
 resource "random_password" "cluster_name_suffix" {
   length = 4
   special = false
@@ -100,14 +104,20 @@ resource "azurerm_postgresql_firewall_rule" "ckan_cloud_db" {
   end_ip_address      = "0.0.0.0"
 }
 
+resource "azurerm_dns_zone" "ckan_cloud_dns_zone" {
+  name                = var.dns_zone_name
+  resource_group_name = azurerm_resource_group.ckan_cloud_k8.name
+}
+
+
 output "cco-interactive-yaml" {
   value = <<YAML
 default:
   config:
     routers-config:
       env-id: p
-      default-root-domain: localhost
-      dns-provider: none
+      default-root-domain: "${var.dns_zone_name}"
+      dns-provider: azure
     ckan-cloud-provider-cluster-azure:
       azure-rg: "${azurerm_resource_group.ckan_cloud_k8.name}"
       azure-default-location: "${azurerm_resource_group.ckan_cloud_k8.location}"
