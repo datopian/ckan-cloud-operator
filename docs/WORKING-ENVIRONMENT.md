@@ -32,6 +32,7 @@ aws ec2 run-instances
     --count 1
     --instance-type t2.micro
     --key-name <name of keypair>
+    --subnet-id <id of subnet to attach to>
     --user-data <optional user data>
 ```
 

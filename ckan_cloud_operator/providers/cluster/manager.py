@@ -34,7 +34,6 @@ def print_info(debug=False, minimal=False):
     print(yaml.dump([dict(
         get_kubeconfig_info(), 
         nodes=get_node_names(),
-        operator_version=get_operator_version(verify=True)
     )], default_flow_style=False))
     if not minimal:
         from ckan_cloud_operator.providers import manager as providers_manager
@@ -71,6 +70,7 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
     from ckan_cloud_operator.providers.routers import manager as routers_manager
     from ckan_cloud_operator.providers.solr import manager as solr_manager
     from ckan_cloud_operator.providers.storage import manager as storage_manager
+    from ckan_cloud_operator.providers.apps import manager as apps_manager
 
     for component, func in (
             ('labels', lambda lk: labels_manager.initialize(log_kwargs=lk)),
@@ -81,6 +81,7 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
             ('solr', lambda lk: solr_manager.initialize(interactive=interactive)),
             ('storage', lambda lk: storage_manager.initialize(interactive=interactive)),
             ('ckan', lambda lk: ckan_manager.initialize(interactive=interactive)),
+            ('apps', lambda lk: apps_manager.initialize(interactive=interactive)),
     ):
         if not skip_to or skip_to == component:
             skip_to = None

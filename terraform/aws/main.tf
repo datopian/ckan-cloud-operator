@@ -4,7 +4,7 @@ variable "region" {
 }
 
 variable "vpc_id" {
-  default = "vpc-30aedd58"
+  default = "vpc-"
 }
 
 variable "cluster_name" {
@@ -142,6 +142,11 @@ resource "random_password" "rds_password" {
   special = false
 }
 
+resource "aws_db_subnet_group" "default" {
+  subnet_ids = data.aws_subnet_ids.selected.ids
+}
+
+
 resource "aws_db_instance" "default" {
   allocated_storage    = 20
   max_allocated_storage = 100
@@ -152,6 +157,7 @@ resource "aws_db_instance" "default" {
   name                 = "ckan"
   username             = "ckan"
   password             = random_password.rds_password.result
+  db_subnet_group_name = aws_db_subnet_group.default.id
   vpc_security_group_ids = [aws_security_group.allow_postgres.id]
   final_snapshot_identifier  = "some-snap"
   skip_final_snapshot = true
