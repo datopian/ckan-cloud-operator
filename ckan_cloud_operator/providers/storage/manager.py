@@ -40,14 +40,18 @@ def get_provider_id():
     from ckan_cloud_operator.providers.cluster import manager as cluster_manager
     from ckan_cloud_operator.providers.cluster.gcloud.constants import PROVIDER_ID as gcloud_provider_id
     from ckan_cloud_operator.providers.cluster.aws.constants import PROVIDER_ID as aws_provider_id
+    from ckan_cloud_operator.providers.cluster.azure.constants import PROVIDER_ID as azure_provider_id
     from .s3.constants import PROVIDER_ID as s3_provider_id
-    from .gcloud.constants import PROVIDER_ID as gcloud_provider_id
+    from .gcloud.constants import PROVIDER_ID as gcloud_storage_provider_id
+    from .azure.constants import PROVIDER_ID as azure_storage_provider_id
 
     cluster_provider_id = cluster_manager.get_provider_id()
     if cluster_provider_id == gcloud_provider_id:
-        return gcloud_provider_id
+        return gcloud_storage_provider_id
     elif cluster_provider_id == aws_provider_id:
         return s3_provider_id
+    elif cluster_provider_id == azure_provider_id:
+        return azure_storage_provider_id
     return 'minio'
 
 
