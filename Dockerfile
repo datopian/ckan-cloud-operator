@@ -8,6 +8,7 @@ ENV EDITOR nano
 
 COPY . .
 RUN K8_PROVIDER=aws TERRAFORM_VERSION=0.12.18 /cco/.travis.sh install-tools
+RUN pip install -r requirements.txt
 RUN pip install .
 
 ENTRYPOINT [ "/bin/bash" ]

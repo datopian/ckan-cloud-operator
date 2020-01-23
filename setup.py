@@ -11,6 +11,9 @@ if path.exists("VERSION.txt"):
 else:
     version = str(time())
 
+with open('requirements.in') as requirements_file:
+    install_requires = requirements_file.read().strip().split('\n')
+    
 setup(
     name='ckan_cloud_operator',
     version=version,
@@ -19,25 +22,7 @@ setup(
     author='''Viderum''',
     license='MIT',
     packages=find_packages(exclude=['examples', 'tests', '.tox']),
-    install_requires=[
-        'httpagentparser',
-        'boto3',
-        'coverage',
-        'psycopg2',
-        'pyyaml<5.3,>=5',
-        'kubernetes',
-        'click',
-        'toml',
-        # 'dataflows>=0.0.37',
-        # 'dataflows-shell>=0.0.8',
-        # 'jupyterlab',
-        'awscli',
-        'urllib3<1.25',
-        'ruamel.yaml<1',
-        'requests==2.21',
-        'python-dateutil<3',
-        'botocore',
-    ],
+    install_requires=install_requires,
     entry_points={
       'console_scripts': [
         'ckan-cloud-operator = ckan_cloud_operator.cli:main',
