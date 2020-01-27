@@ -14,6 +14,8 @@
 - `withSansSSL` - Ignored, will always be considered as True
 - `registerSubdomain` - Ignored, will always be equal to `sub-domain`
 
+- `imagePullSecret` - secret contains credentials for the private docker repo (secret is being created by CCO)
+
 
 ## Options Defined in the [standard Helm Chart](https://github.com/ViderumGlobal/ckan-cloud-helm/tree/master/ckan)
 
@@ -89,6 +91,7 @@
 
 - `useCloudStorage` - use a cloud storage bucket for storing CKAN files
 - `ckanPrimaryColor` - set the newly created ckan theme to be based on this color (hex based RGB, e.g. `#123456`)
+- `cronjobs` - list of CronJob entries to be created on the cluster
 
 ### Internal 
 
