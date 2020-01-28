@@ -2,6 +2,8 @@
 
 variable "client_id" {}
 variable "client_secret" {}
+variable "tenant_id" {}
+variable "subscribtion_id" {}
 
 variable "location" {
   default  = "North Europe"
@@ -12,7 +14,7 @@ variable "cluster_name" {
 }
 
 variable "rg_name" {
-   default = "TerraformCCOTest"
+   default = "terraformccotest"
 }
 
 variable "create_resoource_group" {
@@ -162,5 +164,10 @@ default:
       azuresql-host: "${azurerm_postgresql_server.ckan_cloud_db.name}.postgres.database.azure.com"
       admin-user: "${azurerm_postgresql_server.ckan_cloud_db.administrator_login}@${azurerm_postgresql_server.ckan_cloud_db.name}"
       admin-password: "${azurerm_postgresql_server.ckan_cloud_db.administrator_login_password}"
+    ckan-cloud-provider-cluster-azure:
+      azure-client-id: "${var.client_id}"
+      azure-client-secret: "${var.client_secret}"
+      azure-tenant-id: "${var.tenant_id}"
+      azure-subscribtion-id: "${var.subscribtion_id}"
 YAML
 }

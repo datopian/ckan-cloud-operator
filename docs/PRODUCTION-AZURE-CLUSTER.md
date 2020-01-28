@@ -70,6 +70,8 @@ To apply the configuration, use `terraform apply`. You will need to set some inp
 ```bash
 export TF_VAR_client_id="..."               # Service Principal ID
 export TF_VAR_client_secret="..."           # Service Principal Secret
+export TF_VAR_subscribtion_id="..."         # Subscribtion ID
+export TF_VAR_tenant_id="..."               # Tenant ID
 export TF_VAR_location="..."                # location                          [Optional] Default: North Europe
 export TF_VAR_cluster_name="..."            # Cluster Name                      [Optional] Default: terraform-cco
 export TF_VAR_rg_name="..."                 # Resource Group Name               [Optional] Default: TerraformCCOTest

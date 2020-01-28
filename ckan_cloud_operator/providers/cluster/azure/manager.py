@@ -37,6 +37,14 @@ def initialize(interactive=False):
         _config_interactive_set({'azure-default-location': None}, is_secret=False)
         print('\nEnter the name of your cluster\n')
         _config_interactive_set({'azure-cluster-name': None}, is_secret=False)
+        print('\nEnter the Subscribtion ID\n')
+        _config_interactive_set({'azure-subscribtion-id': None}, is_secret=True)
+        print('\nEnter the Tenant ID\n')
+        _config_interactive_set({'azure-tenant-id': None}, is_secret=True)
+        print('\nEnter the Service Principal ID\n')
+        _config_interactive_set({'azure-client-id': None}, is_secret=True)
+        print('\nEnter the Service Principal Secret\n')
+        _config_interactive_set({'azure-client-secret': None}, is_secret=True)
 
         _create_storage_classes()
     else:
@@ -76,6 +84,14 @@ def get_info(debug=False):
 def get_name():
     return _config_get('cluster-name')
 
+def get_azure_credentials():
+    return {
+        'azure-client-id': _config_get('azure-client-id', is_secret=True),
+        'azure-client-secret': _config_get('azure-client-secret', is_secret=True),
+        'azure-subscribtion-id': _config_get('azure-subscribtion-id', is_secret=True),
+        'azure-tenant-id': _config_get('azure-tenant-id', is_secret=True),
+        'azure-resource-group': _config_get('azure-rg')
+    }
 
 def _create_storage_classes():
     kubectl.apply({
@@ -88,7 +104,7 @@ def _create_storage_classes():
             'skuName': 'Standard_LRS',
             'location': _config_get('azure-default-location')
         },
-        'provisioner': 'kubernetes.io/azure-file',
+        'provisioner': 'kubernetes.io/azure-disk',
         'reclaimPolicy': 'Delete',
         'volumeBindingMode': 'Immediate'
     })
@@ -98,7 +114,7 @@ def _create_storage_classes():
         'metadata': {
             'name': 'cca-storage',
         },
-        'provisioner': 'kubernetes.io/azure-file',
+        'provisioner': 'kubernetes.io/azure-disk',
         'volumeBindingMode': 'Immediate',
         'parameters': {
             'skuName': 'Standard_LRS',
@@ -136,14 +152,9 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
     kubectl.apply({
         "kind": "PersistentVolumeClaim",
         "apiVersion": "v1",
-        "metadata": {
-            "name": disk_id,
-            "namespace": "ckan-cloud"
-        },
+        "metadata": {"name": disk_id,"namespace": "ckan-cloud"},
         "spec": {
-            "accessModes": [
-                "ReadWriteOnce"
-            ],
+            "accessModes": ["ReadWriteOnce"],
             "resources": {
                 "requests": {
                     "storage": f'{disk_size_gb}G'

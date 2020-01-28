@@ -205,7 +205,7 @@ def get_or_create_multi_user_volume_claim(label_suffixes):
             claim_labels,
             {
                 'storageClassName': storage_class_name,
-                'accessModes': ['ReadWriteMany'],
+                'accessModes': ['ReadWriteOnce' if get_provider_id() == 'azure' else 'ReadWriteMany'],
                 'resources': {
                     'requests': {
                         'storage': '1Mi'

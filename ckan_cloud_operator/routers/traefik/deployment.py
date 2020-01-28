@@ -89,6 +89,21 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
             'CLOUDFLARE_API_KEY': cloudflare_api_key,
         }, labels=get_labels(router_name, router_type))
         container['envFrom'] = [{'secretRef': {'name': secret_name}}]
+    elif dns_provider == 'azure':
+        logs.info('Traefik deployment: adding SSL support using Azure DNS')
+        container = deployment_spec['template']['spec']['containers'][0]
+        container['ports'].append({'containerPort': 443})
+        azure_credendials = cluster_manager.get_provider().get_azure_credentials()
+        secret_name = f'ckancloudrouter-{router_name}-azure'
+        print(azure_credendials)
+        kubectl.update_secret(secret_name, {
+            'AZURE_CLIENT_ID': azure_credendials['azure-client-id'],
+            'AZURE_CLIENT_SECRET':  azure_credendials['azure-client-secret'],
+            'AZURE_SUBSCRIPTION_ID': azure_credendials['azure-subscribtion-id'],
+            'AZURE_TENANT_ID': azure_credendials['azure-tenant-id'],
+            'AZURE_RESOURCE_GROUP': azure_credendials['azure-resource-group']
+        }, labels=get_labels(router_name, router_type))
+        container['envFrom'] = [{'secretRef': {'name': secret_name}}]
     else:
         logs.info('Not configuring SSL support for Traefik deployment')
     return deployment_spec

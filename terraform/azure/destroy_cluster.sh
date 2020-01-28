@@ -19,7 +19,6 @@ export TF_VAR_client_id="${1}"
 export TF_VAR_client_secret="${2}"
 export TF_VAR_subscribtion_id="${3}"
 export TF_VAR_tenant_id="${4}"
-
 if [ "${5}" ]; then
   export TF_VAR_region="${5}"
 fi
@@ -27,15 +26,4 @@ if [ "${6}" ]; then
   export TF_VAR_cluster_name="${6}"
 fi
 
-az login --service-principal -u $TF_VAR_client_id -p $TF_VAR_client_secret --tenant $TF_VAR_tenant_id
-
-terraform init -input=false
-terraform validate
-
-terraform apply -input=false -auto-approve
-terraform output cco-interactive-yaml > interactive.yaml
-terraform output kube_config > ~/.kube/config
-
-export CCO_INTERACTIVE_CI=interactive.yaml
-cp terraform.tfstate ~/
-ckan-cloud-operator cluster initialize --interactive --cluster-provider=azure
+terraform destroy -auto-approve

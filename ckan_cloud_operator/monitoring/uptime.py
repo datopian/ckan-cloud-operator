@@ -70,24 +70,24 @@ class DeisCkanInstanceUptime(object):
         kwargs.setdefault('timeout', self.timeout)
         print_json = kwargs.pop('print_json', False)
         print_raw = kwargs.pop('print_raw', False)
-        response = getattr(self.session, method)(url, headers=headers, data=data, **kwargs)
-        if print_raw:
-            print(response.text)
-        if print_json:
-            print(response.json())
-        if check_errors:
-            json_resp = response.json()
-            if isinstance(json_resp, dict) and (json_resp.get('Success', True) is False or json_resp.get('Error', None) is not None):
-                errno = json_resp.get('ErrNo', -1)
-                error_message = json_resp.get('Error')
-                if not error_message:
-                    error_message = json_resp.get('Message')
-                if errno == 0:
-                    raise StatusCakeAuthError(error_message or 'Authentication Failed')
-                elif errno == 1:
-                    raise StatusCakeNotLinkedError(error_message or 'Authentication Failed')
-                raise StatusCakeResponseError(error_message or 'API Call Failed')
-        return response
+        # response = getattr(self.session, method)(url, headers=headers, data=data, **kwargs)
+        # if print_raw:
+        #     print(response.text)
+        # if print_json:
+        #     print(response.json())
+        # if check_errors:
+        #     json_resp = response.json()
+        #     if isinstance(json_resp, dict) and (json_resp.get('Success', True) is False or json_resp.get('Error', None) is not None):
+        #         errno = json_resp.get('ErrNo', -1)
+        #         error_message = json_resp.get('Error')
+        #         if not error_message:
+        #             error_message = json_resp.get('Message')
+        #         if errno == 0:
+        #             raise StatusCakeAuthError(error_message or 'Authentication Failed')
+        #         elif errno == 1:
+        #             raise StatusCakeNotLinkedError(error_message or 'Authentication Failed')
+        #         raise StatusCakeResponseError(error_message or 'API Call Failed')
+        return {}
 
     def _check_fields(self, data, check_map):
         for field_name, (field_type, field_values, field_conv) in six.iteritems(check_map):
@@ -157,20 +157,20 @@ class DeisCkanInstanceUptime(object):
             "TestType": "HTTP",
             "ContactGroup": self.statuscake_group
         }
-        test_id = self.get_test_id(website_name)
-        if test_id is None:
-            try:
-                self.insert_test(data)
-            except Exception as e:
-                print('Failed to create StatusCake test, skipping')
-                print(e)
-        else:
-            data['TestID'] = test_id
-            try:
-                self.update_test(data)
-            except Exception as e:
-                print('Failed to update StatusCake test, skipping')
-                print(e)
+        # test_id = self.get_test_id(website_name)
+        # if test_id is None:
+        #     try:
+        #         self.insert_test(data)
+        #     except Exception as e:
+        #         print('Failed to create StatusCake test, skipping')
+        #         print(e)
+        # else:
+        #     data['TestID'] = test_id
+        #     try:
+        #         self.update_test(data)
+        #     except Exception as e:
+        #         print('Failed to update StatusCake test, skipping')
+        #         print(e)
 
 
     def delete(self, site_id):
