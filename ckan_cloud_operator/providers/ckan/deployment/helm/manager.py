@@ -372,7 +372,7 @@ def _wait_instance_events(instance_id):
         if time_passed - last_message >= 60:
             logs.info('%d seconds since started waiting' % time_passed)
             last_message += 60 
-        if time_passed > 1200:
+        if time_passed > 500:
             raise Exception('timed out waiting for instance events')
 
 
