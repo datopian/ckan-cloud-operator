@@ -84,6 +84,8 @@ resource "azurerm_postgresql_server" "ckan_cloud_db" {
   location            = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].location : var.location
   resource_group_name = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
 
+  sku_name = "B_Gen5_2"
+
   storage_profile {
     storage_mb            = 5120
     backup_retention_days = 7
