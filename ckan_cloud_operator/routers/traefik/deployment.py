@@ -195,27 +195,25 @@ def get_load_balancer_ip(router_name, failfast=False):
     RETRIES = 10
     for retries in range(RETRIES):
         load_balancer = kubectl.get(f'service loadbalancer-{resource_name}', required=False)
-        if not load_balancer:
-            if failfast:
-                return None
-            else:
-                continue
-        ingresses = load_balancer.get('status', {}).get('loadBalancer', {}).get('ingress', [])
-        if len(ingresses) == 0:
-            time.sleep(60)
-            continue
-        assert len(ingresses) == 1
-        if cluster_manager.get_provider_id() == 'aws':
-            load_balancer_hostname = ingresses[0].get('hostname')
-            if load_balancer_hostname:
-                return load_balancer_hostname
-            logs.warning('Failed to get hostname, retrying %r' % ingresses[0])
+
+        if load_balancer:
+            ingresses = load_balancer.get('status', {}).get('loadBalancer', {}).get('ingress', [])
+            if len(ingresses) > 0:
+                assert len(ingresses) == 1
+                if cluster_manager.get_provider_id() == 'aws':
+                    load_balancer_hostname = ingresses[0].get('hostname')
+                    if load_balancer_hostname:
+                        return load_balancer_hostname
+                    logs.warning('Failed to get hostname, retrying %r' % ingresses[0])
+                else:
+                    load_balancer_ip = ingresses[0].get('ip')
+                    if load_balancer_ip:
+                        return load_balancer_ip
+                    logs.warning('Failed to get ip, retrying %r' % ingresses[0])
+        if failfast:
+            return None
         else:
-            load_balancer_ip = ingresses[0].get('ip')
-            if load_balancer_ip:
-                return load_balancer_ip
-            logs.warning('Failed to get ip, retrying %r' % ingresses[0])
-        time.sleep(60)
+            time.sleep(60)
         assert retries < RETRIES - 1, "Gave up on waiting for load balancer IP"
 
 

@@ -50,7 +50,11 @@ def create_bucket(instance_id, region=None, exists_ok=False, dry_run=False):
         cred_options = _get_cred_options()
         az_check_output(f'storage container create -n {instance_id} {cred_options}')
 
-    return instance_id
+    return {
+        'BUCKET_NAME': instance_id,
+        'STORAGE_ACCOUNT_NAME': config_manager.get('storage-account-name', secret_name=CONFIG_NAME),
+        'STORAGE_ACCOUNT_KEY': config_manager.get('storage-account-key', secret_name=CONFIG_NAME)
+    }
 
 
 def delete_bucket(instance_id, dry_run=False):

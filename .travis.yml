@@ -50,6 +50,7 @@ jobs:
         - kubectl get ns && kubectl get pods --all-namespaces
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.aws.yaml
         - kubectl -n a-ckan-instance describe pods
+        - cd ami && ./packer build cco-test.json
       after_success:
         - ./destroy_aws.sh
       after_failure:

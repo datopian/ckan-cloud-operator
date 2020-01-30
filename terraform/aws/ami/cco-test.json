@@ -3,13 +3,15 @@
         "aws_access_key": "{{env `AWS_ACCESS_KEY_ID`}}",
         "aws_secret_key": "{{env `AWS_SECRET_ACCESS_KEY`}}",
         "region":         "eu-west-2",
-        "ami_regions":    "eu-west-2,us-west-2",
+        "ami_regions":    "eu-west-2",
         "image_tag":      "{{env `TRAVIS_BRANCH`}}"
     },
     "builders": [
         {
             "access_key": "{{user `aws_access_key`}}",
-            "ami_name": "ckan-cloud-operator-{{user `image_tag`}}",
+            "ami_name": "ckan-cloud-operator-test",
+            "force_deregister": true,
+            "force_delete_snapshot": true,
             "ami_regions": "{{user `ami_regions`}}",
             "instance_type": "t2.micro",
             "region": "{{user `region`}}",
@@ -55,8 +57,7 @@
                 "python --version",
                 "pip --version",
                 "K8_PROVIDER=aws TERRAFORM_VERSION=0.12.18 /home/ubuntu/.travis.sh install-tools",
-                "python3 -m pip install -e /home/ubuntu/",
-                "sudo sh -c \"echo 'jenkins ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/91-jenkins\""
+                "python3 -m pip install /home/ubuntu/"
             ]
         }
     ]

@@ -4,6 +4,9 @@ default:
       env-id: p
       default-root-domain: localhost
       dns-provider: none
+    ckan-cloud-provider-storage-minio:
+      disk-size-gb: "1"
+      router-name: infra-1
   secrets:
     solr-config:
       self-hosted: y
@@ -11,3 +14,5 @@ default:
       replication-factor: "1"
     ckan-storage-config:
       default-storage-bucket: ckan
+    storage-config:
+      use-cloud-native-storage: n

@@ -93,6 +93,9 @@ def _apply_deployment(volume_spec, storage_suffix=None, dry_run=False):
             'replicas': 1,
             'revisionHistoryLimit': 10,
             'strategy': {'type': 'Recreate', },
+            'selector': {
+                'matchLabels': _get_resource_labels(for_deployment=True, suffix=storage_suffix)
+            },
             'template': {
                 'metadata': {
                     'labels': _get_resource_labels(for_deployment=True, suffix=storage_suffix),

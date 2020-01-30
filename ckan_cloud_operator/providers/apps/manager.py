@@ -16,7 +16,7 @@ from .constants import APP_CRD_KIND_SUFFIX, APP_CRD_PLURAL_SUFFIX, APP_CRD_SINGU
 from .constants import APP_NAME_CRD_KIND_SUFFIX, APP_NAME_CRD_PLURAL_SUFFIX, APP_NAME_CRD_SINGULAR
 
 
-def initialize():
+def initialize(interactive=False):
     crds_manager.install_crd(APP_CRD_SINGULAR, APP_CRD_PLURAL_SUFFIX, APP_CRD_KIND_SUFFIX)
     crds_manager.install_crd(APP_NAME_CRD_SINGULAR, APP_NAME_CRD_PLURAL_SUFFIX, APP_NAME_CRD_KIND_SUFFIX)
 

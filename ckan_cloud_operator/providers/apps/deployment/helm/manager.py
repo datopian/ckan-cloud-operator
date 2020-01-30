@@ -24,6 +24,7 @@ import traceback
 import json
 import datetime
 import subprocess
+import time
 from ruamel import yaml
 from ckan_cloud_operator import logs
 from ckan_cloud_operator import kubectl
@@ -47,6 +48,7 @@ def create(tiller_namespace_name=None, chart_repo=None, chart_version=None, char
     elif values_json:
         assert not values_filename and not values
         values = json.loads(values_json)
+    values = values or {}
     spec = {
         **({'tiller-namespace-name': tiller_namespace_name} if tiller_namespace_name else {}),
         **({'chart-name': chart_name} if chart_name else {}),
@@ -55,8 +57,8 @@ def create(tiller_namespace_name=None, chart_repo=None, chart_version=None, char
         **({'chart-version': chart_version} if chart_version else {}),
         **({'chart-release-name': chart_release_name} if chart_release_name else {}),
         **({'with-service-account': True} if with_service_account else {}),
-        **({'values': values} if values else {}),
         **({'app-type': app_type} if app_type else {}),
+        **values,
     }
     assert 'values' not in create_kwargs
     from ckan_cloud_operator.providers.apps import manager as apps_manager
@@ -272,6 +274,7 @@ def _helm_deploy(values, tiller_namespace_name, chart_repo, chart_name, chart_ve
                  dry_run=False, chart_repo_name=None):
     assert chart_repo_name, 'chart-repo-name is required'
     helm_driver.init(tiller_namespace_name)
+    time.sleep(10) # wait for tiller pod to be ready
     logs.info(f'Deploying helm chart {chart_repo_name} {chart_repo} {chart_version} {chart_name} to release {release_name} '
               f'(instance_id={instance_id})')
     with tempfile.NamedTemporaryFile('w') as f:
@@ -293,7 +296,7 @@ def _get_tiller_namespace_name(instance_id, instance):
 
 
 def _get_helm_release_name(instance_id, instance):
-    return instance['spec'].get('chart-release-name', _get_resource_name(instance_id, short=True))
+    return instance['spec'].get('chart-release-name', _get_resource_name(instance_id, short=False))
 
 
 def _get_app_type_manager(app_type):
