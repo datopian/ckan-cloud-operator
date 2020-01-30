@@ -36,6 +36,7 @@ variable "create_dns_zone" {
 resource "random_string" "cluster_name_suffix" {
   length = 4
   special = false
+  upper = false
 }
 
 
