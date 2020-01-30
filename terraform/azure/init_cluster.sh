@@ -27,6 +27,8 @@ if [ "${6}" ]; then
   export TF_VAR_cluster_name="${6}"
 fi
 
+mkdir -p ~/.kube
+
 az login --service-principal -u $TF_VAR_client_id -p $TF_VAR_client_secret --tenant $TF_VAR_tenant_id
 
 terraform init -input=false
@@ -34,11 +36,10 @@ terraform validate
 
 terraform apply -input=false -auto-approve
 terraform output cco-interactive-yaml > interactive.yaml
-terraform output kube_config > kube_config
+terraform output kube_config > ~/.kube/config
+
+cat ~/.kube/config
 
 export CCO_INTERACTIVE_CI=interactive.yaml
-cp kube_config ~/.kube/config
-cat kube_config
-cat ~/.kube/config
 cp terraform.tfstate ~/
 ckan-cloud-operator cluster initialize --interactive --cluster-provider=azure
