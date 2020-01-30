@@ -65,28 +65,20 @@ jobs:
     - name: azure
       env:
         - K8_PROVIDER=azure
-        - CCO_INTERACTIVE_CI=interactive.yaml
         - HELM_VERSION=v2.16.1
-        - KUBECONFIG=kubeconfig_terraform-cco
       before_install: pip install -e .
       install: bash .travis.sh install-tools
       script:
         - az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
-        - cd terraform/azure &&
-          terraform init -input=false &&
-          terraform validate &&
-          terraform apply -input=false -auto-approve &&
-          terraform output cco-interactive-yaml > interactive.yaml &&
-          terraform output kube_config > kubeconfig_terraform-cco
-        - kubectl get pods --all-namespaces
-        - echo " " | ckan-cloud-operator cluster initialize --interactive --cluster-provider=azure
-        - kubectl get ns && kubectl get pods -n ckan-cloud
+        - cd terraform/azure
+        - ./init_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID} "North Europe" terraform-cco
+        - kubectl get ns && kubectl get pods --all-namespaces
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.azure.yaml
         - kubectl -n a-ckan-instance describe pods
       after_success:
-        - terraform destroy -auto-approve
+        - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID} "North Europe" terraform-cco
       after_failure:
-        - terraform destroy -auto-approve
+        - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID} "North Europe" terraform-cco
     - stage: Deploy
       if: branch = master OR tag IS present
       name: docker

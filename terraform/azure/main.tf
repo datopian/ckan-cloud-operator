@@ -1,7 +1,9 @@
-# AKS
+## Variables
 
 variable "client_id" {}
 variable "client_secret" {}
+variable "tenant_id" {}
+variable "subscribtion_id" {}
 
 variable "location" {
   default  = "North Europe"
@@ -11,21 +13,51 @@ variable "cluster_name" {
    default = "terraform-cco"
 }
 
-resource "random_password" "cluster_name_suffix" {
-  length = 4
-  special = false
+variable "rg_name" {
+   default = "terraformccotest"
 }
 
-resource "azurerm_resource_group" "ckan_cloud_k8" {
-  name     = "CkanCLoudk8Test"
+variable "create_resoource_group" {
+   default = false
+}
+
+variable "dns_provider" {
+  default = "azure"
+}
+
+variable "dns_zone_name" {
+   default = "viderum.xyz"
+}
+
+variable "create_dns_zone" {
+  default = false
+}
+
+resource "random_string" "cluster_name_suffix" {
+  length = 4
+  special = false
+  upper = false
+}
+
+
+## Resource Groups
+
+# export TF_VAR_create_resoource_group=true to create resource group
+resource "azurerm_resource_group" "ckan_cloud_operator" {
+  count = var.create_resoource_group ? 1 : 0
+
+  name     = var.rg_name
   location = var.location
 }
 
+
+## AKS
+
 resource "azurerm_kubernetes_cluster" "ckan_cloud_k8" {
-  name                = "${var.cluster_name}-${random_password.cluster_name_suffix.result}"
-  location            = azurerm_resource_group.ckan_cloud_k8.location
-  resource_group_name = azurerm_resource_group.ckan_cloud_k8.name
-  dns_prefix          = "${var.cluster_name}-${random_password.cluster_name_suffix.result}-dns"
+  name                = "${var.cluster_name}-${random_string.cluster_name_suffix.result}"
+  location            = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].location : var.location
+  resource_group_name = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
+  dns_prefix          = "${var.cluster_name}-${random_string.cluster_name_suffix.result}-dns"
 
   default_node_pool {
     name       = "default"
@@ -39,14 +71,6 @@ resource "azurerm_kubernetes_cluster" "ckan_cloud_k8" {
   }
 }
 
-output "client_certificate" {
-  value = azurerm_kubernetes_cluster.ckan_cloud_k8.kube_config.0.client_certificate
-}
-
-output "kube_config" {
-  value = azurerm_kubernetes_cluster.ckan_cloud_k8.kube_config_raw
-}
-
 
 ## AzureSQL
 
@@ -55,22 +79,12 @@ resource "random_password" "azuresql_password" {
   special = true
 }
 
-resource "azurerm_resource_group" "ckan_cloud_db" {
-  name     = "CkanCLoudk8Test"
-  location = var.location
-}
-
 resource "azurerm_postgresql_server" "ckan_cloud_db" {
-  name                = "${var.cluster_name}-${random_password.cluster_name_suffix.result}-db"
-  location            = azurerm_resource_group.ckan_cloud_db.location
-  resource_group_name = azurerm_resource_group.ckan_cloud_db.name
+  name                = "cco-terraform-${random_string.cluster_name_suffix.result}-db"
+  location            = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].location : var.location
+  resource_group_name = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
 
-  sku {
-    name     = "B_Gen5_2"
-    capacity = 2
-    tier     = "Basic"
-    family   = "Gen5"
-  }
+  sku_name = "B_Gen5_2"
 
   storage_profile {
     storage_mb            = 5120
@@ -86,7 +100,7 @@ resource "azurerm_postgresql_server" "ckan_cloud_db" {
 
 resource "azurerm_postgresql_database" "ckan_cloud_db" {
   name                = "ckan_cloud"
-  resource_group_name = azurerm_resource_group.ckan_cloud_db.name
+  resource_group_name = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
   server_name         = azurerm_postgresql_server.ckan_cloud_db.name
   charset             = "UTF8"
   collation           = "English_United States.1252"
@@ -94,10 +108,32 @@ resource "azurerm_postgresql_database" "ckan_cloud_db" {
 
 resource "azurerm_postgresql_firewall_rule" "ckan_cloud_db" {
   name                = "firewallDB"
-  resource_group_name = azurerm_resource_group.ckan_cloud_db.name
+  resource_group_name = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
   server_name         = azurerm_postgresql_server.ckan_cloud_db.name
   start_ip_address    = "0.0.0.0"
   end_ip_address      = "0.0.0.0"
+}
+
+
+## DNS
+
+# export TF_VAR_create_dns_zone=true to create DNS zone
+resource "azurerm_dns_zone" "ckan_cloud_dns_zone" {
+  count = var.create_dns_zone ? 1 : 0
+
+  name                = var.dns_zone_name
+  resource_group_name = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
+}
+
+
+## Outputs
+
+output "client_certificate" {
+  value = azurerm_kubernetes_cluster.ckan_cloud_k8.kube_config.0.client_certificate
+}
+
+output "kube_config" {
+  value = azurerm_kubernetes_cluster.ckan_cloud_k8.kube_config_raw
 }
 
 output "cco-interactive-yaml" {
@@ -106,11 +142,11 @@ default:
   config:
     routers-config:
       env-id: p
-      default-root-domain: localhost
-      dns-provider: none
+      default-root-domain: "${var.dns_zone_name}"
+      dns-provider: "${var.dns_provider}"
     ckan-cloud-provider-cluster-azure:
-      azure-rg: "${azurerm_resource_group.ckan_cloud_k8.name}"
-      azure-default-location: "${azurerm_resource_group.ckan_cloud_k8.location}"
+      azure-rg: "${var.rg_name}"
+      azure-default-location: "${azurerm_kubernetes_cluster.ckan_cloud_k8.location}"
       azure-cluster-name: "${azurerm_kubernetes_cluster.ckan_cloud_k8.name}"
   secrets:
     solr-config:
@@ -124,5 +160,10 @@ default:
       azuresql-host: "${azurerm_postgresql_server.ckan_cloud_db.name}.postgres.database.azure.com"
       admin-user: "${azurerm_postgresql_server.ckan_cloud_db.administrator_login}@${azurerm_postgresql_server.ckan_cloud_db.name}"
       admin-password: "${azurerm_postgresql_server.ckan_cloud_db.administrator_login_password}"
+    ckan-cloud-provider-cluster-azure:
+      azure-client-id: "${var.client_id}"
+      azure-client-secret: "${var.client_secret}"
+      azure-tenant-id: "${var.tenant_id}"
+      azure-subscribtion-id: "${var.subscribtion_id}"
 YAML
 }
