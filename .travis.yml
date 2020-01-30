@@ -64,7 +64,7 @@ jobs:
       script:
         - cd terraform/azure
         - ./init_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
-        - kubectl get ns && kubectl get pods --all-namespaces
+        - kubectl get ns && kubectl get pods --all-namespaces 
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.azure.yaml
         - kubectl -n a-ckan-instance describe pods
       after_success:
