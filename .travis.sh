@@ -54,6 +54,7 @@ elif [ "${1}" == "install-tools" ]; then
     echo Helm Installed Successfully!
 
     sudo apt-get update && sudo apt-get install -y socat jq
+    pip install requests
 
     echo Instalation Complete && exit 0
 

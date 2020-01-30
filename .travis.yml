@@ -47,6 +47,8 @@ jobs:
         - kubectl get ns && kubectl get pods --all-namespaces
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.aws.yaml
         - kubectl -n a-ckan-instance describe pods
+        - export INSTANCE_URL=https://a-ckan-instance.ckan-aws-testing.gq
+        - python -m unittest discover ../../tests/ci
       after_success:
         - ./destroy_aws.sh
       after_failure:
