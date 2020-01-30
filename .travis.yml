@@ -71,14 +71,14 @@ jobs:
       script:
         - az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
         - cd terraform/azure
-        - ./init_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
+        - ./init_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID} "North Europe" terraform-cco
         - kubectl get ns && kubectl get pods --all-namespaces
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.azure.yaml
         - kubectl -n a-ckan-instance describe pods
       after_success:
-        - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
+        - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID} "North Europe" terraform-cco
       after_failure:
-        - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
+        - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID} "North Europe" terraform-cco
     - stage: Deploy
       if: branch = master OR tag IS present
       name: docker
