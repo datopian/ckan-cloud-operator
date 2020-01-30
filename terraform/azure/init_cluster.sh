@@ -34,8 +34,11 @@ terraform validate
 
 terraform apply -input=false -auto-approve
 terraform output cco-interactive-yaml > interactive.yaml
-terraform output kube_config > ~/.kube/config
+terraform output kube_config > kube_config
 
 export CCO_INTERACTIVE_CI=interactive.yaml
+cp kube_config ~/.kube/config
+cat kube_config
+cat ~/.kube/config
 cp terraform.tfstate ~/
 ckan-cloud-operator cluster initialize --interactive --cluster-provider=azure
