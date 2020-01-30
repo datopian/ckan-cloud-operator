@@ -54,14 +54,6 @@ jobs:
         - ./destroy_aws.sh
       after_failure:
         - ./destroy_aws.sh
-    - stage: Unit Tests
-      install:
-        - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
-        - bash $HOME/bin/travis_ci_operator.sh init
-        - bash .travis.sh install
-      script:
-        - bash .travis.sh script
-        - bash .travis.sh test
     - name: azure
       if: (type = push AND (branch = master OR tag IS present)) OR commit_message =~ /#azure/
       env:
@@ -79,6 +71,14 @@ jobs:
         - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
       after_failure:
         - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
+    - stage: Unit Tests
+      install:
+        - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+        - bash $HOME/bin/travis_ci_operator.sh init
+        - bash .travis.sh install
+      script:
+        - bash .travis.sh script
+        - bash .travis.sh test
     - stage: Deploy
       if: branch = master OR tag IS present
       name: docker
