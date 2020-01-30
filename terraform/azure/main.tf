@@ -33,7 +33,7 @@ variable "create_dns_zone" {
   default = false
 }
 
-resource "random_password" "cluster_name_suffix" {
+resource "random_string" "cluster_name_suffix" {
   length = 4
   special = false
 }
@@ -53,10 +53,10 @@ resource "azurerm_resource_group" "ckan_cloud_operator" {
 ## AKS
 
 resource "azurerm_kubernetes_cluster" "ckan_cloud_k8" {
-  name                = "${var.cluster_name}-${random_password.cluster_name_suffix.result}"
+  name                = "${var.cluster_name}-${random_string.cluster_name_suffix.result}"
   location            = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].location : var.location
   resource_group_name = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
-  dns_prefix          = "${var.cluster_name}-${random_password.cluster_name_suffix.result}-dns"
+  dns_prefix          = "${var.cluster_name}-${random_string.cluster_name_suffix.result}-dns"
 
   default_node_pool {
     name       = "default"
@@ -79,7 +79,7 @@ resource "random_password" "azuresql_password" {
 }
 
 resource "azurerm_postgresql_server" "ckan_cloud_db" {
-  name                = "${var.cluster_name}-${random_password.cluster_name_suffix.result}-db"
+  name                = "cco-terraform-${random_string.cluster_name_suffix.result}-db"
   location            = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].location : var.location
   resource_group_name = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
 
