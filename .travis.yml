@@ -16,7 +16,6 @@ jobs:
   include:
     - stage: Cluster Providers
       name: minikube
-      if: (type = push AND (branch = master OR tag IS present)) OR commit_message =~ /#minikube/
       env:
         - K8_PROVIDER=minikube
         - K8_VERSION=v1.16.0
@@ -64,13 +63,13 @@ jobs:
         - bash .travis.sh script
         - bash .travis.sh test
     - name: azure
+      if: (type = push AND (branch = master OR tag IS present)) OR commit_message =~ /#azure/
       env:
         - K8_PROVIDER=azure
         - HELM_VERSION=v2.16.1
       before_install: pip install -e .
       install: bash .travis.sh install-tools
       script:
-        - az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
         - cd terraform/azure
         - ./init_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID} "North Europe" terraform-cco
         - kubectl get ns && kubectl get pods --all-namespaces
