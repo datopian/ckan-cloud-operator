@@ -2,6 +2,7 @@ import subprocess
 import json
 import os
 import glob
+import time
 
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.infra import CkanInfra
@@ -135,9 +136,16 @@ def solr_curl(path, required=False, debug=False):
                 logs.warning(output)
                 return False
 
-def zk_set_url_scheme(scheme='http'):
+def zk_set_url_scheme(scheme='http', timeout=300):
     pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
-    kubectl.check_output('exec %s zkCli.sh set /clusterprops.json \'{"urlScheme":"%s"}\'' % (pod_name, scheme))
+    try:
+        kubectl.check_output('exec %s zkCli.sh set /clusterprops.json \'{"urlScheme":"%s"}\'' % (pod_name, scheme))
+    except Exception as e:
+        print('Failed to connect ZooKeeper, retrying in 60 seconds')
+        time.sleep(60)
+        if timeout < 0:
+            raise e
+        zk_set_url_scheme(scheme=scheme, timeout=timeout-60)
 
 
 def zk_list_configs():
