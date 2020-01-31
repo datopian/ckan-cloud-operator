@@ -339,6 +339,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     ## storage
 
     elif submodule == storage_provider_submodule:
+        from ckan_cloud_operator.providers.storage.azure.constants import PROVIDER_ID as storage_azure_provider_id
         from ckan_cloud_operator.providers.storage.gcloud.constants import PROVIDER_ID as storage_gcloud_provider_id
         from ckan_cloud_operator.providers.storage.minio.constants import PROVIDER_ID as storage_minio_provider_id
         from ckan_cloud_operator.providers.storage.s3.constants import PROVIDER_ID as storage_s3_provider_id
@@ -346,22 +347,30 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
         if not provider_id:
             return []
 
-        ## minio
+        # Azure
+        elif provider_id == storage_azure_provider_id:
+            from ckan_cloud_operator.providers.storage.azure import manager as storage_azure_manager
 
-        elif provider_id == storage_minio_provider_id:
-            from ckan_cloud_operator.providers.storage.minio import manager as storage_minio_manager
+            return storage_azure_manager
 
-            return storage_minio_manager
-
+        # Gcloud
         elif provider_id == storage_gcloud_provider_id:
             from ckan_cloud_operator.providers.storage.gcloud import manager as storage_gcloud_manager
 
             return storage_gcloud_manager
 
+        # Minio
+        elif provider_id == storage_minio_provider_id:
+            from ckan_cloud_operator.providers.storage.minio import manager as storage_minio_manager
+
+            return storage_minio_manager
+
+        # AWS
         elif provider_id == storage_s3_provider_id:
             from ckan_cloud_operator.providers.storage.s3 import manager as storage_s3_manager
 
             return storage_s3_manager
+
 
     ## solr
 

@@ -2,7 +2,7 @@ import json
 
 from ckan_cloud_operator import logs, kubectl
 from ckan_cloud_operator.config import manager as config_manager
-from ckan_cloud_operator.providers.cluster.azure.manager import _config_get as cluster_config_get, check_output as az_check_output
+from ckan_cloud_operator.providers.cluster.azure.manager import _config_get as cluster_config_get, az_check_output
 
 from ..constants import CONFIG_NAME
 from .constants import PROVIDER_ID
@@ -11,7 +11,6 @@ from .constants import PROVIDER_ID
 def initialize(interactive=False, storage_suffix='', use_existing_disk_name=False, dry_run=False):
     default_zone = cluster_config_get('azure-default-location')
     assert default_zone, 'No cluster region specified.'
-
     if interactive and not dry_run:
         config_manager.interactive_set(
             {'storage-region': default_zone},
