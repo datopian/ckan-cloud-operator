@@ -62,6 +62,7 @@ It contains initializations for:
 - an Azure Kubernetes cluster with a node-group of 3 nodes
 - an AzureSQL Server and datase to serve as a centralized database for CKAN instance (Basic Tire)
 - Postgresql firewall Rule to allow resource communicate inside the cluster
+- Storage Account for using ABS as a ckan storage
 
 you could use this file as-is or tweak it based on your needs and requirements.
 

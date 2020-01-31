@@ -126,6 +126,16 @@ resource "azurerm_dns_zone" "ckan_cloud_dns_zone" {
 }
 
 
+## Storage Account
+
+resource "azurerm_storage_account" "ckan_cloud_sa" {
+  name                     = "ccoterraform"
+  resource_group_name      = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].name : var.rg_name
+  location                 = var.create_resoource_group ? azurerm_resource_group.ckan_cloud_operator[0].location : var.location
+  account_replication_type = "RAGRS"
+  account_tier             = "Standard"
+}
+
 ## Outputs
 
 output "client_certificate" {
@@ -157,6 +167,9 @@ default:
       default-storage-bucket: ckan
     storage-config:
       use-cloud-native-storage: y
+      storage-region: "${var.dns_zone_name}"
+      storage-account-name: "${azurerm_storage_account.ckan_cloud_sa.name}"
+      storage-account-key: "${azurerm_storage_account.ckan_cloud_sa.primary_access_key}"
     ckan-cloud-provider-db-azuresql-credentials:
       azuresql-instance-name: "${azurerm_postgresql_server.ckan_cloud_db.name}"
       azuresql-host: "${azurerm_postgresql_server.ckan_cloud_db.name}.postgres.database.azure.com"
