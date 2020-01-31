@@ -155,6 +155,8 @@ default:
       replication-factor: "3"
     ckan-storage-config:
       default-storage-bucket: ckan
+    storage-config:
+      use-cloud-native-storage: y
     ckan-cloud-provider-db-azuresql-credentials:
       azuresql-instance-name: "${azurerm_postgresql_server.ckan_cloud_db.name}"
       azuresql-host: "${azurerm_postgresql_server.ckan_cloud_db.name}.postgres.database.azure.com"
@@ -165,5 +167,6 @@ default:
       azure-client-secret: "${var.client_secret}"
       azure-tenant-id: "${var.tenant_id}"
       azure-subscribtion-id: "${var.subscribtion_id}"
+
 YAML
 }
