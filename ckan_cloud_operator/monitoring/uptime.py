@@ -87,7 +87,7 @@ class DeisCkanInstanceUptime(object):
                 elif errno == 1:
                     raise StatusCakeNotLinkedError(error_message or 'Authentication Failed')
                 raise StatusCakeResponseError(error_message or 'API Call Failed')
-        return response
+        return {}
 
     def _check_fields(self, data, check_map):
         for field_name, (field_type, field_values, field_conv) in six.iteritems(check_map):

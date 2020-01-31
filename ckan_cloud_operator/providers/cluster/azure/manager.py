@@ -37,10 +37,19 @@ def initialize(interactive=False):
         _config_interactive_set({'azure-default-location': None}, is_secret=False)
         print('\nEnter the name of your cluster\n')
         _config_interactive_set({'azure-cluster-name': None}, is_secret=False)
+        print('\nEnter the Subscribtion ID\n')
+        _config_interactive_set({'azure-subscribtion-id': None}, is_secret=True)
+        print('\nEnter the Tenant ID\n')
+        _config_interactive_set({'azure-tenant-id': None}, is_secret=True)
+        print('\nEnter the Service Principal ID\n')
+        _config_interactive_set({'azure-client-id': None}, is_secret=True)
+        print('\nEnter the Service Principal Secret\n')
+        _config_interactive_set({'azure-client-secret': None}, is_secret=True)
 
         _create_storage_classes()
     else:
         logs.info('Skipping initial cluster set up as `--interactive` flag was not set')
+    _create_storage_classes()
 
 
 def get_info(debug=False):
@@ -75,6 +84,14 @@ def get_info(debug=False):
 def get_name():
     return _config_get('cluster-name')
 
+def get_azure_credentials():
+    return {
+        'azure-client-id': _config_get('azure-client-id', is_secret=True),
+        'azure-client-secret': _config_get('azure-client-secret', is_secret=True),
+        'azure-subscribtion-id': _config_get('azure-subscribtion-id', is_secret=True),
+        'azure-tenant-id': _config_get('azure-tenant-id', is_secret=True),
+        'azure-resource-group': _config_get('azure-rg')
+    }
 
 def _create_storage_classes():
     kubectl.apply({
@@ -91,7 +108,19 @@ def _create_storage_classes():
         'reclaimPolicy': 'Delete',
         'volumeBindingMode': 'Immediate'
     })
-
+    kubectl.apply({
+        'apiVersion': 'storage.k8s.io/v1',
+        'kind': 'StorageClass',
+        'metadata': {
+            'name': 'cca-storage',
+        },
+        'provisioner': 'kubernetes.io/azure-disk',
+        'volumeBindingMode': 'Immediate',
+        'parameters': {
+            'skuName': 'Standard_LRS',
+            'location': _config_get('azure-default-location')
+        }
+    })
 
 def get_cluster_kubeconfig_spec():
     cluster_name = _config_get('cluster-name')
@@ -123,14 +152,9 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None):
     kubectl.apply({
         "kind": "PersistentVolumeClaim",
         "apiVersion": "v1",
-        "metadata": {
-            "name": disk_id,
-            "namespace": "ckan-cloud"
-        },
+        "metadata": {"name": disk_id,"namespace": "ckan-cloud"},
         "spec": {
-            "accessModes": [
-                "ReadWriteOnce"
-            ],
+            "accessModes": ["ReadWriteOnce"],
             "resources": {
                 "requests": {
                     "storage": f'{disk_size_gb}G'
@@ -147,4 +171,18 @@ def _generate_password(l):
 
 
 def az_check_output(cmd):
-    return subprocess.az_check_output(f'az {cmd}', shell=True)
+    return subprocess.check_output(f'az {cmd}', shell=True)
+
+
+def create_dns_record(sub_domain, root_domain, load_balancer_ip_or_hostname):
+    logs.info('updating Azure DNS record', sub_domain=sub_domain, root_domain=root_domain, load_balancer_hostname=load_balancer_ip_or_hostname)
+    resource_group = _config_get('azure-rg')
+    # az network dns record-set a show exits with non 0 if DNS record name not found
+    try:
+        # Check if exists and do nothing...
+        cmd = f'network dns record-set a show  -g {resource_group} -z {root_domain} -n {sub_domain}'
+        az_check_output(cmd)
+    except:
+        # Create if does not
+        cmd = f'network dns record-set a add-record  -g {resource_group} -z {root_domain} -n {sub_domain} -a {load_balancer_ip_or_hostname}'
+        az_check_output(cmd)

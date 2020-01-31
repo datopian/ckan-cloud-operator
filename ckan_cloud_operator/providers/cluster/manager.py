@@ -32,7 +32,7 @@ def get_operator_version(verify=False):
 
 def print_info(debug=False, minimal=False):
     print(yaml.dump([dict(
-        get_kubeconfig_info(), 
+        get_kubeconfig_info(),
         nodes=get_node_names(),
     )], default_flow_style=False))
     if not minimal:
@@ -184,7 +184,7 @@ def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=0):
         labels,
         **labels_manager.get_resource_labels(label_suffixes=_get_cluster_volume_label_suffixes())
     )
-    return get_provider().create_volume(disk_size_gb, labels, use_existing_disk_name=use_existing_disk_name, zone=zone)
+    return get_provider().create_volume(disk_size_gb, labels, use_existing_disk_name=use_existing_disk_name)
 
 
 def get_or_create_multi_user_volume_claim(label_suffixes):
@@ -206,7 +206,7 @@ def get_or_create_multi_user_volume_claim(label_suffixes):
             claim_labels,
             {
                 'storageClassName': storage_class_name,
-                'accessModes': ['ReadWriteMany'],
+                'accessModes': ['ReadWriteOnce' if get_provider_id() == 'azure' else 'ReadWriteMany'],
                 'resources': {
                     'requests': {
                         'storage': '1Mi'
