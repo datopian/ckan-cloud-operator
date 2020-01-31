@@ -167,6 +167,5 @@ default:
       azure-client-secret: "${var.client_secret}"
       azure-tenant-id: "${var.tenant_id}"
       azure-subscribtion-id: "${var.subscribtion_id}"
-
 YAML
 }
