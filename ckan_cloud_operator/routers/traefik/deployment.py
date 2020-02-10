@@ -95,7 +95,6 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
         container['ports'].append({'containerPort': 443})
         azure_credendials = cluster_manager.get_provider().get_azure_credentials()
         secret_name = f'ckancloudrouter-{router_name}-azure'
-        print(azure_credendials)
         kubectl.update_secret(secret_name, {
             'AZURE_CLIENT_ID': azure_credendials['azure-client-id'],
             'AZURE_CLIENT_SECRET':  azure_credendials['azure-client-secret'],
