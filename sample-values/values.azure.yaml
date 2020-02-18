@@ -13,7 +13,7 @@ authUser_delete_organizations: "false"
 centralizedSecretName: ckan-infra
 ckanAdminEmail: adam.kariv@datopian.com
 ckanGunicornWorkers: 2
-ckanHelmChartVersion: v0.0.15-rc3
+ckanHelmChartVersion: v0.0.15-rc4
 # debugMode: NO
 ckanImage: viderum/ckan-cloud-docker:ckan-256abb3ee8468a0e99f96cfb9dd629694c8fb295-gdx-demo-theme
 ckanOperatorImage: viderum/ckan-cloud-docker:cca-operator-79031440f3a5d5530639761f075f9704e22340f0
@@ -52,7 +52,7 @@ siteUrl: https://a-ckan-instance.ckan-aws-testing.gq
 solrPersistentDiskSizeGB: 10
 solrResources: '{"requests": {"cpu": "60m", "memory": "600Mi"}, "limits": {"memory": "1Gi"}}'
 storageClassName: cca-storage
-diskAccessMode: ReadWriteOnce
+ckanStorageDiskAccessMode: ReadWriteOnce
 terminationGracePeriodSeconds: 30
 useCentralizedInfra: true
 usePersistentVolumes: true
