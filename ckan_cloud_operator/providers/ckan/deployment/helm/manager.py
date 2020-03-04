@@ -33,6 +33,7 @@ from ckan_cloud_operator.drivers.kubectl import rbac as kubectl_rbac_driver
 from ckan_cloud_operator import logs
 from ckan_cloud_operator.drivers.helm import driver as helm_driver
 from ckan_cloud_operator.config import manager as config_manager
+from ckan_cloud_operator.providers.ckan import manager as ckan_manager
 from ckan_cloud_operator.providers.db import manager as db_manager
 from ckan_cloud_operator.providers.solr import manager as solr_manager
 from ckan_cloud_operator.annotations import manager as annotations_manager
@@ -50,6 +51,7 @@ def update(instance_id, instance, force=False, dry_run=False):
     tiller_namespace_name = _get_resource_name()
     logs.debug('Updating helm-based instance deployment',
                instance_id=instance_id, tiller_namespace_name=tiller_namespace_name)
+    _create_private_container_registry_secret(instance_id)
     _init_ckan_infra_secret(instance_id, dry_run=dry_run)
     ckan_helm_chart_repo = instance['spec'].get(
         "ckanHelmChartRepo",
@@ -258,6 +260,16 @@ def _init_ckan_infra_secret(instance_id, dry_run=False):
             dry_run=dry_run
         )
 
+def _create_private_container_registry_secret(instance_id):
+    if config_manager.get('private-registry', secret_name='ckan-docker-registry') == 'y':
+        docker_server, docker_username, docker_password, docker_email = ckan_manager.get_docker_credentials()
+        image_pull_secret_name = config_manager.get('docker-image-pull-secret-name', secret_name='ckan-docker-registry')
+        subprocess.call(f'kubectl -n {instance_id} create secret docker-registry {image_pull_secret_name} '
+                              f'--docker-password={docker_password} '
+                              f'--docker-server={docker_server} '
+                              f'--docker-username={docker_username} '
+                              f'--docker-email={docker_email}', shell=True)
+
 
 def _init_namespace(instance_id, dry_run=False):
     logs.debug('Initializing helm-based instance deployment namespace', namespace=instance_id)
@@ -371,7 +383,7 @@ def _wait_instance_events(instance_id):
         time_passed = (datetime.datetime.now() - start_time).total_seconds()
         if time_passed - last_message >= 60:
             logs.info('%d seconds since started waiting' % time_passed)
-            last_message += 60 
+            last_message += 60
         if time_passed > 500:
             raise Exception('timed out waiting for instance events')
 
