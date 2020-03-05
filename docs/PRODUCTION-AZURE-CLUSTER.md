@@ -80,6 +80,14 @@ export TF_VAR_create_resoource_group="..."  # Allow Terraform create RG         
 export TF_VAR_dns_provider="..."            # DNS Provider                      [Optional] Default: azure
 export TF_VAR_dns_zone_name="..."           # Azure DNS Zone name               [Optional] Default: viderum.xyz
 export TF_VAR_create_dns_zone="..."         # Allow Terraform create DNS Zone   [Optional] Default: false
+
+# Private docker Registry
+export TF_VAR_private_registry="..."                  # Enable private container registry [Optional] Default: n
+export TF_VAR_docker_server="..."                     # Container registry server name    [Required if private_registry=y]
+export TF_VAR_docker_username="..."                   # Container registry username       [Required if private_registry=y]
+export TF_VAR_docker_password="..."                   # Container registry password       [Required if private_registry=y]
+export TF_VAR_docker_email="..."                      # Container registry user email     [Required if private_registry=y]
+export TF_VAR_docker_image_pull_secret_name="..."     # Secret name for storing registry secrets (Same as imagePullSecret) [Optional] Default: container-registry
 terraform apply
 ```
 

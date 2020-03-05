@@ -33,6 +33,30 @@ variable "create_dns_zone" {
   default = false
 }
 
+variable "private_registry" {
+  default = "n"
+}
+
+variable "docker_server" {
+  default = "registry.gitlab.com"
+}
+
+variable "docker_username" {
+  default = ""
+}
+
+variable "docker_password" {
+  default = ""
+}
+
+variable "docker_email" {
+  default = ""
+}
+
+variable "docker_image_pull_secret_name" {
+  default = "container-registry"
+}
+
 resource "random_string" "cluster_name_suffix" {
   length = 4
   special = false
@@ -180,6 +204,13 @@ default:
       azure-client-secret: "${var.client_secret}"
       azure-tenant-id: "${var.tenant_id}"
       azure-subscribtion-id: "${var.subscribtion_id}"
+    ckan-docker-registry:
+      private-registry: "${var.private_registry}"
+      docker-server: "${var.docker_server}"
+      docker-username: "${var.docker_username}"
+      docker-password: "${var.docker_password}"
+      docker-email: "${var.docker_email}"
+      docker-image-pull-secret-name: "${var.docker_image_pull_secret_name}"
 
 YAML
 }
