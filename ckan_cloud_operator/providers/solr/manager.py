@@ -187,6 +187,15 @@ def zk_get_config_file(config_name, config_file, output_filename):
 
 
 def zk_put_configs(configs_dir):
+    def retry_if_fails(command, max_retries=15):
+        if max_retries < 0:
+            return
+        try:
+            kubectl.check_output(command)
+        except:
+            time.sleep(5)
+            retry_if_fails(command, max_retries=max_retries-1)
+
     pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
     for input_filename in glob.glob(f'{configs_dir}/**/*', recursive=True):
         if not os.path.isfile(input_filename): continue
@@ -199,8 +208,8 @@ def zk_put_configs(configs_dir):
                 continue
             output_filepath += f'/{output_filepart}'
             logs.info(f'create {output_filepath} null')
-            kubectl.check_output(f'exec {pod_name} zkCli.sh create {output_filepath} null')
+            retry_if_fails(f'exec {pod_name} zkCli.sh create {output_filepath} null')
         logs.info(f'copy {output_filename}')
-        kubectl.check_output(f'cp {input_filename} {pod_name}:/tmp/zk_input')
+        retry_if_fails(f'cp {input_filename} {pod_name}:/tmp/zk_input')
         logs.info(f'create {output_filename}')
-        kubectl.check_output(f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'")
+        retry_if_fails(f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'")
