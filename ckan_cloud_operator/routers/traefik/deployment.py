@@ -225,7 +225,7 @@ def get_cloudflare_credentials():
 def update(router_name, wait_ready, spec, annotations, routes, dry_run=False):
     old_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
     old_generation = old_deployment.get('metadata', {}).get('generation') if old_deployment else None
-    expected_new_generation = old_generation + 1 if old_generation else None
+    expected_new_generation = old_generation + 3 if old_generation else None
     if expected_new_generation:
         print(f'old deployment generation: {old_generation}')
     else:
@@ -237,6 +237,7 @@ def update(router_name, wait_ready, spec, annotations, routes, dry_run=False):
             force_update=True
         )
         if expected_new_generation:
+            _scale_down_scale_up(f'router-traefik-{router_name}')
             while True:
                 time.sleep(.2)
                 new_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
@@ -294,3 +295,7 @@ def get_labels(router_name, router_type, for_deployment=False):
         get_label_suffixes(router_name, router_type),
         extra_labels=extra_labels
     )
+
+def _scale_down_scale_up(deployment='router-traefik-instances-default'):
+    kubectl.call(f'scale deployment {deployment} --replicas=0')
+    kubectl.call(f'scale deployment {deployment} --replicas=1')
