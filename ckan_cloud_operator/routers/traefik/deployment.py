@@ -296,6 +296,6 @@ def get_labels(router_name, router_type, for_deployment=False):
         extra_labels=extra_labels
     )
 
-def _scale_down_scale_up(deployment='router-traefik-instances-default'):
+def _scale_down_scale_up(deployment='router-traefik-instances-default', replicas=1):
     kubectl.call(f'scale deployment {deployment} --replicas=0')
-    kubectl.call(f'scale deployment {deployment} --replicas=1')
+    kubectl.call(f'scale deployment {deployment} --replicas={replicas}')

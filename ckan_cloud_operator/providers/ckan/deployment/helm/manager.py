@@ -459,7 +459,7 @@ def _pre_update_hook_modify_spec(instance_id, instance, callback, dry_run=False)
     callback(latest_instance['spec'])
     kubectl.apply(latest_instance, dry_run=dry_run)
 
-def _scale_down_scale_up(deployment='ckan', namespace=None):
+def _scale_down_scale_up(deployment='ckan', namespace=None, replicas=1):
     logs.info('Scaling ckan replicas')
     kubectl.call(f'scale deployment {deployment} --replicas=0', namespace=namespace)
-    kubectl.call(f'scale deployment {deployment} --replicas=1', namespace=namespace)
+    kubectl.call(f'scale deployment {deployment} --replicas={replicas}', namespace=namespace)
