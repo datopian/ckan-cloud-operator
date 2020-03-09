@@ -91,6 +91,7 @@ def update(instance_id, instance, force=False, dry_run=False):
                 instance['spec'], tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version,
                 ckan_helm_release_name, instance_id
             )
+            _scale_down_scale_up(namespace=instance_id, replicas=values.get('replicas', 1))
 
 
 def _helm_deploy(values, tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version, ckan_helm_release_name,
@@ -457,3 +458,8 @@ def _pre_update_hook_modify_spec(instance_id, instance, callback, dry_run=False)
     callback(instance['spec'])
     callback(latest_instance['spec'])
     kubectl.apply(latest_instance, dry_run=dry_run)
+
+def _scale_down_scale_up(deployment='ckan', namespace=None, replicas=1):
+    logs.info('Scaling ckan replicas')
+    kubectl.call(f'scale deployment {deployment} --replicas=0', namespace=namespace)
+    kubectl.call(f'scale deployment {deployment} --replicas={replicas}', namespace=namespace)

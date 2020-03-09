@@ -55,7 +55,7 @@ def get_internal_http_endpoint():
     return f'http://{solrcloud_host_name}.{namespace}.svc.cluster.local:8983/solr'
 
 
-def solr_curl(path, required=False, debug=False):
+def solr_curl(path, required=False, debug=False, max_retries=15):
     deployment_name = _get_resource_name(_get_sc_suffixes()[0])
     if debug:
         kubectl.check_call(f'exec deployment-pod::{deployment_name} -- curl \'localhost:8983/solr{path}\'',
@@ -66,6 +66,10 @@ def solr_curl(path, required=False, debug=False):
         if exitcode == 0:
             return output
         elif required:
+            if max_retries > 0:
+                logs.info(f'Failed to run solr curl: localhost:8983/solr{path} - retring in 30 seconds')
+                time.sleep(30)
+                solr_curl(path, required=required, debug=debug, max_retries=max_retries-1)
             logs.critical(output)
             raise Exception(f'Failed to run solr curl: localhost:8983/solr{path}')
         else:
