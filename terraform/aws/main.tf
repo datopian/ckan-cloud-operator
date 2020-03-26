@@ -250,5 +250,7 @@ default:
       storage-region: ${var.region}
       aws-storage-access-key: ${var.aws_secret_access_key}
       aws-storage-access-secret: ${var.aws_secret_access_key}
+    ckan-docker-registry:
+      private-registry: n
 YAML
 }
