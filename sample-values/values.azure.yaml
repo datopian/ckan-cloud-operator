@@ -1,0 +1,61 @@
+active: true
+admin_password: 7506d29940041c72
+authAnon_create_dataset: "false"
+authCreate_dataset_if_not_in_organization: "true"
+authCreate_unowned_dataset: "false"
+authCreate_user_via_api: "false"
+authCreate_user_via_web: "true"
+authRoles_that_cascade_to_sub_groups: admin
+authUser_create_groups: "false"
+authUser_create_organizations: "false"
+authUser_delete_groups: "false"
+authUser_delete_organizations: "false"
+centralizedSecretName: ckan-infra
+ckanAdminEmail: adam.kariv@datopian.com
+ckanGunicornWorkers: 2
+ckanHelmChartVersion: v0.0.19-rc4
+# debugMode: NO
+ckanImage: viderum/ckan-cloud-docker:ckan-256abb3ee8468a0e99f96cfb9dd629694c8fb295-gdx-demo-theme
+imagePullSecret: container-registry
+terminationGracePeriodSeconds: 1
+ckanOperatorImage: viderum/ckan-cloud-docker:cca-operator-79031440f3a5d5530639761f075f9704e22340f0
+ckanJobsDbResources: '{"requests": {"cpu": "20m", "memory": "50Mi"}, "limits": {"memory": "200Mi"}}'
+ckanJobsDbTerminationGracePeriodSeconds: 30
+ckanJobsResources: '{"requests": {"cpu": "150m", "memory": "400Mi"}, "limits": {"memory": "1500Mi"}}'
+ckanJobsTerminationGracePeriodSeconds: 30
+ckanLivenessPeriodSeconds: 300
+ckanPlugins: stats text_view image_view recline_view datastore xloader
+ckanResources: '{"requests": {"cpu": "400m", "memory": "400Mi"}, "limits": {"memory": "2Gi"}}'
+ckanStorageClassName: cca-ckan
+dataStoreDbPersistentDiskSizeGB: 20
+datastoreDbResources: '{"requests": {"cpu": "100m", "memory": "200Mi"}, "limits": {"memory": "600Mi"}}'
+datastoreDbTerminationGracePeriodSeconds: 30
+dbPersistentDiskSizeGB: 20
+dbResources: '{"requests": {"cpu": "100m", "memory": "200Mi"}, "limits": {"memory": "600Mi"}}'
+dbTerminationGracePeriodSeconds: 30
+displayTimezone: America/New_York
+domain: a-ckan-instance.ckan-aws-testing.gq
+favIcon: /base/images/ckan.ico
+id: a-ckan-instance
+jobsDbPersistentDiskSizeGB: 5
+kind: datapusher
+name: a-ckan-instance
+nginxReplicas: 1
+nginxResources: '{"requests": {"cpu": "60m", "memory": "300Mi"}, "limits": {"memory": "800Mi"}}'
+provisioningKindTitle: DataPusher / Catalog
+ready: true
+redisResources: '{"requests": {"cpu": "15m", "memory": "100Mi"}, "limits": {"memory": "300Mi"}}'
+registerSubdomain: a-ckan-instance
+replicas: 1
+siteDescription: Staging environment
+siteLogo: /base/images/ckan-logo.png
+siteTitle: A Sample CKAN Image
+siteUrl: https://a-ckan-instance.ckan-aws-testing.gq
+solrPersistentDiskSizeGB: 10
+solrResources: '{"requests": {"cpu": "60m", "memory": "600Mi"}, "limits": {"memory": "1Gi"}}'
+storageClassName: cca-storage
+ckanStorageDiskAccessMode: ReadWriteOnce
+terminationGracePeriodSeconds: 30
+useCentralizedInfra: true
+usePersistentVolumes: true
+withSansSSL: true

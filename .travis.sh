@@ -42,6 +42,28 @@ elif [ "${1}" == "install-tools" ]; then
       aws-iam-authenticator version
       echo AWS Dependencies Installed Successfully!
     fi
+    
+    if [ "${K8_PROVIDER}" == "azure" ]; then
+      # Install  terraform
+      wget -O terraform.zip https://releases.hashicorp.com/terraform/0.12.18/terraform_0.12.18_linux_amd64.zip &&\
+      unzip terraform.zip -d /tmp &&\
+      sudo mv /tmp/terraform /usr/local/bin/
+
+      echo Terraform Installed Successfully!
+
+      # Intall Azure CLI and login
+      sudo apt-get update
+      sudo apt-get install ca-certificates curl apt-transport-https lsb-release gnupg
+      curl -sL https://packages.microsoft.com/keys/microsoft.asc |
+      gpg --dearmor |
+      sudo tee /etc/apt/trusted.gpg.d/microsoft.asc.gpg > /dev/null
+      AZ_REPO=$(lsb_release -cs)
+      echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" |
+      sudo tee /etc/apt/sources.list.d/azure-cli.list
+      sudo apt-get update
+      sudo apt-get install azure-cli
+      echo Azure CLI Installed Successfully!
+   fi
 
     curl -LO https://storage.googleapis.com/kubernetes-release/release/`curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt`/bin/linux/amd64/kubectl
     chmod +x ./kubectl && sudo mv ./kubectl /usr/local/bin/kubectl

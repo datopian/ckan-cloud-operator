@@ -37,7 +37,7 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
         'replicas': 1,
         'revisionHistoryLimit': 5,
         'selector': {
-            'matchLabels': get_labels(router_name, router_type, for_deployment=True) 
+            'matchLabels': get_labels(router_name, router_type, for_deployment=True)
         },
         'template': {
             'metadata': {
@@ -87,6 +87,20 @@ def _get_deployment_spec(router_name, router_type, annotations, image=None, http
         kubectl.update_secret(secret_name, {
             'CLOUDFLARE_EMAIL': cloudflare_email,
             'CLOUDFLARE_API_KEY': cloudflare_api_key,
+        }, labels=get_labels(router_name, router_type))
+        container['envFrom'] = [{'secretRef': {'name': secret_name}}]
+    elif dns_provider == 'azure':
+        logs.info('Traefik deployment: adding SSL support using Azure DNS')
+        container = deployment_spec['template']['spec']['containers'][0]
+        container['ports'].append({'containerPort': 443})
+        azure_credendials = cluster_manager.get_provider().get_azure_credentials()
+        secret_name = f'ckancloudrouter-{router_name}-azure'
+        kubectl.update_secret(secret_name, {
+            'AZURE_CLIENT_ID': azure_credendials['azure-client-id'],
+            'AZURE_CLIENT_SECRET':  azure_credendials['azure-client-secret'],
+            'AZURE_SUBSCRIPTION_ID': azure_credendials['azure-subscribtion-id'],
+            'AZURE_TENANT_ID': azure_credendials['azure-tenant-id'],
+            'AZURE_RESOURCE_GROUP': azure_credendials['azure-resource-group']
         }, labels=get_labels(router_name, router_type))
         container['envFrom'] = [{'secretRef': {'name': secret_name}}]
     else:
@@ -180,6 +194,7 @@ def get_load_balancer_ip(router_name, failfast=False):
     RETRIES = 10
     for retries in range(RETRIES):
         load_balancer = kubectl.get(f'service loadbalancer-{resource_name}', required=False)
+
         if load_balancer:
             ingresses = load_balancer.get('status', {}).get('loadBalancer', {}).get('ingress', [])
             if len(ingresses) > 0:
@@ -210,7 +225,7 @@ def get_cloudflare_credentials():
 def update(router_name, wait_ready, spec, annotations, routes, dry_run=False):
     old_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
     old_generation = old_deployment.get('metadata', {}).get('generation') if old_deployment else None
-    expected_new_generation = old_generation + 1 if old_generation else None
+    expected_new_generation = old_generation + 3 if old_generation else None
     if expected_new_generation:
         print(f'old deployment generation: {old_generation}')
     else:
@@ -222,6 +237,7 @@ def update(router_name, wait_ready, spec, annotations, routes, dry_run=False):
             force_update=True
         )
         if expected_new_generation:
+            _scale_down_scale_up(f'router-traefik-{router_name}')
             while True:
                 time.sleep(.2)
                 new_deployment = kubectl.get(f'deployment router-traefik-{router_name}', required=False)
@@ -279,3 +295,7 @@ def get_labels(router_name, router_type, for_deployment=False):
         get_label_suffixes(router_name, router_type),
         extra_labels=extra_labels
     )
+
+def _scale_down_scale_up(deployment='router-traefik-instances-default', replicas=1):
+    kubectl.call(f'scale deployment {deployment} --replicas=0')
+    kubectl.call(f'scale deployment {deployment} --replicas={replicas}')

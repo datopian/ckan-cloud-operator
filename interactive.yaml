@@ -16,3 +16,5 @@ default:
       default-storage-bucket: ckan
     storage-config:
       use-cloud-native-storage: n
+    ckan-docker-registry:
+      private-registry: n

@@ -2,6 +2,7 @@ import subprocess
 import json
 import os
 import glob
+import time
 
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.infra import CkanInfra
@@ -135,9 +136,16 @@ def solr_curl(path, required=False, debug=False):
                 logs.warning(output)
                 return False
 
-def zk_set_url_scheme(scheme='http'):
+def zk_set_url_scheme(scheme='http', timeout=300):
     pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
-    kubectl.check_output('exec %s zkCli.sh set /clusterprops.json \'{"urlScheme":"%s"}\'' % (pod_name, scheme))
+    try:
+        kubectl.check_output('exec %s zkCli.sh set /clusterprops.json \'{"urlScheme":"%s"}\'' % (pod_name, scheme))
+    except Exception as e:
+        print('Failed to connect ZooKeeper, retrying in 60 seconds')
+        time.sleep(60)
+        if timeout < 0:
+            raise e
+        zk_set_url_scheme(scheme=scheme, timeout=timeout-60)
 
 
 def zk_list_configs():
@@ -179,7 +187,17 @@ def zk_get_config_file(config_name, config_file, output_filename):
 
 
 def zk_put_configs(configs_dir):
+    def retry_if_fails(command, max_retries=15):
+        if max_retries < 0:
+            return
+        try:
+            kubectl.check_output(command)
+        except:
+            time.sleep(5)
+            retry_if_fails(command, max_retries=max_retries-1)
+
     pod_name = kubectl.get('pods', '-l', 'app=provider-solr-solrcloud-zk', required=True)['items'][0]['metadata']['name']
+    logs.info(f'using pod {pod_name}')
     for input_filename in glob.glob(f'{configs_dir}/**/*', recursive=True):
         if not os.path.isfile(input_filename): continue
         output_filename = '/configs' + input_filename.replace(configs_dir, '')
@@ -191,8 +209,8 @@ def zk_put_configs(configs_dir):
                 continue
             output_filepath += f'/{output_filepart}'
             logs.info(f'create {output_filepath} null')
-            kubectl.check_output(f'exec {pod_name} zkCli.sh create {output_filepath} null')
+            retry_if_fails(f'exec {pod_name} zkCli.sh create {output_filepath} null')
         logs.info(f'copy {output_filename}')
-        kubectl.check_output(f'cp {input_filename} {pod_name}:/tmp/zk_input')
+        retry_if_fails(f'cp {input_filename} {pod_name}:/tmp/zk_input')
         logs.info(f'create {output_filename}')
-        kubectl.check_output(f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'")
+        retry_if_fails(f"exec {pod_name} -- /bin/bash -c '/usr/bin/zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'")

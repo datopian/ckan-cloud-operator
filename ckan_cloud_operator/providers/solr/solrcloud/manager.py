@@ -55,7 +55,7 @@ def get_internal_http_endpoint():
     return f'http://{solrcloud_host_name}.{namespace}.svc.cluster.local:8983/solr'
 
 
-def solr_curl(path, required=False, debug=False):
+def solr_curl(path, required=False, debug=False, max_retries=15):
     deployment_name = _get_resource_name(_get_sc_suffixes()[0])
     if debug:
         kubectl.check_call(f'exec deployment-pod::{deployment_name} -- curl \'localhost:8983/solr{path}\'',
@@ -66,6 +66,10 @@ def solr_curl(path, required=False, debug=False):
         if exitcode == 0:
             return output
         elif required:
+            if max_retries > 0:
+                logs.info(f'Failed to run solr curl: localhost:8983/solr{path} - retring in 30 seconds')
+                time.sleep(30)
+                solr_curl(path, required=required, debug=debug, max_retries=max_retries-1)
             logs.critical(output)
             raise Exception(f'Failed to run solr curl: localhost:8983/solr{path}')
         else:
@@ -94,18 +98,17 @@ def initialize(interactive=False, dry_run=False):
     _config_set('sc-main-host-name', solrcloud_host_name)
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
-    # TODO - need to check the pod names and ensure these are solrcloud ones
-    # TODO - actual number is _+ 1_ and not _+ 2_
-    expected_running = len(sc_host_names) + len(zk_host_names) + 2
+    expected_running = len(sc_host_names) + len(zk_host_names) + 1
     RETRIES = 40 # ~20 minutes
     for retry in range(RETRIES):
         pods = kubectl.get('pods')
         running = len([x for x in pods['items']
-                       if x['status']['phase'] == 'Running'])
+                       if x['status']['phase'] == 'Running' and x['metadata']['labels']['app'].startswith(_get_resource_labels(for_deployment=True)['app'])])
         time.sleep(45)
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
         for x in pods['items']:
             logs.info('  - %-10s | %s: %s' % (x['metadata'].get('labels', {}).get('app'), x['metadata']['name'], x['status']['phase']))
+
         if running == expected_running:
             break
         assert retry < RETRIES - 1, 'Gave up on waiting for SolrCloud'

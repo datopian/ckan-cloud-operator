@@ -6,8 +6,10 @@ from ckan_cloud_operator.drivers.postgres import driver as postgres_driver
 from ckan_cloud_operator.providers import manager as providers_manager
 from ckan_cloud_operator.providers.db.proxy import manager as db_proxy_manager
 from ckan_cloud_operator.providers.ckan import manager as ckan_manager
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 
 from .constants import PROVIDER_SUBMODULE as db_provider_submodule
+from .azuresql.constants import PROVIDER_ID as db_azuresql_provider_id
 from .gcloudsql.constants import PROVIDER_ID as db_gcloudsql_provider_id
 from .rds.constants import PROVIDER_ID as db_rds_provider_id
 from .minikube.constants import PROVIDER_ID as db_minikube_provider_id
@@ -17,6 +19,8 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
     """Initialize / upgrade the db module and sub-modules"""
     if default_cluster_provider == 'aws':
         default_provider = db_rds_provider_id
+    elif default_cluster_provider == 'azure':
+        default_provider = db_azuresql_provider_id
     elif not default_cluster_provider or default_cluster_provider == 'gcloud':
         default_provider = db_gcloudsql_provider_id
     elif not default_cluster_provider or default_cluster_provider == 'minikube':

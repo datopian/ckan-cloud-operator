@@ -7,6 +7,8 @@ env:
   - TRAVIS_CI_OPERATOR=1
   - secure: "L2+magDtNAe7hKqOfCIkFEFkC01gjMhQsQbChwFd1ZEPa4tqX0yNgCoflghYIVfORsol/Uw3LRumiQNnJLGH4ft3NS7/azBWYLCbQkZduqJhFqYGbBuVIYlQTe1ZjrIxxV/McP0Fadha7fSS2AiyrVuPbvZSAPU0mCLz7LZazisYJg7dqNNZZTkvLEKbi0t6u+saDGUdvFqWlxG93QRJFpd4oCJ7l1K12MDouMik1b1KA5E6NWnU+LbT1wPJx3komqWE5qaM3uKs+3d2/7KTrXkXbPMExipAMGzXB4Z89hNwglFzdo0vCdM2NXrUv32O+9WoGdblfq6qQ8LU6XkyDwWP/QYz0mbAYAEtNiNAfGu1JaQ1ntH/mxyseY/ec1FnAS7TNr7zx/CUAvrs2giPB2z46nOF2KNnXlc7b04DP3OYzZIj3kmLkiF7QN2ERYNiknzHIv961DRs2k8jg5YFmz92smBqeYoi7268VtL6/LIErOubDe4jfVQPMHoP8Nn5+jcOn4MoVjh9GmduTXzQYcOCZKlJehOC7kaYPJkage8xSSjf1bMZqfstQgrhIg8R1aYw+leGW4hzegDV6qPcgToGVLloerMVbdGR9k1T6X6XsIlU7FXs5U8IJS4xiwwq8Qjc/ZMvMsgD697wyG1Yf6hUSK//kZVqkbEiGF/QLFA="
   - secure: "Hz/RBOEQRra7n2AI6r8jo0bN2QHBtZO8GVb2gMNuAZJ7SwBVT2RazZ9MxoHPrKIZ77ThVutwIk/afyjaVHLN6KO74iT597Fw8onKpX88TXfD9/01yE6elMasmlrGG7Z2VrqOZmqz1g2wTwRNXtMv0L7bDv2M94bcjW+b67g9ddaN58kX6xSjizjAmKOkxuW+F804EpEpmceu1VWwntSUukpZCCV82UiwOJekAhTNVpp7J4DEDaJBch8l1C3fNaPeADRSwo50eCdICsQ34rgkHevWVeY2L7er+VpCIfAMQO/wKazc+zBkcb9gH78gVEGjgix2WVmUDfdjaJjAYwPSkj+TvCG9OXjLcgdjCOWqO+BxqpmAIKpjDk2FsfwRBqHMolc+J/q/IhCqVD6Z57CzfM4QfAxNmWd+zxL9GVdINtJWiDyh8HWxPVqskrO+zTzM/YIyp/7x/1b16URi74f/KzwV0cdi3UI+ktn3FRYs3wVbI6z8vOT40YsOQoXsZVtcpVYHKkY6qgcJzT4OVc+PUbFWM2C/j1B67WmOyljRKDx+FFP98e3gZsk+Uqg+inYpm41Z6XXJnoZ96/qobIBmXIPqiQm92EpokEDe6+HAMW4nO1YoK65SKkbK5TP4RjoJAeuLA0g38XvlVAYk5ZNJEeNw9YR0jOXWTq/GQJM3C1I="
+  - secure: "2icr/toZ9wC1NkClU3jtsULaU0gL54ZqkYlg2ip7zRuHDroxz+lIQKuZU33LfM8Z2GYOLYmawNAr4ucKJYtUPhz7+a+f1SwGh8KwG1jfWoIV1UEx/SV+exVBIl+eiK6Yh58+k1i6Xosw/Zq2Y+qmLCCiPLL9q3RavIbaYKAFhiYzwBruiZISXQuy9dsRf5xq8hb9ASIcFlUbxAl1mrmpxzFaXR433Vgmi2sRWRJd5xgOcOVIGOX9IzLxvVG5truwCus6k3AdMsg6XF1M36ExDH9xb5RkOdGY/xG2RctQHMu8inTD+Tri8R7vVtZ+NR3MSFOocd8ccO0CzjAwTddLHh7zhR1X9Qvknbxor42ksfcHZ7n2lVGhJ7tZ6r4VoFBikLW/7YnsMwp+KxYyJnJYSgSllhMjLvqITyAwhPE6QiyuR6TUJ0ni3TR8DcXv1c0bXvFVH9incoeEWT8AqhheTXpVhc2OZ9eP1Ymu6aRb2P6xILD0RT1L0/7qWeNOKsJlZTuydM6hwZvcuzkJK72wROYq1zgjW6xVnF94RM3ROln8WDwOCYo0aCU1RZ0UfUvnA/AsYiHMsmppESwcsnylWsRQM93BR+s4fOlSnpiV04dzDYqRi/vx7F0JebgS6MWf0kbjNKZISgRY4boE/n/CW6DTMRoaCZdmWAfpsg4JfMs="
+  - secure: "TPSt3h0GJhGficZDpRNsesLtD4vG1uBWe1FoiztWCm1IYTu1rgTlH6PmwJqDevQ5N13RHElfsfHbrAzvOQ0ecCTxcWpX9xuz0ULYNQ18M5TJn6lWGoyzq7pDDS9feEQqVXC+HTUcFpT3e9hxy8H36RlDHcymFV6F4NBEnnDGXEm0jg5dy3zN99nd7127H1kWYf+zVbKd1bBQnxeuJiXA0c+MuByDmopJwbpNgUbfpl84YSBQuoelene5eycWMO6mNYb7N39o6Bs4LRiOyH3CcnDKvHcwvFwsHvvNmDOyIMqGYQHQiS1088GNF1Z01kdTHYhyF7gWZCUqi1gbfl6gPKgWAjmwFpVu4ao6mColrx1ZowlChAiayUVQVQ32Y7PckC6Na+wVGYANv0sr+hCueHvQQbyb1rYANay1fMYGWnw9Rib4aAGf5OfT151pqcc1NoIo10ClkCQwvcm7NOK6Pqp0uh2MKTJI7vMgm3UlvDR0EnHNL8+aeZvPvkAYm3dL5KvSPnTMdbE42LKSBlCukSTW16kccgX2iN/XrDNw68vvH/rdZKYqucCvezrrhxWRwSTignUKymNNfweg+HolFqNPZ1fm6hL5Zt/z8HehxXVeI4VD80Il6sGtQJP712hurxwusbYBybWrvR9gVyOL0hRmT5HCxtrooSidoe7xxmA="
 services:
   - docker
 
@@ -22,21 +24,21 @@ jobs:
       before_install: pip install -e .
       install: bash .travis.sh install-tools
       before_script:
-        - minikube config set cpus 4 && minikube config set memory 8192 && minikube config set vm-driver none && minikube config set kubernetes-version "${K8_VERSION}" 
+        - minikube config set cpus 4 && minikube config set memory 8192 && minikube config set vm-driver none && minikube config set kubernetes-version "${K8_VERSION}"
         - sudo minikube start
       script:
-        - ckan-cloud-operator cluster initialize --interactive --cluster-provider=minikube
-        - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud 
+        - ckan-cloud-operator cluster initialize --cluster-provider=minikube || travis_terminate 1;
+        - sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
         - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
       after_success:
         - minikube delete
       after_failure:
         - minikube delete
     - name: AWS
-      if: (type = push AND (branch = master OR tag IS present)) OR commit_message =~ /#aws/
+      if: (type = push AND (branch = master OR tag IS present)) OR (type != pull_request AND commit_message =~ /#aws/)
       env:
         - K8_PROVIDER=aws
-        - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc=" 
+        - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc="
         - secure: "K4IUX35tZr3kAEsy6Af3HlJqQDVywoHKPPq4dhZo9EyAcDASEn3jm8dg8re2DNdvOriiUkSrFQyl5WDqbsJaK+nBoGC0eH0b+lzEzGE7Fh/+sm39dmEt29EVXymIutjGYnCiz5dTJKng2VouT2CzgUude8vYUT/bDuYZZmfhA+iS/Bk+X2ex2dknepe7ODnBSgK5YDr82HLZUIn0GhlZ6pHDKhUw0qObQovYhIT5nTcHPgM+m2DFDuo19v9eUCyzPc3YoIMVhInz9BkvhYF1JgeRFvr9cSz27CSnPEx7aJVd4H6xIh4sII/RUOicFvcNiUlALogxr8Vt0swstlvHnjuISkrzW84k2oe5aBf19f7yXAUKWGrhlTz8dsr1TUqGyAc2FYzILpNc0Gl7UwvO2jUam+G/Um1R9k8n8napDG1WSxryc/Fxpfa/FipTv7JaboudmV+6HfsdtrbXoSq2edQ27N3gbMBh5FWeD82NwmxEtQ4GOhhxCjKuVrs8bzIWNvzE6BEQL8fVhYZ0jFJ8Po22gx/gsFva1p9sgGkGXzCBxqT9xaOYOeDRxv1lEjGZth7+N61MPbR2G04B+/AopI/3iQiDuncrgj6hWrPLwYCJRVuxG+UU/S+cFS+G4x4wltOF05eKB3VbAEAg1J5VmpoQpYB1IbtN2wC8LbXVGhE="
       before_install: pip install -e .
       install: bash .travis.sh install-tools
@@ -52,7 +54,7 @@ jobs:
       after_failure:
         - ./destroy_aws.sh
     - name: AWS AMI
-      if: (type = push AND (branch = master OR tag IS present)) OR commit_message =~ /#aws/
+      if: (type = push AND (branch = master OR tag IS present)) OR (type != pull_request AND commit_message =~ /#aws/)
       env:
         - K8_PROVIDER=aws
         - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc=" 
@@ -61,7 +63,24 @@ jobs:
       install: bash .travis.sh install-tools
       script:
         - cd terraform/aws/ami
-        - cd ami && ./packer build cco-test.json
+        - ./packer build cco-test.json
+    - name: azure
+      if: (type = push AND (branch = master OR tag IS present)) OR (type != pull_request AND commit_message =~ /#azure/)
+      env:
+        - K8_PROVIDER=azure
+        - HELM_VERSION=v2.16.1
+      before_install: pip install -e .
+      install: bash .travis.sh install-tools
+      script:
+        - cd terraform/azure
+        - ./init_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
+        - kubectl get ns && kubectl get pods --all-namespaces 
+        - ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update ../../sample-values/values.azure.yaml
+        - kubectl -n a-ckan-instance describe pods
+      after_success:
+        - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
+      after_failure:
+        - ./destroy_cluster.sh ${ARM_CLIENT_ID} ${ARM_CLIENT_SECRET} ${ARM_SUBSCRIPTION_ID} ${ARM_TENANT_ID}
     - stage: Unit Tests
       install:
         - curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
@@ -88,7 +107,7 @@ jobs:
       if: tag IS present
       env:
         - K8_PROVIDER=aws
-        - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc=" 
+        - secure: "WuqoQTdqhWf3199Q7f6vqBzK0IZWHjhrtu5cUKeWRIghpZKCX8cCAGOGz1/Qwm5lL6HUcnTYLt0BAAf/ynIYdb+KZsbhNfSGw2gVJvrJV8mpRLaL6e8aw/h7zs19CbUo/y8Aa9pFx3JHJKq6p926S1uj9LojCyUj750ncA6tBxtIi+cAwQl1geWRz2/ePkxj+MEC+UApr3ng740mRqa8UJjgTEHfjGFFrckL9VmviBjEgpsp02mVj64sHeh+N3llGegXYb+Cu2Ll9aGSjDsdp1lyaqxEhI+b1XwfN7EH70tKjVWB4mxzc3uTGOWTC+wl+7FjuHZsP4tvOevgeRCT9RqKmRdx5k36aOYF/Y7nseIqo6kDb/L0Zl1oU0VgBLXE68doYumfzYq3MvMerpw8mvHhdLZQYJTAbPrLqnz+ZFR6Mxc+R5CPED/uA7XmjRnfD+OFSUyHRt+OVzmEs139lPKzBdQZ1vgUOW2SJIf9fRD0xs2xuov1mAwPpS/bhUFK8goEmxH1anYyd32jSrHeH2kdY3K76yaqC3j0Lrrujjg4IT/3du8pQ36Hem+IPN986703PaGwXnZ3jqI7AUlxt6t2H1ImccFVdcEYfq9VBF8PpYvVrejl3fEF+5GOHolzIDC6KM13xMpTXtQaAqtcB7DD70LXfmvIT5tqSvssOBc="
         - secure: "K4IUX35tZr3kAEsy6Af3HlJqQDVywoHKPPq4dhZo9EyAcDASEn3jm8dg8re2DNdvOriiUkSrFQyl5WDqbsJaK+nBoGC0eH0b+lzEzGE7Fh/+sm39dmEt29EVXymIutjGYnCiz5dTJKng2VouT2CzgUude8vYUT/bDuYZZmfhA+iS/Bk+X2ex2dknepe7ODnBSgK5YDr82HLZUIn0GhlZ6pHDKhUw0qObQovYhIT5nTcHPgM+m2DFDuo19v9eUCyzPc3YoIMVhInz9BkvhYF1JgeRFvr9cSz27CSnPEx7aJVd4H6xIh4sII/RUOicFvcNiUlALogxr8Vt0swstlvHnjuISkrzW84k2oe5aBf19f7yXAUKWGrhlTz8dsr1TUqGyAc2FYzILpNc0Gl7UwvO2jUam+G/Um1R9k8n8napDG1WSxryc/Fxpfa/FipTv7JaboudmV+6HfsdtrbXoSq2edQ27N3gbMBh5FWeD82NwmxEtQ4GOhhxCjKuVrs8bzIWNvzE6BEQL8fVhYZ0jFJ8Po22gx/gsFva1p9sgGkGXzCBxqT9xaOYOeDRxv1lEjGZth7+N61MPbR2G04B+/AopI/3iQiDuncrgj6hWrPLwYCJRVuxG+UU/S+cFS+G4x4wltOF05eKB3VbAEAg1J5VmpoQpYB1IbtN2wC8LbXVGhE="
       install: bash .travis.sh install-tools
       script:

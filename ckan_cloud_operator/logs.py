@@ -74,7 +74,7 @@ def log_subprocess_output(stdout, stderr):
 def subprocess_run(command, input=None):
     completed = subprocess.run(
         command, input=input, 
-        shell=True, check=False, capture_output=True
+        shell=True, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     log_subprocess_output(completed.stdout, completed.stderr)
     completed.check_returncode()

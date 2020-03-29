@@ -26,6 +26,23 @@ from .constants import INSTANCE_NAME_CRD_SINGULAR, INSTANCE_NAME_CRD_KIND_SUFFIX
 
 def initialize(interactive=False):
     ckan_db_migration_manager.initialize(interactive=interactive)
+    registry_secrets = config_manager.interactive_set(
+        {'private-registry': 'n'},
+        secret_name='ckan-docker-registry',
+        interactive=interactive
+    )
+    if registry_secrets.get('private-registry') == 'y':
+        registry_secrets = config_manager.interactive_set(
+            {
+                'docker-server': None,
+                'docker-username': None,
+                'docker-password': None,
+                'docker-email': None,
+                'docker-image-pull-secret-name': 'container-registry',
+            },
+            secret_name='ckan-docker-registry',
+            interactive=interactive
+        )
     if config_manager.get('enable-deis-ckan', configmap_name='global-ckan-config') == 'y':
         ckan_infra = CkanInfra(required=False)
         config_manager.interactive_set(

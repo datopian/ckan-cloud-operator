@@ -33,6 +33,7 @@ from ckan_cloud_operator.drivers.kubectl import rbac as kubectl_rbac_driver
 from ckan_cloud_operator import logs
 from ckan_cloud_operator.drivers.helm import driver as helm_driver
 from ckan_cloud_operator.config import manager as config_manager
+from ckan_cloud_operator.providers.ckan import manager as ckan_manager
 from ckan_cloud_operator.providers.db import manager as db_manager
 from ckan_cloud_operator.providers.solr import manager as solr_manager
 from ckan_cloud_operator.annotations import manager as annotations_manager
@@ -50,6 +51,7 @@ def update(instance_id, instance, force=False, dry_run=False):
     tiller_namespace_name = _get_resource_name()
     logs.debug('Updating helm-based instance deployment',
                instance_id=instance_id, tiller_namespace_name=tiller_namespace_name)
+    _create_private_container_registry_secret(instance_id)
     _init_ckan_infra_secret(instance_id, dry_run=dry_run)
     ckan_helm_chart_repo = instance['spec'].get(
         "ckanHelmChartRepo",
@@ -89,6 +91,7 @@ def update(instance_id, instance, force=False, dry_run=False):
                 instance['spec'], tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version,
                 ckan_helm_release_name, instance_id
             )
+            _scale_down_scale_up(namespace=instance_id, replicas=values.get('replicas', 1))
 
 
 def _helm_deploy(values, tiller_namespace_name, ckan_helm_chart_repo, ckan_helm_chart_version, ckan_helm_release_name,
@@ -229,10 +232,10 @@ def create_ckan_admin_user(instance_id, instance, user):
         time.sleep(20)
 
     name, password, email = [user[k] for k in ['name', 'password', 'email']]
-    logs.info(f'Creating CKAN admin user with {name} ({email}) and {password}')
-    subprocess.check_call(
+    logs.info(f'Creating CKAN admin user with {name} ({email}) and {password} on pod {pod_name}')
+    logs.subprocess_check_call(
         f'echo y | kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add {name} password={password} email={email}',
-        shell=True, stderr=subprocess.STDOUT
+        shell=True
     )
 
 
@@ -257,6 +260,16 @@ def _init_ckan_infra_secret(instance_id, dry_run=False):
             namespace=instance_id,
             dry_run=dry_run
         )
+
+def _create_private_container_registry_secret(instance_id):
+    if config_manager.get('private-registry', secret_name='ckan-docker-registry') == 'y':
+        docker_server, docker_username, docker_password, docker_email = ckan_manager.get_docker_credentials()
+        image_pull_secret_name = config_manager.get('docker-image-pull-secret-name', secret_name='ckan-docker-registry')
+        subprocess.call(f'kubectl -n {instance_id} create secret docker-registry {image_pull_secret_name} '
+                              f'--docker-password={docker_password} '
+                              f'--docker-server={docker_server} '
+                              f'--docker-username={docker_username} '
+                              f'--docker-email={docker_email}', shell=True)
 
 
 def _init_namespace(instance_id, dry_run=False):
@@ -371,7 +384,7 @@ def _wait_instance_events(instance_id):
         time_passed = (datetime.datetime.now() - start_time).total_seconds()
         if time_passed - last_message >= 60:
             logs.info('%d seconds since started waiting' % time_passed)
-            last_message += 60 
+            last_message += 60
         if time_passed > 500:
             raise Exception('timed out waiting for instance events')
 
@@ -445,3 +458,9 @@ def _pre_update_hook_modify_spec(instance_id, instance, callback, dry_run=False)
     callback(instance['spec'])
     callback(latest_instance['spec'])
     kubectl.apply(latest_instance, dry_run=dry_run)
+
+def _scale_down_scale_up(deployment='ckan', namespace=None, replicas=1):
+    logs.info('Scaling ckan replicas')
+    kubectl.call(f'scale deployment {deployment} --replicas=0', namespace=namespace)
+    kubectl.call(f'scale deployment {deployment} --replicas={replicas}', namespace=namespace)
+    time.sleep(20)
