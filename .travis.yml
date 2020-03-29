@@ -63,7 +63,7 @@ jobs:
       install: bash .travis.sh install-tools
       script:
         - cd terraform/aws/ami
-        - cd ami && ./packer build cco-test.json
+        - ./packer build cco-test.json
     - name: azure
       if: (type = push AND (branch = master OR tag IS present)) OR commit_message =~ /#azure/
       env:

@@ -63,6 +63,10 @@ resource "random_string" "cluster_name_suffix" {
   upper = false
 }
 
+provider "azurerm" {
+  version = "=2.3.0"
+  features {}
+}
 
 ## Resource Groups
 
