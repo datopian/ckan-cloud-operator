@@ -12,10 +12,11 @@ authUser_delete_groups: "false"
 authUser_delete_organizations: "false"
 centralizedSecretName: ckan-infra
 ckanGunicornWorkers: 2
-ckanHelmChartVersion: v0.0.17
+ckanHelmChartVersion: v0.0.20
 # debugMode: NO
 
 ckanImage: viderum/ckan-cloud-docker:ckan-6b82d719a408c6ef1ab7ad9ea291f5da992a1135-datagov-theme
+ckanOperatorImage: viderum/ckan-cloud-docker:cca-operator-79031440f3a5d5530639761f075f9704e22340f0
 ckanJobsDbResources: '{"requests": {"cpu": "20m", "memory": "50Mi"}, "limits": {"memory": "200Mi"}}'
 ckanJobsDbTerminationGracePeriodSeconds: 30
 ckanJobsResources: '{"requests": {"cpu": "150m", "memory": "400Mi"}, "limits": {"memory": "1500Mi"}}'
@@ -55,4 +56,4 @@ terminationGracePeriodSeconds: 30
 useCentralizedInfra: true
 usePersistentVolumes: true
 withSansSSL: true
-useCloudStorage: true
+useCloudStorage: false
