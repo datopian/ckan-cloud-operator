@@ -235,7 +235,7 @@ def create_ckan_admin_user(instance_id, instance, user):
     logs.info(f'Creating CKAN admin user with {name} ({email}) and {password} on pod {pod_name}')
     logs.subprocess_check_call(
         f'echo y | kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add {name} password={password} email={email}',
-        shell=True, stderr=subprocess.STDOUT
+        shell=True
     )
 
 
