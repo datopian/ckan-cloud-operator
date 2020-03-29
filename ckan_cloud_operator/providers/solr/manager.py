@@ -212,4 +212,4 @@ def zk_put_configs(configs_dir):
         logs.info(f'copy {output_filename}')
         retry_if_fails(f'cp {input_filename} {pod_name}:/tmp/zk_input')
         logs.info(f'create {output_filename}')
-        retry_if_fails(f"exec {pod_name} bash -- -c 'zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'")
+        retry_if_fails(f"exec {pod_name} /bin/bash -- -c '/usr/bin/zkCli.sh create {output_filename} \"$(cat /tmp/zk_input)\"'")
