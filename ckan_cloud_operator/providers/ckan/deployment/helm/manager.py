@@ -463,3 +463,4 @@ def _scale_down_scale_up(deployment='ckan', namespace=None, replicas=1):
     logs.info('Scaling ckan replicas')
     kubectl.call(f'scale deployment {deployment} --replicas=0', namespace=namespace)
     kubectl.call(f'scale deployment {deployment} --replicas={replicas}', namespace=namespace)
+    time.sleep(20)
