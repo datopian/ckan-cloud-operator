@@ -15,6 +15,8 @@ def initialize(interactive=False):
         interactive=interactive
     )
     dns_provider = get_dns_provider()
+    if dns_provider.lower() == 'none':
+        return
     logs.info(dns_provider=dns_provider)
     if dns_provider == 'cloudflare':
         config_manager.interactive_set(
