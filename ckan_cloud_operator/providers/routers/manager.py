@@ -81,5 +81,7 @@ def update_dns_record(dns_provider, sub_domain, root_domain, load_balancer_ip_or
     elif dns_provider == 'azure':
         from ckan_cloud_operator.providers.cluster.azure import manager as azure_manager
         azure_manager.create_dns_record(sub_domain, root_domain, load_balancer_ip_or_hostname)
+    if dns_provider.lower() == 'none':
+        return
     else:
         raise NotImplementedError()
