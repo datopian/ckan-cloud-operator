@@ -98,6 +98,22 @@
   - `args` - list of command to run `echo hello world`
   - `env` - list of `name`,`value` pairs such as `name: ECHO_TEXT`, `value: Hello world`
 
+### Other services
+
+#### Giftless
+
+*Note:* You will need `ckanHelmChartVersion: v0.0.21` or higher to enable this service
+
+- `enableGiftless` - Flag to enable [Git LFS service (Giftless)](https://github.com/datopian/giftless) for big file uploads and versioning (defaults to `false`)
+- `CkanAuthzJwtKey` - [Required] base64 encoded string for [RSA private key](https://github.com/datopian/ckanext-authz-service#generating-an-rsa-keypair-for-rs-signing--encryption)
+- `CkanAuthzJwtKeyPub` - [Required] base64 encoded string for [RSA public key](https://github.com/datopian/ckanext-authz-service#generating-an-rsa-keypair-for-rs-signing--encryption)
+- `excternalStorageConnectionString` - [Required] Connection String for the storage (usually from Azure)
+- `excternalStorageContainerName` - [Required] Container/bucket name in the storage
+- `giftlessPathPrefix` - [Optional] path prefix to store files (defaults to `giftelss`)
+- `giftlessImage` - [Optional] [Giftess Image](https://hub.docker.com/repository/docker/datopian/giftless) (defaults to `datopian/giftless:latest`)
+- `giftlessDebug` - [Optional] Enable Giftless logs (defaults to `false`)
+- `giftlessResources` - [Optional] Kubernetes resources object for the gfitless service
+
 ### Internal
 
 - `debugMode` - enable debug mode in the instance
