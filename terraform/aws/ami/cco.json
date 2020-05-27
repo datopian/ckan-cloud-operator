@@ -37,7 +37,7 @@
         {
             "type": "shell",
             "inline": [
-                "wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -",
+                "wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -",
                 "sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'",
                 "sudo add-apt-repository universe",
                 "sudo apt-get update", 
