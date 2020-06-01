@@ -88,9 +88,9 @@ jobs:
         - bash $HOME/bin/travis_ci_operator.sh init
         - bash .travis.sh install
       script:
-        - Echo running .travis.sh script
+        - echo running .travis.sh script
         - bash .travis.sh script
-        - Echo running .travis.sh test
+        - echo running .travis.sh test
         - bash .travis.sh test
     - stage: Deploy
       if: branch = master OR tag IS present
