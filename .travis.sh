@@ -80,14 +80,13 @@ elif [ "${1}" == "install-tools" ]; then
     echo Instalation Complete && exit 0
 
 elif [ "${1}" == "script" ]; then
-    echo running script
     ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:latest -t ckan-cloud-operator . && echo Failed to build image && exit 1
     ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:jnlp-latest -t ckan-cloud-operator-jnlp -f Dockerfile.jenkins-jnlp . && echo Failed to build jnlp image && exit 1
     echo Great Success! && exit 0
 
 elif [ "${1}" == "test" ]; then
     echo Run tests
-    docker run --env NO_KUBE_CONFIG=1 --rm --entrypoint '/bin/bash' ckan-cloud-operator -lc 'ls /usr/ && ls /usr/src/src/ && cd /usr/src/src/ckan-cloud-operator && ckan-cloud-operator test'
+    docker run --env NO_KUBE_CONFIG=1 --rm --entrypoint '/bin/bash' ckan-cloud-operator -lc 'cd /usr/src/ckan-cloud-operator && ckan-cloud-operator test'
     echo Checking for vulnerabilities
     docker run --rm -v $PWD:/target -v $PWD:/results drydockcloud/ci-safety
     scan_status=$?
