@@ -7,7 +7,6 @@ RUN apt-get install -y nano curl unzip sudo bash libpq-dev build-essential
 ENV EDITOR nano
 
 COPY . .
-COPY . /usr/src/ckan-cloud-operator
 RUN K8_PROVIDER=aws TERRAFORM_VERSION=0.12.18 /cco/.travis.sh install-tools
 RUN pip install -r requirements.txt
 RUN pip install .
