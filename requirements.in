@@ -2,7 +2,7 @@ httpagentparser
 boto3
 coverage
 psycopg2
-pyyaml<5.3,>=5
+pyyaml==5.3.1
 kubernetes
 click
 toml
