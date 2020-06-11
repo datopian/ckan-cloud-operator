@@ -111,7 +111,7 @@ def list_configs(namespace=None, full=False, show_secrets=False):
                     data['values'] = None
             yield data
 
-def get_preset_answer(namespace, configmap_name, secret_name, key):
+def get_preset_answer(namespace, configmap_name, secret_name, key, default=None):
     interactive_file = os.environ.get('CCO_INTERACTIVE_CI')
     if not interactive_file:
         return
@@ -128,6 +128,8 @@ def get_preset_answer(namespace, configmap_name, secret_name, key):
             subsection = secret_name
         return answers[namespace][section][subsection][key]
     except:
+        if default is not None:
+            return default
         logs.error(f'Failed to find in interactive file value for {namespace}.{section}.{subsection}.{key}')
         raise
 
@@ -139,7 +141,7 @@ def interactive_set(default_values, secret_name=None, configmap_name=None, names
     set_values = {}
     for key, default_value in default_values.items():
         saved_value = get(key, secret_name=secret_name, configmap_name=configmap_name, namespace=namespace)
-        preset_value = get_preset_answer(namespace, configmap_name, secret_name, key)
+        preset_value = get_preset_answer(namespace, configmap_name, secret_name, key, default=default_value)
         if preset_value:
             set_values[key] = preset_value
         elif interactive and stdout.isatty():

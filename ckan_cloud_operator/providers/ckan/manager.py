@@ -13,6 +13,7 @@ from ckan_cloud_operator import kubectl
 from ckan_cloud_operator.crds import manager as crds_manager
 from ckan_cloud_operator.config import manager as config_manager
 from ckan_cloud_operator.providers.ckan.deployment import manager as deployment_manager
+from ckan_cloud_operator.providers.cluster import manager as cluster_manager
 from ckan_cloud_operator.labels import manager as labels_manager
 
 from ckan_cloud_operator.infra import CkanInfra
@@ -26,6 +27,11 @@ from .constants import INSTANCE_NAME_CRD_SINGULAR, INSTANCE_NAME_CRD_KIND_SUFFIX
 
 def initialize(interactive=False):
     ckan_db_migration_manager.initialize(interactive=interactive)
+    registry_secrets = config_manager.interactive_set(
+        {'disable-centralized-datapushers': 'no'},
+        configmap_name='global-ckan-config',
+        interactive=interactive
+    )
     registry_secrets = config_manager.interactive_set(
         {'private-registry': 'n'},
         secret_name='ckan-docker-registry',
@@ -84,6 +90,7 @@ def initialize(interactive=False):
         configs_dir = os.path.join(root_path, 'data', 'solr')
         zk_put_configs(configs_dir)
 
+
     if config_manager.get('disable-centralized-datapushers', configmap_name='global-ckan-config', required=False) != 'yes':
         from ckan_cloud_operator.datapushers import initialize as datapusher_initialize
         datapusher_initialize()
@@ -103,13 +110,17 @@ def initialize(interactive=False):
             (not allow_wildcard_ssl and not router.get('spec', {}))
         ), f'invalid router wildcard ssl config: {router}'
     else:
-        routers_manager.create(
-            router_name,
-            routers_manager.get_traefik_router_spec(
-                dns_provider=dns_provider,
-                wildcard_ssl_domain=wildcard_ssl_domain
+        # We don't want to create traefik routes if no dns_provider or it's minikube
+        if dns_provider.lower() == 'none' and cluster_manager.get_provider_id() != 'minikube':
+            pass
+        else:
+            routers_manager.create(
+                router_name,
+                routers_manager.get_traefik_router_spec(
+                    dns_provider=dns_provider,
+                    wildcard_ssl_domain=wildcard_ssl_domain
+                )
             )
-        )
 
     from .storage.manager import initialize as ckan_storage_initialize
     ckan_storage_initialize(interactive=interactive)
