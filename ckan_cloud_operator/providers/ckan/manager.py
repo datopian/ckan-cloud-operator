@@ -110,7 +110,7 @@ def initialize(interactive=False):
             (not allow_wildcard_ssl and not router.get('spec', {}))
         ), f'invalid router wildcard ssl config: {router}'
     else:
-        # We don't want to create traefik routes if no dns_provider or it's minikube
+        # We don't want to create traefik routes if no dns_provider, unless it's minikube
         if dns_provider.lower() == 'none' and cluster_manager.get_provider_id() != 'minikube':
             pass
         else:
