@@ -82,6 +82,25 @@ def initialize(interactive=False, dry_run=False):
         config_manager.set('container-spec-overrides', '{"resources":{"limits":{"memory":"1Gi"}}}',
             configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
 
+    solr_resources = config_manager.interactive_set(
+        {
+            'sc-cpu': '1',
+            'sc-mem': '1Gi',
+            'zk-cpu': '0.2',
+            'zk-mem': '200Mi',
+            'zn-cpu': '0.01',
+            'zn-mem': '0.01Gi',
+            'sc-cpu-limit': '2.5',
+            'sc-mem-limit': '8Gi',
+            'zk-cpu-limit': '0.5',
+            'zk-mem-limit': '200Mi',
+            'zn-cpu-limit': '0.5',
+            'zn-mem-limit': '0.5Gi',
+        },
+        secret_name='solr-config',
+        interactive=interactive
+    )
+
     zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 
     _config_set('zk-host-names', yaml.dump(zk_host_names, default_flow_style=False))
@@ -226,6 +245,10 @@ def _get_volume_pod_scheduling(volume_spec, app_in):
 
 
 def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, headless_service_name, dry_run=False):
+    cpu_req = config_manager.get('zk-cpu', secret_name='solr-config')
+    mem_req = config_manager.get('zk-mem', secret_name='solr-config')
+    cpu_lim = config_manager.get('zk-cpu-limit', secret_name='solr-config')
+    mem_lim = config_manager.get('zk-mem-limit', secret_name='solr-config')
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='zk'),
@@ -272,7 +295,7 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
                                 'failureThreshold': 3, 'initialDelaySeconds': 15, 'periodSeconds': 10,
                                 'successThreshold': 1, 'timeoutSeconds': 5
                             },
-                            'resources': {'limits': {'memory': '200Mi'}},
+                            'resources': {'requests': {'cpu': cpu_req, 'memory': mem_req}, 'limits': {'cpu': cpu_lim, 'memory': mem_lim}},
                             'volumeMounts': [
                                 {'mountPath': '/var/lib/zookeeper', 'name': 'datadir'},
                             ],
@@ -289,6 +312,11 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
 
 
 def _apply_zoonavigator_deployment(dry_run=False):
+    cpu_req = config_manager.get('zn-cpu', secret_name='solr-config')
+    mem_req = config_manager.get('zn-mem', secret_name='solr-config')
+    cpu_lim = config_manager.get('zn-cpu-limit', secret_name='solr-config')
+    mem_lim = config_manager.get('zn-mem-limit', secret_name='solr-config')
+
     suffix = 'zoonavigator'
     deployment_name = _get_resource_name(suffix)
     kubectl.apply(kubectl.get_deployment(
@@ -325,9 +353,9 @@ def _apply_zoonavigator_deployment(dry_run=False):
                             ],
                             'image': 'elkozmon/zoonavigator-api:0.5.0',
                             'name': 'zoonavigator-api',
-                            'resources': {'requests': {'cpu': '0.01', 'memory': '0.01Gi'}, 'limits': {'memory': '0.5Gi'}},
+                            'resources': {'requests': {'cpu': cpu_req, 'memory': mem_req}, 'limits': {'memory': mem_lim, 'cpu': cpu_lim}},
                         }
-                    ],
+                    ]
                 }
             }
         }
@@ -336,10 +364,15 @@ def _apply_zoonavigator_deployment(dry_run=False):
 
 
 def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configmap_name, headless_service_name, pause_deployment, dry_run=False):
+    cpu_req = config_manager.get('sc-cpu', secret_name='solr-config')
+    mem_req = config_manager.get('sc-mem', secret_name='solr-config')
+    cpu_lim = config_manager.get('sc-cpu-limit', secret_name='solr-config')
+    mem_lim = config_manager.get('sc-mem-limit', secret_name='solr-config')
+
     namespace = cluster_manager.get_operator_namespace_name()
     container_spec_overrides = config_manager.get('container-spec-overrides', configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config',
                                                   required=False, default=None)
-    resources = {'requests': {'cpu': '1', 'memory': '1Gi'}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}} if not container_spec_overrides else {}
+    resources = {'requests': {'cpu': cpu_req, 'memory': mem_req}, 'limits': {'cpu': cpu_lim, 'memory': mem_lim}} if not container_spec_overrides else {}
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='sc'),
