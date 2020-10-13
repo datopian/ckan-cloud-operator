@@ -363,8 +363,7 @@ def _check_instance_events(instance_id):
         if not found:
             missing.add('/'.join(events))
     logs.debug(ckan_cloud_events=ckan_cloud_events)
-    return missing
-
+    return missing, errors, ckan_cloud_logs
 
 def _wait_instance_events(instance_id):
     start_time = datetime.datetime.now()
@@ -373,7 +372,7 @@ def _wait_instance_events(instance_id):
     missing_events = None
     while True:
         time.sleep(15)
-        currently_missing = _check_instance_events(instance_id)
+        currently_missing, errors, ckan_logs = _check_instance_events(instance_id)
         if len(currently_missing) == 0:
             logs.info('All instance events completed successfully')
             break
@@ -385,7 +384,24 @@ def _wait_instance_events(instance_id):
         if time_passed - last_message >= 60:
             logs.info('%d seconds since started waiting' % time_passed)
             last_message += 60
-        if time_passed > 500:
+        if time_passed > os.environ.get('CCO_WAIT_TIMEOUT', 100):
+            logs.info('Somthing wrent wrong! Please check logs in kubernetes environment')
+            logs.info('Below are logs from ckan and Init containers for ckan service')
+            logs.info(150*'#')
+            logs.info(150*'#')
+            for error in errors:
+                if error.get('kind') == 'pods':
+                    pod_name = error.get('name')
+                    logs.info("****** INIT CONTAINER LOGS ******")
+                    kubectl.call(f'logs {pod_name} -c secrets', namespace=instance_id)
+                    logs.info(150*'#')
+                    logs.info(150*'#')
+                    logs.info("")
+                    logs.info("****** CKAN CONTAINER LOGS ******")
+                    kubectl.call(f'logs {pod_name}', namespace=instance_id)
+                    break
+            logs.info(150*'#')
+            logs.info(150*'#')
             raise Exception('timed out waiting for instance events')
 
 
