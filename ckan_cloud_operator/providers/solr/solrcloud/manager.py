@@ -55,7 +55,7 @@ def get_internal_http_endpoint():
     return f'http://{solrcloud_host_name}.{namespace}.svc.cluster.local:8983/solr'
 
 
-def solr_curl(path, required=False, debug=False):
+def solr_curl(path, required=False, debug=False, max_retries=15):
     deployment_name = _get_resource_name(_get_sc_suffixes()[0])
     if debug:
         kubectl.check_call(f'exec deployment-pod::{deployment_name} -- curl \'localhost:8983/solr{path}\'',
@@ -66,6 +66,10 @@ def solr_curl(path, required=False, debug=False):
         if exitcode == 0:
             return output
         elif required:
+            if max_retries > 0:
+                logs.info(f'Failed to run solr curl: localhost:8983/solr{path} - retring in 30 seconds')
+                time.sleep(30)
+                solr_curl(path, required=required, debug=debug, max_retries=max_retries-1)
             logs.critical(output)
             raise Exception(f'Failed to run solr curl: localhost:8983/solr{path}')
         else:
@@ -77,6 +81,25 @@ def initialize(interactive=False, dry_run=False):
     if cluster_manager.get_provider_id() == 'minikube':
         config_manager.set('container-spec-overrides', '{"resources":{"limits":{"memory":"1Gi"}}}',
             configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
+
+    solr_resources = config_manager.interactive_set(
+        {
+            'sc-cpu': '1',
+            'sc-mem': '1Gi',
+            'zk-cpu': '0.2',
+            'zk-mem': '200Mi',
+            'zn-cpu': '0.01',
+            'zn-mem': '0.01Gi',
+            'sc-cpu-limit': '2.5',
+            'sc-mem-limit': '8Gi',
+            'zk-cpu-limit': '0.5',
+            'zk-mem-limit': '200Mi',
+            'zn-cpu-limit': '0.5',
+            'zn-mem-limit': '0.5Gi',
+        },
+        secret_name='solr-config',
+        interactive=interactive
+    )
 
     zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 
@@ -94,18 +117,17 @@ def initialize(interactive=False, dry_run=False):
     _config_set('sc-main-host-name', solrcloud_host_name)
     logs.info(f'Initialized solrcloud service: {solrcloud_host_name}')
 
-    # TODO - need to check the pod names and ensure these are solrcloud ones
-    # TODO - actual number is _+ 1_ and not _+ 2_
-    expected_running = len(sc_host_names) + len(zk_host_names) + 2
+    expected_running = len(sc_host_names) + len(zk_host_names) + 1
     RETRIES = 40 # ~20 minutes
     for retry in range(RETRIES):
         pods = kubectl.get('pods')
         running = len([x for x in pods['items']
-                       if x['status']['phase'] == 'Running'])
+                       if x['status']['phase'] == 'Running' and x['metadata']['labels']['app'].startswith(_get_resource_labels(for_deployment=True)['app'])])
         time.sleep(45)
         logs.info('Waiting for SolrCloud to start... %d/%d' % (running, expected_running))
         for x in pods['items']:
             logs.info('  - %-10s | %s: %s' % (x['metadata'].get('labels', {}).get('app'), x['metadata']['name'], x['status']['phase']))
+
         if running == expected_running:
             break
         assert retry < RETRIES - 1, 'Gave up on waiting for SolrCloud'
@@ -223,6 +245,10 @@ def _get_volume_pod_scheduling(volume_spec, app_in):
 
 
 def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, headless_service_name, dry_run=False):
+    cpu_req = config_manager.get('zk-cpu', secret_name='solr-config')
+    mem_req = config_manager.get('zk-mem', secret_name='solr-config')
+    cpu_lim = config_manager.get('zk-cpu-limit', secret_name='solr-config')
+    mem_lim = config_manager.get('zk-mem-limit', secret_name='solr-config')
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='zk'),
@@ -269,7 +295,7 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
                                 'failureThreshold': 3, 'initialDelaySeconds': 15, 'periodSeconds': 10,
                                 'successThreshold': 1, 'timeoutSeconds': 5
                             },
-                            'resources': {'limits': {'memory': '200Mi'}},
+                            'resources': {'requests': {'cpu': cpu_req, 'memory': mem_req}, 'limits': {'cpu': cpu_lim, 'memory': mem_lim}},
                             'volumeMounts': [
                                 {'mountPath': '/var/lib/zookeeper', 'name': 'datadir'},
                             ],
@@ -286,6 +312,11 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
 
 
 def _apply_zoonavigator_deployment(dry_run=False):
+    cpu_req = config_manager.get('zn-cpu', secret_name='solr-config')
+    mem_req = config_manager.get('zn-mem', secret_name='solr-config')
+    cpu_lim = config_manager.get('zn-cpu-limit', secret_name='solr-config')
+    mem_lim = config_manager.get('zn-mem-limit', secret_name='solr-config')
+
     suffix = 'zoonavigator'
     deployment_name = _get_resource_name(suffix)
     kubectl.apply(kubectl.get_deployment(
@@ -322,9 +353,9 @@ def _apply_zoonavigator_deployment(dry_run=False):
                             ],
                             'image': 'elkozmon/zoonavigator-api:0.5.0',
                             'name': 'zoonavigator-api',
-                            'resources': {'requests': {'cpu': '0.01', 'memory': '0.01Gi'}, 'limits': {'memory': '0.5Gi'}},
+                            'resources': {'requests': {'cpu': cpu_req, 'memory': mem_req}, 'limits': {'memory': mem_lim, 'cpu': cpu_lim}},
                         }
-                    ],
+                    ]
                 }
             }
         }
@@ -333,10 +364,15 @@ def _apply_zoonavigator_deployment(dry_run=False):
 
 
 def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configmap_name, headless_service_name, pause_deployment, dry_run=False):
+    cpu_req = config_manager.get('sc-cpu', secret_name='solr-config')
+    mem_req = config_manager.get('sc-mem', secret_name='solr-config')
+    cpu_lim = config_manager.get('sc-cpu-limit', secret_name='solr-config')
+    mem_lim = config_manager.get('sc-mem-limit', secret_name='solr-config')
+
     namespace = cluster_manager.get_operator_namespace_name()
     container_spec_overrides = config_manager.get('container-spec-overrides', configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config',
                                                   required=False, default=None)
-    resources = {'requests': {'cpu': '1', 'memory': '1Gi'}, 'limits': {'cpu': '2.5', 'memory': '8Gi'}} if not container_spec_overrides else {}
+    resources = {'requests': {'cpu': cpu_req, 'memory': mem_req}, 'limits': {'cpu': cpu_lim, 'memory': mem_lim}} if not container_spec_overrides else {}
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='sc'),

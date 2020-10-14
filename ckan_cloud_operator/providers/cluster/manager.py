@@ -32,7 +32,7 @@ def get_operator_version(verify=False):
 
 def print_info(debug=False, minimal=False):
     print(yaml.dump([dict(
-        get_kubeconfig_info(), 
+        get_kubeconfig_info(),
         nodes=get_node_names(),
     )], default_flow_style=False))
     if not minimal:
@@ -58,7 +58,7 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
     if not skip_to:
         logs.info(f'Creating operator namespace: {OPERATOR_NAMESPACE}', **(log_kwargs or {}))
         subprocess.call(f'kubectl create ns {OPERATOR_NAMESPACE}', shell=True)
-        assert default_cluster_provider in ['gcloud', 'aws', 'minikube'], f'invalid cluster provider: {default_cluster_provider}'
+        assert default_cluster_provider in ['gcloud', 'aws', 'azure', 'minikube'], f'invalid cluster provider: {default_cluster_provider}'
         subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create secret generic ckan-cloud-provider-cluster-{default_cluster_provider}', shell=True)
         subprocess.call(f'kubectl -n {OPERATOR_NAMESPACE} create configmap operator-conf --from-literal=ckan-cloud-operator-image=viderum/ckan-cloud-operator:latest --from-literal=label-prefix={OPERATOR_NAMESPACE}', shell=True)
 
@@ -206,7 +206,7 @@ def get_or_create_multi_user_volume_claim(label_suffixes):
             claim_labels,
             {
                 'storageClassName': storage_class_name,
-                'accessModes': ['ReadWriteMany'],
+                'accessModes': ['ReadWriteOnce' if get_provider_id() == 'azure' else 'ReadWriteMany'],
                 'resources': {
                     'requests': {
                         'storage': '1Mi'

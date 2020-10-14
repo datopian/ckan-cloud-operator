@@ -11,18 +11,21 @@ authUser_create_organizations: "false"
 authUser_delete_groups: "false"
 authUser_delete_organizations: "false"
 centralizedSecretName: ckan-infra
+ckanAdminEmail: giftless@datopian.com
 ckanGunicornWorkers: 2
-ckanHelmChartVersion: v0.0.20
+ckanHelmChartVersion: v0.0.21
 # debugMode: NO
-
-ckanImage: viderum/ckan-cloud-docker:ckan-6b82d719a408c6ef1ab7ad9ea291f5da992a1135-datagov-theme
-ckanOperatorImage: viderum/ckan-cloud-docker:cca-operator-79031440f3a5d5530639761f075f9704e22340f0
+ckanImage: viderum/ckan-cloud-docker:ckan-676439f30439e5e58684c2a0d1589be813981aae-gdx-demo-theme
+ckanPlugins: stats text_view image_view recline_view datastore authz_service external_storage
+imagePullSecret: container-registry
+terminationGracePeriodSeconds: 1
+ckanOperatorImage: viderum/ckan-cloud-docker:cca-operator-da5108781e5c0c092cd12896f9d0a70cc72ae6d9
 ckanJobsDbResources: '{"requests": {"cpu": "20m", "memory": "50Mi"}, "limits": {"memory": "200Mi"}}'
 ckanJobsDbTerminationGracePeriodSeconds: 30
 ckanJobsResources: '{"requests": {"cpu": "150m", "memory": "400Mi"}, "limits": {"memory": "1500Mi"}}'
 ckanJobsTerminationGracePeriodSeconds: 30
 ckanLivenessPeriodSeconds: 300
-ckanPlugins: stats text_view image_view recline_view datastore xloader
+ckanPlugins: stats text_view image_view recline_view datastore authz_service external_storage
 ckanResources: '{"requests": {"cpu": "400m", "memory": "400Mi"}, "limits": {"memory": "2Gi"}}'
 ckanStorageClassName: cca-ckan
 dataStoreDbPersistentDiskSizeGB: 20
@@ -32,28 +35,41 @@ dbPersistentDiskSizeGB: 20
 dbResources: '{"requests": {"cpu": "100m", "memory": "200Mi"}, "limits": {"memory": "600Mi"}}'
 dbTerminationGracePeriodSeconds: 30
 displayTimezone: America/New_York
-domain: ckan-cloud-a-ckan-instance.ckan-aws-testing.gq
+domain: giftless-ckan.viderum.xyz
 favIcon: /base/images/ckan.ico
-id: a-ckan-instance
+id: giftless-ckan
 jobsDbPersistentDiskSizeGB: 5
 kind: datapusher
-name: a-ckan-instance
+name: giftless-ckan
 nginxReplicas: 1
 nginxResources: '{"requests": {"cpu": "60m", "memory": "300Mi"}, "limits": {"memory": "800Mi"}}'
 provisioningKindTitle: DataPusher / Catalog
 ready: true
 redisResources: '{"requests": {"cpu": "15m", "memory": "100Mi"}, "limits": {"memory": "300Mi"}}'
-registerSubdomain: ckan-cloud-a-ckan-instance
+registerSubdomain: giftless-ckan
+sub-domain: giftless-ckan
 replicas: 1
 siteDescription: Staging environment
 siteLogo: /base/images/ckan-logo.png
-siteTitle: A Sample CKAN Image
-siteUrl: https://ckan-cloud-a-ckan-instance.ckan-aws-testing.gq
+siteTitle: A Giftles CKAN
+siteUrl: https://giftless-ckan.viderum.xyz
 solrPersistentDiskSizeGB: 10
 solrResources: '{"requests": {"cpu": "60m", "memory": "600Mi"}, "limits": {"memory": "1Gi"}}'
 storageClassName: cca-storage
+ckanStorageDiskAccessMode: ReadWriteOnce
 terminationGracePeriodSeconds: 30
 useCentralizedInfra: true
 usePersistentVolumes: true
 withSansSSL: true
-useCloudStorage: false
+# Giftless
+enableGiftless: true
+excternalStorageContainerName: lfs-test
+excternalStorageConnectionString: GetYourAzureConnectionStringAndPutItHere
+CkanAuthzJwtKeyPub: base64EndodedPrivateRSAkey
+jwtKeyPub: base64EndodedPrivateRSAkey=
+extraCkanConfig: |-
+    ckanext.external_storage.storage_service_url=https://giftless-ckan.viderum.xyz/giftless
+    ckanext.authz_service.jwt_algorithm=RS256
+    ckanext.authz_service.jwt_private_key_file=/etc/ssh/jwt-rs256.key
+    ckanext.authz_service.jwt_public_key_file=/etc/ssh/jwt-rs256.key.pub
+    ckanext.authz_service.jwt_include_user_email=true

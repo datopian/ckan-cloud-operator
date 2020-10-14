@@ -223,6 +223,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     ## db
 
     elif submodule == db_provider_submodule:
+        from ckan_cloud_operator.providers.db.azuresql.constants import PROVIDER_ID as azuresql_provider_id
         from ckan_cloud_operator.providers.db.gcloudsql.constants import PROVIDER_ID as gcloudsql_provider_id
         from ckan_cloud_operator.providers.db.rds.constants import PROVIDER_ID as rds_provider_id
         from ckan_cloud_operator.providers.db.minikube.constants import PROVIDER_ID as minikube_provider_id
@@ -243,6 +244,13 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
             from ckan_cloud_operator.providers.db.rds import manager as rds_manager
 
             return rds_manager
+
+        ## azuresql
+
+        elif provider_id == azuresql_provider_id:
+            from ckan_cloud_operator.providers.db.azuresql import manager as azuresql_manager
+
+            return azuresql_manager
 
         ## minikube
 
@@ -294,10 +302,11 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     elif submodule == cluster_provider_submodule:
         from ckan_cloud_operator.providers.cluster.gcloud.constants import PROVIDER_ID as cluster_gcloud_provider_id
         from ckan_cloud_operator.providers.cluster.aws.constants import PROVIDER_ID as cluster_aws_provider_id
+        from ckan_cloud_operator.providers.cluster.azure.constants import PROVIDER_ID as cluster_azure_provider_id
         from ckan_cloud_operator.providers.cluster.minikube.constants import PROVIDER_ID as cluster_minikube_provider_id
 
         if not provider_id:
-            return [cluster_gcloud_provider_id, cluster_aws_provider_id]
+            return [cluster_gcloud_provider_id, cluster_aws_provider_id, cluster_azure_provider_id]
 
         ## gcloud
 
@@ -313,6 +322,13 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
 
             return cluster_aws_manager
 
+        ## azure
+
+        elif provider_id == cluster_azure_provider_id:
+            from ckan_cloud_operator.providers.cluster.azure import manager as cluster_azure_manager
+
+            return cluster_azure_manager
+
         ## minikube
 
         elif provider_id == cluster_minikube_provider_id:
@@ -323,6 +339,7 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
     ## storage
 
     elif submodule == storage_provider_submodule:
+        from ckan_cloud_operator.providers.storage.azure.constants import PROVIDER_ID as storage_azure_provider_id
         from ckan_cloud_operator.providers.storage.gcloud.constants import PROVIDER_ID as storage_gcloud_provider_id
         from ckan_cloud_operator.providers.storage.minio.constants import PROVIDER_ID as storage_minio_provider_id
         from ckan_cloud_operator.providers.storage.s3.constants import PROVIDER_ID as storage_s3_provider_id
@@ -330,22 +347,30 @@ def _get_submodule_ids_provider_or_provider_ids(submodule=None, provider_id=None
         if not provider_id:
             return []
 
-        ## minio
+        # Azure
+        elif provider_id == storage_azure_provider_id:
+            from ckan_cloud_operator.providers.storage.azure import manager as storage_azure_manager
 
-        elif provider_id == storage_minio_provider_id:
-            from ckan_cloud_operator.providers.storage.minio import manager as storage_minio_manager
+            return storage_azure_manager
 
-            return storage_minio_manager
-
+        # Gcloud
         elif provider_id == storage_gcloud_provider_id:
             from ckan_cloud_operator.providers.storage.gcloud import manager as storage_gcloud_manager
 
             return storage_gcloud_manager
 
+        # Minio
+        elif provider_id == storage_minio_provider_id:
+            from ckan_cloud_operator.providers.storage.minio import manager as storage_minio_manager
+
+            return storage_minio_manager
+
+        # AWS
         elif provider_id == storage_s3_provider_id:
             from ckan_cloud_operator.providers.storage.s3 import manager as storage_s3_manager
 
             return storage_s3_manager
+
 
     ## solr
 

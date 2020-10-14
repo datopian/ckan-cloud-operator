@@ -45,7 +45,7 @@ def _add_letsencrypt(dns_provider, config, letsencrypt_cloudflare_email, domains
     logs.info('Adding Letsencrypt acme Traefik configuration', dns_provider=dns_provider,
               letsencrypt_cloudflare_email=letsencrypt_cloudflare_email, domains=domains,
               wildcard_ssl_domain=wildcard_ssl_domain, external_domains=external_domains)
-    assert dns_provider in ['route53', 'cloudflare']
+    assert dns_provider in ['route53', 'cloudflare', 'azure']
     config['defaultEntryPoints'].append('https')
     config['entryPoints']['https'] = {
         'address': ':443',
@@ -138,6 +138,8 @@ def get(routes, letsencrypt_cloudflare_email, enable_access_log=False, wildcard_
         enable_ssl_redirect = True
     elif dns_provider == 'route53':
         enable_ssl_redirect = True
+    elif dns_provider == 'azure':
+        enable_ssl_redirect = True
     else:
         enable_ssl_redirect = False
     logs.info(enable_ssl_redirect=enable_ssl_redirect)
@@ -161,6 +163,7 @@ def get(routes, letsencrypt_cloudflare_email, enable_access_log=False, wildcard_
     if (
         (dns_provider == 'cloudflare' and letsencrypt_cloudflare_email)
         or (dns_provider == 'route53')
+        or (dns_provider == 'azure')
     ):
         _add_letsencrypt(dns_provider, config, letsencrypt_cloudflare_email, domains,
                          wildcard_ssl_domain=wildcard_ssl_domain, external_domains=external_domains)

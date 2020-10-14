@@ -6,13 +6,15 @@
 - `ckanHelmChartVersion` - which chart version to pick (e.g. `v0.0.15`)
 
 - `ckanSolrSchema` - name of the solr schema to use (will use `ckan_default` by default)
-- `ckanAdminEmail` - email address to use when creating the `admin` account 
+- `ckanAdminEmail` - email address to use when creating the `admin` account
 
 - `sub-domain` - Sub domain to use for this instance (defaults to `ckan-cloud-<instance-id>`)
 
 - `domain` - Ignored, will always be equal to `<sub-domain>.<cluster-root-domain>`
 - `withSansSSL` - Ignored, will always be considered as True
 - `registerSubdomain` - Ignored, will always be equal to `sub-domain`
+
+- `imagePullSecret` - The name of a secrets that contains credentials for the private docker repo (secret is being created by CCO). Usually set to `<instance-id>-registry`
 
 
 ## Options Defined in the [standard Helm Chart](https://github.com/ViderumGlobal/ckan-cloud-helm/tree/master/ckan)
@@ -89,14 +91,36 @@
 
 - `useCloudStorage` - use a cloud storage bucket for storing CKAN files
 - `ckanPrimaryColor` - set the newly created ckan theme to be based on this color (hex based RGB, e.g. `#123456`)
+- `cronjobs` - list of CronJob entries to be created on the cluster. values should container
+  - `name` - Name of the cron job
+  - `image` - CKAN image
+  - `schedule` - [Cron](https://en.wikipedia.org/wiki/Cron) format string, such as `0 * * * *` or `@hourly`
+  - `args` - list of command to run `echo hello world`
+  - `env` - list of `name`,`value` pairs such as `name: ECHO_TEXT`, `value: Hello world`
 
-### Internal 
+### Other services
 
-- `debugMode` - enable debug mode in the instance 
+#### Giftless
+
+*Note:* You will need `ckanHelmChartVersion: v0.0.21` or higher to enable this service
+
+- `enableGiftless` - Flag to enable [Git LFS service (Giftless)](https://github.com/datopian/giftless) for big file uploads and versioning (defaults to `false`)
+- `CkanAuthzJwtKey` - [Required] base64 encoded string for [RSA private key](https://github.com/datopian/ckanext-authz-service#generating-an-rsa-keypair-for-rs-signing--encryption)
+- `CkanAuthzJwtKeyPub` - [Required] base64 encoded string for [RSA public key](https://github.com/datopian/ckanext-authz-service#generating-an-rsa-keypair-for-rs-signing--encryption)
+- `excternalStorageConnectionString` - [Required] Connection String for the storage (usually from Azure)
+- `excternalStorageContainerName` - [Required] Container/bucket name in the storage
+- `giftlessPathPrefix` - [Optional] path prefix to store files (defaults to `giftelss`)
+- `giftlessImage` - [Optional] [Giftess Image](https://hub.docker.com/repository/docker/datopian/giftless) (defaults to `datopian/giftless:latest`)
+- `giftlessDebug` - [Optional] Enable Giftless logs (defaults to `false`)
+- `giftlessResources` - [Optional] Kubernetes resources object for the gfitless service
+
+### Internal
+
+- `debugMode` - enable debug mode in the instance
 - `envVarsSecretName` - Name of kubernetes secret containing CKAN configuration env vars
 - `ckanSecretName` - Name of kubernetes secret containing other CKAN secrets
 - `centralizedSecretName` - Name of kubernetes secret containing Centralized Infra Services secrets
-- `centralizedSolrHost` - Hostname for centralized Solr Server 
+- `centralizedSolrHost` - Hostname for centralized Solr Server
 - `centralizedSolrPort` - Port for centralized Solr Server
 - `ckanCloudInstanceId` - Instance ID, automatically set by CCO
 - `usePersistentVolumes` - Should the instance use persistent volumes or host paths
@@ -121,4 +145,3 @@
 - `jobsDbPersistentDiskSizeGB` - Size of ckan jobs DB disk size
 - `dataStoreDbPersistentDiskSizeGB` - Size of datastore DB disk size
 - `solrPersistentDiskSizeGB` - Size of SolrCloud disk size
-

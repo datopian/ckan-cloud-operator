@@ -34,7 +34,7 @@ In order to start using ckan-cloud-operator, you need to
         - Create a cluster using terraform
         - Initialize the cluster using ckan-cloud-operator
     
-    - Instructions for Azure:
+    - [Instructions for Azure](docs/PRODUCTION-AZURE-CLUSTER.md):
         - Create a cluster using terraform
         - Initialize the cluster using ckan-cloud-operator
     

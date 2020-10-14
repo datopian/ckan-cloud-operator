@@ -15,6 +15,9 @@ def initialize(interactive=False):
         interactive=interactive
     )
     dns_provider = get_dns_provider()
+    if dns_provider.lower() == 'none':
+        if cluster_manager.get_provider_id() != 'minikube':
+            return
     logs.info(dns_provider=dns_provider)
     if dns_provider == 'cloudflare':
         config_manager.interactive_set(
@@ -76,5 +79,10 @@ def update_dns_record(dns_provider, sub_domain, root_domain, load_balancer_ip_or
     elif dns_provider == 'route53':
         from ckan_cloud_operator.providers.cluster.aws import manager as aws_manager
         aws_manager.update_dns_record(sub_domain, root_domain, load_balancer_ip_or_hostname)
+    elif dns_provider == 'azure':
+        from ckan_cloud_operator.providers.cluster.azure import manager as azure_manager
+        azure_manager.create_dns_record(sub_domain, root_domain, load_balancer_ip_or_hostname)
+    elif dns_provider.lower() == 'none':
+        return
     else:
         raise NotImplementedError()
