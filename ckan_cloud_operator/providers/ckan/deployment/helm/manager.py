@@ -384,7 +384,7 @@ def _wait_instance_events(instance_id):
         if time_passed - last_message >= 60:
             logs.info('%d seconds since started waiting' % time_passed)
             last_message += 60
-        if time_passed > os.environ.get('CCO_WAIT_TIMEOUT', 100):
+        if time_passed > int(os.environ.get('CCO_WAIT_TIMEOUT', 500)):
             logs.info('Somthing wrent wrong! Please check logs in kubernetes environment')
             logs.info('Below are logs from ckan and Init containers for ckan service')
             logs.info(150*'#')
