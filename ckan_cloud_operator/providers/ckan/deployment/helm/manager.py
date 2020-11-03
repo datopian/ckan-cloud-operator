@@ -390,9 +390,18 @@ def _wait_instance_events(instance_id):
                 item for item in kubectl.get(f'pods -n {instance_id}').get('items', [])
                     if not all(stat.get('ready') for stat in item['status']['containerStatuses'])
             ]
-            logs.info('Somthing wrent wrong! Please check logs in kubernetes environment')
+            logs.info('*** SOMETHING WENT WRONG!!! ***')
             logs.info(100*'#')
             logs.info(100*'#')
+            if not len(failed_pods):
+                logs.info('But we could not get failing containers')
+                logs.info('You may try increasing default wait timeout by setting CCO_WAIT_TIMEOUT environment variable [default: 500]')
+                ckan_pod_name = [
+                    item['metadata']['name'] for item in kubectl.get(f'pods -n {instance_id}').get('items', [])
+                        if item.get('metadata', {}).get('labels', {}).get('app') == 'ckan'
+                ][0]
+                _log_container_error('CONTAINER LOGS', ckan_pod_name, 'ckan')
+                kubectl.call(f'logs {ckan_pod_name}', namespace=instance_id)
 
             for pod_meta in failed_pods:
                 init_containers = pod_meta['status'].get('initContainerStatuses')
@@ -401,7 +410,7 @@ def _wait_instance_events(instance_id):
                     for i, init_container in enumerate(init_containers):
                         if not init_container.get('ready'):
                             container_name = pod_meta['spec']['initContainers'][i]['name']
-                            _log_error('INIT CONTAINER LOGS', pod_name, container_name)
+                            _log_container_error('INIT CONTAINER LOGS', pod_name, container_name)
                             kubectl.call(f'logs {pod_name} -c {container_name}', namespace=instance_id)
                 else:
                     container_stats = pod_meta['status'].get('containerStatuses')
@@ -410,12 +419,12 @@ def _wait_instance_events(instance_id):
                         stat.get('state', {}).get('waiting', {}).get('reason') in no_log_statuses for stat in container_stats
                     ]
                     if all(pod_status):
-                        _log_error('KUBECTL DESCRIBE POD', pod_name)
+                        _log_container_error('KUBECTL DESCRIBE POD', pod_name)
                         kubectl.call(f'describe pod {pod_name}', namespace=instance_id)
                     else:
                         for i, container in enumerate(container_stats):
                             container_name = pod_meta['spec']['containers'][i]['name']
-                            _log_error('CONTAINER LOGS', pod_name, container_name)
+                            _log_container_error('CONTAINER LOGS', pod_name, container_name)
                             kubectl.call(f'logs {pod_name}', namespace=instance_id)
 
             logs.info(100*'#')
@@ -499,7 +508,7 @@ def _scale_down_scale_up(deployment='ckan', namespace=None, replicas=1):
     kubectl.call(f'scale deployment {deployment} --replicas={replicas}', namespace=namespace)
     time.sleep(20)
 
-def _log_error(text, pod_name, container_name=None):
+def _log_container_error(text, pod_name, container_name=None):
     heading = f"****** {text} ******"
     logs.info()
     logs.info(heading)
