@@ -403,25 +403,30 @@ def _wait_instance_events(instance_id):
                 _log_container_error('CONTAINER LOGS', ckan_pod_name, 'ckan')
                 kubectl.call(f'logs {ckan_pod_name}', namespace=instance_id)
 
+            logs.info('Numbe of Failed Pods: %s' % len(failed_pods))
             for pod_meta in failed_pods:
                 init_containers = pod_meta['status'].get('initContainerStatuses')
                 pod_name = pod_meta['metadata']['name']
                 if init_containers is not None:
+                    logs.info('Checking Init Containers in %s' % pod_name)
                     for i, init_container in enumerate(init_containers):
                         if not init_container.get('ready'):
                             container_name = pod_meta['spec']['initContainers'][i]['name']
                             _log_container_error('INIT CONTAINER LOGS', pod_name, container_name)
                             kubectl.call(f'logs {pod_name} -c {container_name}', namespace=instance_id)
                 else:
+                    logs.info('Checking Regular Containers in %s' % pod_name)
                     container_stats = pod_meta['status'].get('containerStatuses')
                     no_log_statuses = ['PodInitializing']
                     pod_status = [
                         stat.get('state', {}).get('waiting', {}).get('reason') in no_log_statuses for stat in container_stats
                     ]
                     if all(pod_status):
+                        logs.info('Pod %s looks good describing:' % pod_name)
                         _log_container_error('KUBECTL DESCRIBE POD', pod_name)
                         kubectl.call(f'describe pod {pod_name}', namespace=instance_id)
                     else:
+                        logs.info('Pod %s look did not start:' % pod_name)
                         for i, container in enumerate(container_stats):
                             container_name = pod_meta['spec']['containers'][i]['name']
                             _log_container_error('CONTAINER LOGS', pod_name, container_name)
