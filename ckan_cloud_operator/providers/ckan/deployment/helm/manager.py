@@ -366,6 +366,7 @@ def _check_instance_events(instance_id):
     return missing, errors, ckan_cloud_logs
 
 def _wait_instance_events(instance_id):
+    import logging
     start_time = datetime.datetime.now()
     last_message = 0
     logs.info('Waiting for instance events', start_time=start_time)
@@ -384,24 +385,55 @@ def _wait_instance_events(instance_id):
         if time_passed - last_message >= 60:
             logs.info('%d seconds since started waiting' % time_passed)
             last_message += 60
-        if time_passed > os.environ.get('CCO_WAIT_TIMEOUT', 100):
-            logs.info('Somthing wrent wrong! Please check logs in kubernetes environment')
-            logs.info('Below are logs from ckan and Init containers for ckan service')
-            logs.info(150*'#')
-            logs.info(150*'#')
-            for error in errors:
-                if error.get('kind') == 'pods':
-                    pod_name = error.get('name')
-                    logs.info("****** INIT CONTAINER LOGS ******")
-                    kubectl.call(f'logs {pod_name} -c secrets', namespace=instance_id)
-                    logs.info(150*'#')
-                    logs.info(150*'#')
-                    logs.info("")
-                    logs.info("****** CKAN CONTAINER LOGS ******")
-                    kubectl.call(f'logs {pod_name}', namespace=instance_id)
-                    break
-            logs.info(150*'#')
-            logs.info(150*'#')
+        if time_passed > int(os.environ.get('CCO_WAIT_TIMEOUT', 500)):
+            failed_pods = [
+                item for item in kubectl.get(f'pods -n {instance_id}').get('items', [])
+                    if not all(stat.get('ready') for stat in item['status']['containerStatuses'])
+            ]
+            logs.info('*** SOMETHING WENT WRONG!!! ***')
+            logs.info(100*'#')
+            logs.info(100*'#')
+            if not len(failed_pods):
+                logs.info('But we could not get failing containers')
+                logs.info('You may try increasing default wait timeout by setting CCO_WAIT_TIMEOUT environment variable [default: 500]')
+                ckan_pod_name = [
+                    item['metadata']['name'] for item in kubectl.get(f'pods -n {instance_id}').get('items', [])
+                        if item.get('metadata', {}).get('labels', {}).get('app') == 'ckan'
+                ][0]
+                _log_container_error('CONTAINER LOGS', ckan_pod_name, 'ckan')
+                kubectl.call(f'logs {ckan_pod_name}', namespace=instance_id)
+
+            logs.info('Numbe of Failed Pods: %s' % len(failed_pods))
+            for pod_meta in failed_pods:
+                init_containers = pod_meta['status'].get('initContainerStatuses')
+                pod_name = pod_meta['metadata']['name']
+                if init_containers is not None:
+                    logs.info('Checking Init Containers in %s' % pod_name)
+                    for i, init_container in enumerate(init_containers):
+                        if not init_container.get('ready'):
+                            container_name = pod_meta['spec']['initContainers'][i]['name']
+                            _log_container_error('INIT CONTAINER LOGS', pod_name, container_name)
+                            kubectl.call(f'logs {pod_name} -c {container_name}', namespace=instance_id)
+                else:
+                    logs.info('Checking Regular Containers in %s' % pod_name)
+                    container_stats = pod_meta['status'].get('containerStatuses')
+                    no_log_statuses = ['PodInitializing']
+                    pod_status = [
+                        stat.get('state', {}).get('waiting', {}).get('reason') in no_log_statuses for stat in container_stats
+                    ]
+                    if all(pod_status):
+                        logs.info('Pod %s looks good describing:' % pod_name)
+                        _log_container_error('KUBECTL DESCRIBE POD', pod_name)
+                        kubectl.call(f'describe pod {pod_name}', namespace=instance_id)
+                    else:
+                        logs.info('Pod %s look did not start:' % pod_name)
+                        for i, container in enumerate(container_stats):
+                            container_name = pod_meta['spec']['containers'][i]['name']
+                            _log_container_error('CONTAINER LOGS', pod_name, container_name)
+                            kubectl.call(f'logs {pod_name}', namespace=instance_id)
+
+            logs.info(100*'#')
+            logs.info(100*'#')
             raise Exception('timed out waiting for instance events')
 
 
@@ -480,3 +512,11 @@ def _scale_down_scale_up(deployment='ckan', namespace=None, replicas=1):
     kubectl.call(f'scale deployment {deployment} --replicas=0', namespace=namespace)
     kubectl.call(f'scale deployment {deployment} --replicas={replicas}', namespace=namespace)
     time.sleep(20)
+
+def _log_container_error(text, pod_name, container_name=None):
+    heading = f"****** {text} ******"
+    logs.info()
+    logs.info(heading)
+    logs.info(f'Pod: {pod_name} - Container: {container_name}')
+    logs.info("-" * len(heading))
+    logs.info()
