@@ -39,7 +39,7 @@ def init(tiller_namespace_name):
     kubectl.apply(tiller_service_account)
     kubectl.apply(cluster_role_binding)
     subprocess.check_call(
-        f'helm init --upgrade --service-account {tiller_namespace_name}-tiller --tiller-namespace {tiller_namespace_name} --history-max 10',
+        f'helm init --upgrade --stable-repo-url https://charts.helm.sh/stable --service-account {tiller_namespace_name}-tiller --history-max 10',
         shell=True
     )
 
@@ -55,7 +55,7 @@ def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name
 
     version_args = f'--version "{chart_version}"' if chart_version else ''
     dry_run_args = '--dry-run --debug'
-    cmd = f'helm --tiller-namespace {tiller_namespace} upgrade {release_name} {chart_name} ' \
+    cmd = f'helm upgrade {release_name} {chart_name} ' \
           f' --install --namespace "{namespace}" -i {version_args}'
     if values_filename:
         cmd += f' -f {values_filename}'
@@ -75,4 +75,4 @@ def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name
 
 
 def delete(tiller_namespace, release_name):
-    subprocess.check_call(f'helm --tiller-namespace {tiller_namespace} delete --purge --timeout 5 {release_name}', shell=True)
+    subprocess.check_call(f'helm delete --purge --timeout 5 {release_name}', shell=True)
