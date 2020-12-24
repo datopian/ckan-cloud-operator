@@ -38,7 +38,7 @@ def init(tiller_namespace_name):
     }
     kubectl.apply(tiller_service_account)
     kubectl.apply(cluster_role_binding)
-    tiller_cmd = '' if _check_helm_version() == 3 else f'--tiller-namespace {tiller_namespace_name}'
+    tiller_cmd = '' if _check_helm_version() == 3 else f' --tiller-namespace {tiller_namespace_name}'
     subprocess.check_call(
         f'helm init --upgrade --stable-repo-url https://charts.helm.sh/stable --service-account {tiller_namespace_name}-tiller --history-max 10' + tiller_cmd,
         shell=True
@@ -56,7 +56,7 @@ def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name
 
     version_args = f'--version "{chart_version}"' if chart_version else ''
     dry_run_args = '--dry-run --debug'
-    tiller_cmd = '' if _check_helm_version() == 3 else f'--tiller-namespace {tiller_namespace}'
+    tiller_cmd = '' if _check_helm_version() == 3 else f' --tiller-namespace {tiller_namespace}'
     cmd = f'helm upgrade {release_name} {chart_name} ' \
           f' --install --namespace "{namespace}" -i {version_args}'
     if values_filename:
@@ -78,8 +78,8 @@ def deploy(tiller_namespace, chart_repo, chart_name, chart_version, release_name
 
 
 def delete(tiller_namespace, release_name):
-    tiller_cmd = '' if _check_helm_version() == 3 else f'--tiller-namespace {tiller_namespace}'
+    tiller_cmd = '' if _check_helm_version() == 3 else f' --tiller-namespace {tiller_namespace}'
     subprocess.check_call(f'helm delete --purge --timeout 5 {release_name}' + tiller_cmd, shell=True)
 
 def _check_helm_version():
-    return 3 if 'v3.' in subprocess.check_call('helm version', shell=True) else 2
+    return 3 if 'v3.' in str(subprocess.check_output('helm version', shell=True)) else 2
