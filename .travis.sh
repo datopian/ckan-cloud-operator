@@ -73,6 +73,7 @@ elif [ "${1}" == "install-tools" ]; then
      chmod 700 get_helm.sh &&\
      ./get_helm.sh --version "${HELM_VERSION}" &&\
      helm version --client && rm ./get_helm.sh
+    helm init --client-only --stable-repo-url https://charts.helm.sh/stable
     echo Helm Installed Successfully!
 
     sudo apt-get update && sudo apt-get install -y socat jq
