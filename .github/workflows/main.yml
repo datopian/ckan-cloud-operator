@@ -35,7 +35,7 @@ jobs:
       #     minikube delete
       - name: Deploy
         env:
-          HOME: usr
+          HOME: /usr
         run: |
           echo $HOME
           which curl
