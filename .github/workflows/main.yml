@@ -37,12 +37,14 @@ jobs:
         run: |
           mkdir $HOME/bin
           curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+          echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
           bash $HOME/bin/travis_ci_operator.sh init
+          echo "^^^^^^^^^^^^^^^^^^^^^^"
           $HOME/bin/travis_ci_operator.sh docker-login
-          cat $HOME/bin/travis_ci_operator.sh
+          echo "===================="
           bash .travis.sh install
-          cat $HOME/bin/travis_ci_operator.sh
+          echo "++++++++++++++++++++"
           bash .travis.sh script
-          cat $HOME/bin/travis_ci_operator.sh
+          echo "-------------------"
           bash .travis.sh deploy
           cat $HOME/bin/travis_ci_operator.sh
