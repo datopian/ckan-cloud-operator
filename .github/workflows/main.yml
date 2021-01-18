@@ -34,7 +34,8 @@ jobs:
       #     ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
       #     minikube delete
       - name: Deploy
-        env: HOME: usr
+        env:
+          HOME: usr
         run: |
           echo $HOME
           which curl
