@@ -39,13 +39,13 @@ jobs:
         run: |
           echo $HOME
           which curl
-          curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
-          bash $HOME/bin/travis_ci_operator.sh init
-          travis_ci_operator.sh docker-login
-          cat $HOME/bin/travis_ci_operator.sh
-          bash .travis.sh install
-          cat $HOME/bin/travis_ci_operator.sh
-          bash .travis.sh script
-          cat $HOME/bin/travis_ci_operator.sh
-          bash .travis.sh deploy
-          cat $HOME/bin/travis_ci_operator.sh
+          sudo curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+          sudo bash $HOME/bin/travis_ci_operator.sh init
+          sudo travis_ci_operator.sh docker-login
+          sudo cat $HOME/bin/travis_ci_operator.sh
+          sudo bash .travis.sh install
+          sudo cat $HOME/bin/travis_ci_operator.sh
+          sudo bash .travis.sh script
+          sudo cat $HOME/bin/travis_ci_operator.sh
+          sudo bash .travis.sh deploy
+          sudo cat $HOME/bin/travis_ci_operator.sh
