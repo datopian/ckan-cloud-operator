@@ -107,8 +107,10 @@ elif [ "${1}" == "test" ]; then
     echo Great Success! && exit 0
 
 elif [ "${1}" == "deploy" ]; then
+    echo tagging............. &&\
     docker tag ckan-cloud-operator "viderum/ckan-cloud-operator:${TAG}" &&\
     echo && echo "viderum/ckan-cloud-operator:${TAG}" && echo &&\
+    echo pushing............. &&\
     docker push "viderum/ckan-cloud-operator:${TAG}"
     [ "$?" != "0" ] && echo Failed to tag and push && exit 1
     docker tag ckan-cloud-operator-jnlp "viderum/ckan-cloud-operator:jnlp-${TAG}" &&\
