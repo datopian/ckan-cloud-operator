@@ -33,3 +33,11 @@ jobs:
           sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
           ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
           minikube delete
+      - name: Deploy
+        run: |
+          curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+          bash $HOME/bin/travis_ci_operator.sh init
+          travis_ci_operator.sh docker-login
+          bash .travis.sh install
+          bash .travis.sh script
+          bash .travis.sh deploy
