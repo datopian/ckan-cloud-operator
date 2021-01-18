@@ -35,11 +35,8 @@ jobs:
       #     minikube delete
       - name: Deploy
         run: |
-          wget https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh
-          echo $HOME
-          echo ========
-          curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
-          # > $HOME/bin/travis_ci_operator.sh && ls $HOME/bin/travis_ci_operator.sh init
+          wget -O https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh $HOME/bin/travis_ci_operator.sh
+          # cat $HOME/bin/travis_ci_operator.sh
           # bash $HOME/bin/travis_ci_operator.sh init
           # travis_ci_operator.sh docker-login
           # cat $HOME/bin/travis_ci_operator.sh
