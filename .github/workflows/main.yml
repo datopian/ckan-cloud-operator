@@ -46,5 +46,6 @@ jobs:
           echo "++++++++++++++++++++"
           bash .travis.sh script
           echo "-------------------"
+          $HOME/bin/travis_ci_operator.sh docker-login
           bash .travis.sh deploy
           cat $HOME/bin/travis_ci_operator.sh
