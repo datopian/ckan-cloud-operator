@@ -47,5 +47,6 @@ jobs:
           bash .travis.sh script
           echo "-------------------"
           $HOME/bin/travis_ci_operator.sh docker-login
+          echo logged in as $DOCKER_USER
           bash .travis.sh deploy
           cat $HOME/bin/travis_ci_operator.sh
