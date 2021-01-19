@@ -117,7 +117,7 @@ elif [ "${1}" == "deploy" ]; then
     echo && echo "viderum/ckan-cloud-operator:jnlp-${TAG}" && echo &&\
     docker push "viderum/ckan-cloud-operator:jnlp-${TAG}"
     [ "$?" != "0" ] && echo Failed to tag and push jnlp image && exit 1
-    if [ "${TRAVIS_BRANCH}" == "master" ]; then
+    if [ "${GITHUB_REF}" == "master" ]; then
         docker tag ckan-cloud-operator viderum/ckan-cloud-operator:latest &&\
         echo && echo viderum/ckan-cloud-operator:latest && echo &&\
         docker push viderum/ckan-cloud-operator:latest
