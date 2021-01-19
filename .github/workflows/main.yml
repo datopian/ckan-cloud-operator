@@ -34,6 +34,11 @@ jobs:
       #     ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
       #     minikube delete
       - name: Deploy
+        env:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKER_USER: ${{ secrets.DOCKER_USER }}
+          TRAVIS_REPO_SLUG: ${{ secrets.TRAVIS_REPO_SLUG }}
+
         run: |
           mkdir $HOME/bin
           curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
