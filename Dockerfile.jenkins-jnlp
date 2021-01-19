@@ -1,5 +1,32 @@
 FROM jenkins/jnlp-slave
 
 USER root
+COPY docker-build.sh /usr/src/ckan-cloud-operator/
+RUN /usr/src/ckan-cloud-operator/docker-build.sh
 
+USER jenkins
+ENV PATH=/home/jenkins/miniconda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+COPY environment.yaml ./environment.yaml
+RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh &&\
+    bash ~/miniconda.sh -b -p $HOME/miniconda && conda update --prefix $HOME/miniconda conda &&\
+    conda env create -f ./environment.yaml &&\
+    conda clean -ya
+COPY ckan_cloud_operator ./ckan-cloud-operator/ckan_cloud_operator
+COPY *.sh *.py requirements.in requirements.txt ./ckan-cloud-operator/
+COPY scripts /usr/src/ckan-cloud-operator/scripts
+ENV CKAN_CLOUD_OPERATOR_SCRIPTS=/usr/src/ckan-cloud-operator/scripts
+
+USER root
+ARG CKAN_CLOUD_OPERATOR_IMAGE_TAG
+RUN echo "${CKAN_CLOUD_OPERATOR_IMAGE_TAG}" > /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG
+RUN chown -R jenkins:jenkins /home/jenkins/ckan-cloud-operator &&\
+    chown jenkins:jenkins /etc/CKAN_CLOUD_OPERATOR_IMAGE_TAG &&\
+    chmod +x /home/jenkins/ckan-cloud-operator/*.sh
+
+USER jenkins
+RUN bash -c "source miniconda/etc/profile.d/conda.sh && conda activate ckan-cloud-operator &&\
+             cd ckan-cloud-operator && python3 -m pip install -r requirements.txt && python3 -m pip install -e ."
+ENV PATH=/home/jenkins/miniconda/envs/ckan-cloud-operator/bin:/home/jenkins/miniconda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV CKAN_CLOUD_OPERATOR_USE_PROXY=n
+WORKDIR /home/jenkins
 ENTRYPOINT ["./ckan-cloud-operator/entrypoint-jnlp.sh"]

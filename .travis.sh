@@ -4,7 +4,7 @@ TAG="${GITHUB_SHA:-${GITHUB_REF	}}"
 AWS_IAM_AUTHENTICATOR_VERSION="1.14.6/2019-08-22"
 TERRAFORM_VERSION=0.12.18
 PACKER_VERSION=1.5.1
-HELM_VERSION=v2.16.1
+HELM_VERSION="${HELM_VERSION:-v2.16.1}"
 
 if [ "${1}" == "install" ]; then
     ! docker pull viderum/ckan-cloud-operator:latest && echo Failed to pull image && exit 1
@@ -107,10 +107,8 @@ elif [ "${1}" == "test" ]; then
     echo Great Success! && exit 0
 
 elif [ "${1}" == "deploy" ]; then
-    echo tagging............. &&\
     docker tag ckan-cloud-operator "viderum/ckan-cloud-operator:${TAG}" &&\
     echo && echo "viderum/ckan-cloud-operator:${TAG}" && echo &&\
-    echo pushing............. &&\
     docker push "viderum/ckan-cloud-operator:${TAG}"
     [ "$?" != "0" ] && echo Failed to tag and push && exit 1
     docker tag ckan-cloud-operator-jnlp "viderum/ckan-cloud-operator:jnlp-${TAG}" &&\
