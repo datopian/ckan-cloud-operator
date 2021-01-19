@@ -38,6 +38,7 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           DOCKER_USER: ${{ secrets.DOCKER_USER }}
           TRAVIS_REPO_SLUG: ${{ secrets.TRAVIS_REPO_SLUG }}
+          HELM_VERSION: v2.16.11
 
         run: |
           mkdir $HOME/bin
