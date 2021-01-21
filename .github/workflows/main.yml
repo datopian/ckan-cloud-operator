@@ -1,0 +1,51 @@
+name: Continuous Deployment
+on: [push]
+jobs:
+  Minikube:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2.3.1
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - name: Install pip
+        run: |
+          python -m pip install --upgrade pip
+      - name: minikube
+        env:
+          K8_PROVIDER: minikube
+          K8_VERSION: v1.16.0
+          CHANGE_MINIKUBE_NONE_USER: true
+          CCO_INTERACTIVE_CI: interactive.yaml
+        run: |
+          pip install -e .
+          bash .travis.sh install-tools
+          minikube config set cpus 4 && minikube config set memory 8192 && minikube config set vm-driver none && minikube config set kubernetes-version "${K8_VERSION}"
+          sudo minikube start --memory=4976mb
+          sudo chown -R $USER $HOME/.kube $HOME/.minikube
+          echo Checking helm
+          ckan-cloud-operator cluster initialize --cluster-provider=minikube
+          sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
+          ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
+          minikube delete
+      - name: Deploy
+        env:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKER_USER: ${{ secrets.DOCKER_USER }}
+          TRAVIS_REPO_SLUG: ${{ secrets.TRAVIS_REPO_SLUG }}
+          HELM_VERSION: v2.16.11
+
+        run: |
+          mkdir $HOME/bin
+          curl -L https://raw.githubusercontent.com/datopian/travis-ci-operator/master/travis_ci_operator.sh > $HOME/bin/travis_ci_operator.sh
+          bash $HOME/bin/travis_ci_operator.sh init
+          $HOME/bin/travis_ci_operator.sh docker-login
+          bash .travis.sh install
+          bash .travis.sh script
+          $HOME/bin/travis_ci_operator.sh docker-login
+          bash .travis.sh deploy
