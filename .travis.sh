@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-TAG="${TRAVIS_TAG:-${TRAVIS_COMMIT}}"
+TAG="${GITHUB_SHA:-${GITHUB_REF	}}"
 AWS_IAM_AUTHENTICATOR_VERSION="1.14.6/2019-08-22"
 TERRAFORM_VERSION=0.12.18
 PACKER_VERSION=1.5.1
-HELM_VERSION=v2.16.1
+HELM_VERSION="${HELM_VERSION:-v2.16.1}"
 
 if [ "${1}" == "install" ]; then
     ! docker pull viderum/ckan-cloud-operator:latest && echo Failed to pull image && exit 1
@@ -73,6 +73,7 @@ elif [ "${1}" == "install-tools" ]; then
      chmod 700 get_helm.sh &&\
      ./get_helm.sh --version "${HELM_VERSION}" &&\
      helm version --client && rm ./get_helm.sh
+    helm init --client-only --stable-repo-url https://charts.helm.sh/stable
     echo Helm Installed Successfully!
 
     sudo apt-get update && sudo apt-get install -y socat jq
@@ -114,7 +115,7 @@ elif [ "${1}" == "deploy" ]; then
     echo && echo "viderum/ckan-cloud-operator:jnlp-${TAG}" && echo &&\
     docker push "viderum/ckan-cloud-operator:jnlp-${TAG}"
     [ "$?" != "0" ] && echo Failed to tag and push jnlp image && exit 1
-    if [ "${TRAVIS_BRANCH}" == "master" ]; then
+    if [ "${GITHUB_REF}" == "master" ]; then
         docker tag ckan-cloud-operator viderum/ckan-cloud-operator:latest &&\
         echo && echo viderum/ckan-cloud-operator:latest && echo &&\
         docker push viderum/ckan-cloud-operator:latest
