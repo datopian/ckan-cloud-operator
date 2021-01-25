@@ -82,4 +82,4 @@ def delete(tiller_namespace, release_name):
     subprocess.check_call(f'helm delete --purge --timeout 5 {release_name}' + tiller_cmd, shell=True)
 
 def _check_helm_version():
-    return 3 if 'v3.' in str(subprocess.check_output('helm version', shell=True)) else 2
+    return 3 if 'v3.' in str(subprocess.check_output('helm version -c', shell=True)) else 2
