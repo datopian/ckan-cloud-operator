@@ -2,7 +2,7 @@
 
 date +%Y-%m-%d\ %H:%M | tee /etc/ckan-cloud-operator-build-info
 hostname | tee -a /etc/ckan-cloud-operator-build-info
-HELM_VERSION="${HELM_VERSION:-v2.16.1}"
+HELM_VERSION="${HELM_VERSION:-v3.5.2}"
 echo $HELM_VERSION
 (
   echo == system dependencies, gcloud-sdk &&\

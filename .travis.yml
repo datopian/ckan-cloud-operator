@@ -68,7 +68,7 @@ jobs:
       if: (type = push AND (branch = master OR tag IS present)) OR (type != pull_request AND commit_message =~ /#azure/)
       env:
         - K8_PROVIDER=azure
-        - HELM_VERSION=v2.16.1
+        - HELM_VERSION=v3.5.2
       before_install: pip install -e .
       install: bash .travis.sh install-tools
       script:
