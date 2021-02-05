@@ -16,23 +16,24 @@ jobs:
       - name: Install pip
         run: |
           python -m pip install --upgrade pip
-      - name: minikube
-        env:
-          K8_PROVIDER: minikube
-          K8_VERSION: v1.16.0
-          CHANGE_MINIKUBE_NONE_USER: true
-          CCO_INTERACTIVE_CI: interactive.yaml
-        run: |
-          pip install -e .
-          bash .travis.sh install-tools
-          minikube config set cpus 4 && minikube config set memory 8192 && minikube config set vm-driver none && minikube config set kubernetes-version "${K8_VERSION}"
-          sudo minikube start --memory=4976mb
-          sudo chown -R $USER $HOME/.kube $HOME/.minikube
-          echo Checking helm
-          ckan-cloud-operator cluster initialize --cluster-provider=minikube
-          sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
-          ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
-          minikube delete
+      ## TODO: Bring me Back. Builds started failing cause of https://github.com/kubernetes/minikube/issues/7903
+      # - name: minikube
+      #   env:
+      #     K8_PROVIDER: minikube
+      #     K8_VERSION: v1.16.0
+      #     CHANGE_MINIKUBE_NONE_USER: true
+      #     CCO_INTERACTIVE_CI: interactive.yaml
+      #   run: |
+      #     pip install -e .
+      #     bash .travis.sh install-tools
+      #     minikube config set cpus 4 && minikube config set memory 8192 && minikube config set vm-driver none && minikube config set kubernetes-version "${K8_VERSION}"
+      #     sudo minikube start --memory=4976mb
+      #     sudo chown -R $USER $HOME/.kube $HOME/.minikube
+      #     echo Checking helm
+      #     ckan-cloud-operator cluster initialize --cluster-provider=minikube
+      #     sleep 60 && kubectl get ns && kubectl get pods -n ckan-cloud
+      #     ckan-cloud-operator ckan instance create helm --instance-id a-ckan-instance --instance-name a-ckan-instance --update sample-values/values.datagov.yaml
+      #     minikube delete
       - name: Deploy
         env:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
