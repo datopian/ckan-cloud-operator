@@ -16,6 +16,7 @@ jobs:
       - name: Install pip
         run: |
           python -m pip install --upgrade pip
+      ## TODO: Bring me Back. Builds started failing cause of https://github.com/kubernetes/minikube/issues/7903
       # - name: minikube
       #   env:
       #     K8_PROVIDER: minikube
@@ -38,7 +39,7 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           DOCKER_USER: ${{ secrets.DOCKER_USER }}
           TRAVIS_REPO_SLUG: ${{ secrets.TRAVIS_REPO_SLUG }}
-          HELM_VERSION: v2.16.11
+          HELM_VERSION: v3.5.2
 
         run: |
           mkdir $HOME/bin

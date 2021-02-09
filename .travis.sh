@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-TAG="${GITHUB_SHA:-${GITHUB_REF	}}"
+REF="${GITHUB_REF:-${GITHUB_SHA}}"
+TAG=${REF##*/}
 AWS_IAM_AUTHENTICATOR_VERSION="1.14.6/2019-08-22"
 TERRAFORM_VERSION=0.12.18
 PACKER_VERSION=1.5.1
-HELM_VERSION="${HELM_VERSION:-v2.16.1}"
+HELM_VERSION="${HELM_VERSION:-v3.5.2}"
 
 if [ "${1}" == "install" ]; then
     ! docker pull viderum/ckan-cloud-operator:latest && echo Failed to pull image && exit 1
