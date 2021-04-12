@@ -99,7 +99,7 @@ def get_collection_status(collection_name):
                 'solr_http_endpoint': get_internal_http_endpoint()}
     else:
 
-        res = {'schema': {'version': '2.8', 'name' = 'ckan'}}
+        res = {'schema': {'version': '2.8', 'name': 'ckan'}}
         try:
             res = json.loads(new_output)
         except:
