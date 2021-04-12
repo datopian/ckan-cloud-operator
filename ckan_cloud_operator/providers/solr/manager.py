@@ -100,7 +100,14 @@ def get_collection_status(collection_name):
     else:
         logs.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         logs.info(output)
-        res = json.loads(output)
+
+        logs.info(len(output))
+        logs.info(type(output))
+
+        new_output = output
+
+
+        res = json.loads(new_output)
         return {'ready': True,
                 'collection_name': collection_name,
                 'solr_http_endpoint': get_internal_http_endpoint(),
