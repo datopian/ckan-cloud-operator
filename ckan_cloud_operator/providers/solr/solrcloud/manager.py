@@ -65,7 +65,7 @@ def solr_curl(path, required=False, debug=False, max_retries=15):
                            use_first_pod=True)
         logs.info(output)
         logs.info('Debug: ===============================')
-        logs.info(exitcode)
+        logs.info(str(exitcode))
         if exitcode == 0:
             return output
         elif required:
