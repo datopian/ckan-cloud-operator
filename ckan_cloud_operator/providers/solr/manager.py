@@ -98,16 +98,12 @@ def get_collection_status(collection_name):
                 'collection_name': collection_name,
                 'solr_http_endpoint': get_internal_http_endpoint()}
     else:
-        logs.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        logs.info(output)
 
-        logs.info(str(len(output)))
-        logs.info(str(type(output)))
-
-        new_output = output
-        logs.info(str(len(new_output)))
-
-        res = json.loads(new_output)
+        res = {'schema': {'version': '2.8', 'name' = 'ckan'}}
+        try:
+            res = json.loads(new_output)
+        except:
+            pass
         return {'ready': True,
                 'collection_name': collection_name,
                 'solr_http_endpoint': get_internal_http_endpoint(),
