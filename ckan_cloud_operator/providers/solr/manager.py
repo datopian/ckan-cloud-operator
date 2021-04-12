@@ -102,7 +102,7 @@ def get_collection_status(collection_name):
         logs.info(output)
 
         logs.info(str(len(output)))
-        logs.info(type(output))
+        logs.info(str(type(output)))
 
         new_output = output
         logs.info(str(len(new_output)))
