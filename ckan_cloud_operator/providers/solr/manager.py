@@ -101,11 +101,11 @@ def get_collection_status(collection_name):
         logs.info('>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         logs.info(output)
 
-        logs.info(len(output))
+        logs.info(str(len(output)))
         logs.info(type(output))
 
         new_output = output
-
+        logs.info(str(len(new_output)))
 
         res = json.loads(new_output)
         return {'ready': True,
