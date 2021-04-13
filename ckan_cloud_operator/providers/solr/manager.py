@@ -104,7 +104,7 @@ def get_collection_status(collection_name):
             res = json.loads(output)
         except json.decoder.JSONDecodeError as e:
             logs.warning(
-                f'Not able to decode response from SOLR using default values for schema version/name - {def_ver}/{def_name}\n SOLR response: \n{output}'
+                f'Not able to decode response from SOLR. Using default values for schema version/name - {def_ver}/{def_name}\n SOLR response: \n{output}'
             )
 
         return {'ready': True,
