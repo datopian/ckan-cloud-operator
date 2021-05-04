@@ -13,7 +13,7 @@ else:
 
 with open('requirements.in') as requirements_file:
     install_requires = requirements_file.read().strip().split('\n')
-    
+
 setup(
     name='ckan_cloud_operator',
     version=version,
@@ -26,6 +26,7 @@ setup(
     entry_points={
       'console_scripts': [
         'ckan-cloud-operator = ckan_cloud_operator.cli:main',
+        'cco = ckan_cloud_operator.cli:main',
       ]
     },
 )
