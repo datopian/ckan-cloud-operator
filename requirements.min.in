@@ -1,0 +1,10 @@
+httpagentparser
+psycopg2
+pyyaml<5.3,>=5
+kubernetes
+click
+toml
+urllib3<1.25
+ruamel.yaml<1
+requests==2.21
+python-dateutil<3
