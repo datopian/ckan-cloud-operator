@@ -9,7 +9,7 @@ from ckan_cloud_operator.providers.ckan import manager
 from .storage import cli as ckan_storage_cli
 from .deployment import cli as ckan_deployment_cli
 from .instance import cli as instance_cli
-
+from .env import cli as env_cli
 
 @click.group()
 def ckan():
@@ -20,7 +20,7 @@ def ckan():
 ckan.add_command(ckan_storage_cli.storage)
 ckan.add_command(ckan_deployment_cli.deployment)
 ckan.add_command(instance_cli.instance)
-
+ckan.add_command(env_cli.env)
 
 @ckan.command()
 @click.option('--interactive', is_flag=True)
@@ -123,3 +123,19 @@ def db_migration_import_urls(old_site_id, raw):
         print(' '.join(urls))
     else:
         logs.print_yaml_dump(list(urls))
+
+@ckan.command()
+@click.option('--environment-name', help='name of the environment to initialize (one of the result of `cco ckan env list`)')
+def init(environment_name):
+    '''
+    Initialize ckan-cloud-operator for working with environment.
+    This command gets all the necessary credentials for working
+    with the given environment. Eg, gets and saves `kubeconfig`
+    file in `~/.kube/config` directory
+
+    Without flags initializes current working environment added with `cco ckan env add`
+
+    \b
+    cco ckan init --environment-name poc
+    > POC environment was succesfully initialized
+    '''
