@@ -28,6 +28,7 @@ setup(
     entry_points={
       'console_scripts': [
         'ckan-cloud-operator = ckan_cloud_operator.cli:main',
+        'cco = ckan_cloud_operator.cli:main',
       ]
     },
 )
