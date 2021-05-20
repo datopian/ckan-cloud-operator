@@ -11,7 +11,7 @@ from . import manager
 
 @click.group()
 def env():
-    '''Manage CKAN Enviroments
+    '''Manage CKAN Environments
     '''
     pass
 
