@@ -312,7 +312,7 @@ def deployment_image_set(image_name, service):
 @click.group()
 def infra():
     '''
-    Manage and debug CKAN related infrastucrure like SOLR Cloud and Postgres Databeses
+    Manage and debug CKAN related infrastructure like SOLR Cloud and Postgres Databases
     '''
     pass
 
