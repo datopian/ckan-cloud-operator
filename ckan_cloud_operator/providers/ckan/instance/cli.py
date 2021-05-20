@@ -367,6 +367,6 @@ infra.add_command(deployment_db)
 @deployment_db.command('get')
 def infra_solr_restart():
     '''
-    get master connection string for ckan Database
+    Get master connection string for ckan Database
     '''
     pass
