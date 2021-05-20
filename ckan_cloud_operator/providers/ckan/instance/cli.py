@@ -212,7 +212,7 @@ def sysadmin_add(username, password, email):
 @click.argument('USERNAME')
 def sysadmin_rm(username):
     '''
-    Removes System administrator privilages from given user
+    Removes System administrator privileges from given user
 
     cco ckan instance sysadmin rm USERNAME
     '''
