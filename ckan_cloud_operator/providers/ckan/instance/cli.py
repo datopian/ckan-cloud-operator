@@ -191,7 +191,7 @@ def ckan_shell(service, command):
 
 @click.group()
 def sysadmin():
-    """Create or delete system administrator for CKAN instane"""
+    """Create or delete system administrator for CKAN instance"""
     pass
 
 instance.add_command(sysadmin)
