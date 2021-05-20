@@ -238,7 +238,7 @@ cco ckan instance solr [COMMANDS] [[--flags]]
 
 ##### Commands
 
-- check - Check search the index
+- check - Check the search index
 - clear - Clear the search index
 - rebuild - Rebuild search index
 - rebuild-fast - Reindex with multiprocessing
