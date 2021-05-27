@@ -62,7 +62,7 @@ cco ckan env list
 Adds an environment
 
 ```
-cco ckan env add poc --cloud-provide cloud-provider-name \
+cco ckan env add poc --cloud-provider cloud-provider-name \
                 --environment environment-name \
                 --resource-group resource-group-name \
                 --cluster-name cluster-name \
@@ -70,13 +70,12 @@ cco ckan env add poc --cloud-provide cloud-provider-name \
                 --region region-name \
                 --project project-name
 
-> XYZ environment was succefully added
+> POC environment was succefully added
 ```
 
 ##### Flags
 
-- `--cloud-provide` - one of minukube, azure, gcp, aws.
-- `--environment` - environment name
+- `--cloud-provider` - one of minukube, azure, gcp, aws.
 - `--cluster-name` - kubernetes cluster name
 - `--resource-group` - **[azure only]** Azure resource group name
 - `--subscription` - **[azure only]** Azure subscription id
@@ -97,15 +96,14 @@ cco ckan env set poc
 Update configurations for given environment
 
 ```
-cco ckan env update poc --cloud-provide cloud-provider-name \
-                --environment environment-name \
+cco ckan env update poc --cloud-provider cloud-provider-name \
                 --resource-group resource-group-name \
                 --cluster-name cluster-name \
                 --subscription subscription-id \
                 --region region-name \
                 --project project-name
 
-> XYZ environment was succefully updated
+> POC environment was succefully updated
 ```
 
 ##### Flags
@@ -131,7 +129,7 @@ cco ckan env rm poc
 
 ## cco ckan init
 
-Initialize ckan-cloud-operator for working with environment. This command gets all the necessary credentials for working with the given envirnment. Eg, gets and saves `kubeconfig` file in `~/.kube/config` directory
+Initialize ckan-cloud-operator for working with environment. This command gets all the necessary credentials for working with the given environment. Eg, gets and saves `kubeconfig` file in `~/.kube/config` directory
 
 ### Usage
 
@@ -240,7 +238,7 @@ cco ckan instance solr [COMMANDS] [[--flags]]
 
 ##### Commands
 
-- check - Check search index
+- check - Check the search index
 - clear - Clear the search index
 - rebuild - Rebuild search index
 - rebuild-fast - Reindex with multiprocessing
@@ -301,7 +299,7 @@ cco ckan instance logs [[--flags]]
 
 #### ssh
 
-SSH into the running conainer.
+SSH into the running container.
 
 ```
 cco ckan instance ssh [[--flags]]
@@ -342,8 +340,6 @@ cco ckan deployment status
 cco ckan deployment logs
 cco ckan deployment version
 cco ckan deployment image [options] [[--flags]]
-cco ckan deployment rollback [[--flags]]
-
 ```
 
 ### Commands
@@ -366,7 +362,7 @@ cco ckan deployment logs
 
 #### version
 
-Shows version of the latest succefull deployment. Same as https://site-url/version
+Shows version of the latest successful deployment. Same as https://site-url/version
 
 ```
 cco ckan deployment version
@@ -382,7 +378,7 @@ cco ckan deployment image [options] [[--flags]]
 ```
 ##### Options
 
-- `get` - Get image name of the latest scuccesfully deployed container
+- `get` - Get image name of the latest successfully deployed container
 - `set` - Force set given image for the given service
 
 ```
@@ -419,7 +415,7 @@ cco ckan infra solr [options] [[--flags]]
 ##### Options
 
 - `logs` - See logs of SolrCloud and ZooKeeper containers
-- `restart` - Restart SolrCloud and Zookeeper conaiers
+- `restart` - Restart SolrCloud and Zookeeper containers
 
 ```
 cco ckan infra solr logs [[--flags]]
@@ -435,3 +431,20 @@ cco ckan infra solr restart [[--flags]]
 - `--tail`- Lines of recent log file to display. Defaults to -1 with no selector, showing all log lines otherwise 10, if a selector is provided.
 - `--container`- Conainer name if multiple
 - `--grep` - Filter logs by the given word (case insensitive)
+
+
+#### db
+
+Get database connection string
+
+```
+cco ckan infra db [options] [[--flags]]
+```
+
+##### Options
+
+- `get` - get master connection string for ckan Database
+
+```
+cco ckan infra solr db get [[--flags]]
+```
