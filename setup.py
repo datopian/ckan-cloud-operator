@@ -17,7 +17,7 @@ with open(req_file_name) as requirements_file:
     install_requires = requirements_file.read().strip().split('\n')
 
 setup(
-    name='ckan_cloud_operator',
+    name='cco',
     version=version,
     description='''CKAN Cloud Kubernetes operator''',
     url='https://github.com/datopian/ckan-cloud-operator',

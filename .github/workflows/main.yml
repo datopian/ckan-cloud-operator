@@ -2,6 +2,7 @@ name: Continuous Deployment
 on: [push]
 jobs:
   build-n-publish-docker:
+    name: Build and publish CCO to DockerHub
     runs-on: ubuntu-latest
     services:
       docker:
