@@ -29,6 +29,9 @@ def instance():
 @click.option('--force', is_flag=True)
 def create(instance_type, values_file, instance_id, instance_name, exists_ok, dry_run, update_, wait_ready,
            skip_deployment, skip_route, force):
+    '''
+    Create CKAN instance
+    '''
     manager.create(instance_id=instance_id, instance_type=instance_type, instance_name=instance_name,
                    values_filename=values_file, exists_ok=exists_ok, dry_run=dry_run, update_=update_,
                    wait_ready=wait_ready, skip_deployment=skip_deployment, skip_route=skip_route, force=force)
@@ -77,6 +80,8 @@ def get(instance_id_or_name, attr, with_spec):
 @instance.command()
 @click.argument('INSTANCE_ID_OR_NAME')
 def edit(instance_id_or_name):
+    '''Edit CKAN instance
+    '''
     manager.edit(instance_id_or_name)
 
 
@@ -86,35 +91,33 @@ def edit(instance_id_or_name):
 @click.option('-c', '--credentials', is_flag=True)
 @click.option('--name')
 def list_instances(full, quick, name, credentials):
+    '''
+    List existing CKAN instaces
+    '''
     instances = list(
         manager.list_instances(full=full, quick=quick,
                                name=name, withCredentials=credentials)
     )
-    print('---')
     logs.print_yaml_dump(instances)
     logs.exit_great_success(quiet=True)
 
 
-@instance.command()
-@click.argument('INSTANCE_ID')
-@click.argument('INSTANCE_NAME')
-def set_name(instance_id, instance_name):
-    logs.info(f'{instance_name} --> {instance_id}')
-    manager.set_name(instance_id, instance_name)
-    logs.exit_great_success()
-
-
-@instance.command()
-@click.argument('INSTANCE_NAME')
-def delete_name(instance_name):
-    manager.delete_name(instance_name=instance_name)
-    logs.exit_great_success()
+# @instance.command()
+# @click.argument('INSTANCE_ID')
+# @click.argument('INSTANCE_NAME')
+# def set_name(instance_id, instance_name):
+#     logs.info(f'{instance_name} --> {instance_id}')
+#     manager.set_name(instance_id, instance_name)
+#     logs.exit_great_success()
 
 
 @instance.command()
 @click.argument('INSTANCE_ID_OR_NAME', nargs=-1)
 @click.option('--no-dry-run', is_flag=True)
 def delete(instance_id_or_name, no_dry_run):
+    '''
+    Delete CKAN instance
+    '''
     generator = manager.delete_instances(instance_ids_or_names=instance_id_or_name, dry_run=not no_dry_run)
     while True:
         try:
@@ -125,15 +128,23 @@ def delete(instance_id_or_name, no_dry_run):
     logs.exit_great_success(quiet=True)
 
 
-@instance.command()
-@click.argument('INSTANCE_ID_OR_NAME')
-@click.argument('NAME')
-@click.argument('EMAIL', required=False)
-@click.argument('PASSWORD', required=False)
-@click.option('--dry-run', is_flag=True)
-def create_ckan_admin_user(instance_id_or_name, name, email, password, dry_run):
-    logs.print_yaml_dump(manager.create_ckan_admin_user(instance_id_or_name, name, email, password, dry_run))
-    logs.exit_great_success()
+# @instance.command()
+# @click.argument('INSTANCE_NAME')
+# def delete_name(instance_name):
+#     manager.delete_name(instance_name=instance_name)
+#     logs.exit_great_success()
+#
+#
+## Moved to `sysadmin`
+# @instance.command()
+# @click.argument('INSTANCE_ID_OR_NAME')
+# @click.argument('NAME')
+# @click.argument('EMAIL', required=False)
+# @click.argument('PASSWORD', required=False)
+# @click.option('--dry-run', is_flag=True)
+# def create_ckan_admin_user(instance_id_or_name, name, email, password, dry_run):
+#     logs.print_yaml_dump(manager.create_ckan_admin_user(instance_id_or_name, name, email, password, dry_run))
+#     logs.exit_great_success()
 
 
 
