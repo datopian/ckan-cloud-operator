@@ -24,7 +24,7 @@ class DeisCkanInstanceCKAN(object):
         self.exec(cmd)
 
     def admin_credentials(self):
-        data = kubectl.decode_secret(kubectl.get('secret', 'ckan-envvars', namespace=self.instance.id))
+        data = kubectl.decode_secret(kubectl.get('secret', 'ckan-env-vars', namespace=self.instance.id))
         return {
             'sysadmin-name': data['CKAN_SYSADMIN_NAME'],
             'sysadmin-password': data['CKAN_SYSADMIN_PASSWORD'],
