@@ -1,6 +1,4 @@
 import click
-import yaml
-import json
 import traceback
 
 from ckan_cloud_operator import logs
@@ -26,6 +24,7 @@ def list_env():
     > DEV
     > PRD
     '''
+    manager.list_environments()
 
 @env.command()
 @click.argument('ENVIRONMENT')
@@ -35,7 +34,7 @@ def list_env():
 @click.option('--subscription', help='Azure subscription id  [Azure only]')
 @click.option('--region', help='GCP region id Eg: europe-west1  [GCP only]')
 @click.option('--project', help='GCP project name  [GCP only]')
-def add(environment, cloud_provider, cluster_name, resource_group, subscription, region, project):
+def add(environment, **kwargs):
     '''
     Adds an environment
 
@@ -50,6 +49,7 @@ def add(environment, cloud_provider, cluster_name, resource_group, subscription,
                          --project project-name
     > POC environment was succefully added
     '''
+    manager.add_environment(environment, **kwargs)
 
 @env.command()
 @click.argument('ENVIRONMENT')
@@ -59,7 +59,7 @@ def add(environment, cloud_provider, cluster_name, resource_group, subscription,
 @click.option('--subscription', help='Azure subscription id  [Azure only]')
 @click.option('--region', help='GCP region id Eg: europe-west1  [GCP only]')
 @click.option('--project', help='GCP project name  [GCP only]')
-def update(environment, cloud_provider, cluster_name, resource_group, subscription, region, project):
+def update(environment, **kwargs):
     '''
     Update configurations for given environment
 
@@ -74,6 +74,7 @@ def update(environment, cloud_provider, cluster_name, resource_group, subscripti
                          --project project-name
     > POC environment was succefully updated
     '''
+    manager.update_environment(environment, **kwargs)
 
 @env.command()
 @click.argument('ENVIRONMENT')
@@ -87,6 +88,7 @@ def set(environment):
     cco ckan env set poc
     > You are working with POC environment now
     '''
+    manager.set_environment(environment)
 
 @env.command()
 @click.argument('ENVIRONMENT')
@@ -99,3 +101,4 @@ def rm(environment):
     cco ckan env rm poc
     > POC environment was succesfully removed
     '''
+    manager.remove_environment(environment)
