@@ -63,7 +63,7 @@ def add_environment(environment, **kwargs):
         # update config file
         _mkconfdir()
         _write_yaml(cco_config)
-        print(f'{kwargs["cluster_name"]} has succefully configred for "{environment}" environment')
+        print(f'{kwargs["cluster_name"]} has been successfully configured for "{environment}" environment')
     elif kwargs['cloud_provider'] == 'gcloud':
         #TODO
         pass
