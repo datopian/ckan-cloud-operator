@@ -175,5 +175,5 @@ def _run_az_command_or_login(command, func, *args):
     try:
         logs.subprocess_check_call(command.split(' '))
     except AttributeError as e:
-        print('You need to login in to azure CLI. Please authenticate with browser')
+        print('You need to login to azure CLI. Please authenticate with browser.')
         func(*args[:-1], logged_in=False)
