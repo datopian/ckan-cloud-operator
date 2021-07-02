@@ -209,24 +209,31 @@ instance.add_command(sysadmin)
 
 
 @sysadmin.command('add')
-@click.argument('USERNAME')
+@click.argument('INSTANCE_ID')
+@click.option('--username', required=True, help='Passowrd for user if user does not exist')
 @click.option('--password', help='Passowrd for user if user does not exist')
 @click.option('--email', help='Valid Email address for user if user does not exist')
-def sysadmin_add(username, password, email):
+@click.option('--use-paster', help='Use paster over ckan CLI (supported in ckan v2.9)', default=False)
+def sysadmin_add(instance_id, username, password, email, use_paster):
     '''
     Creates or makes given user system administrator
 
     cco ckan instance sysadmin add USERNAME --pasword pasword --email email@email.com
     '''
+    manager.create_ckan_admin_user(instance_id, username, password, email, use_paster)
+
 
 @sysadmin.command('rm')
-@click.argument('USERNAME')
-def sysadmin_rm(username):
+@click.argument('INSTANCE_ID')
+@click.option('--username', required=True, help='Passowrd for user if user does not exist')
+@click.option('--use-paster', help='Use paster over ckan CLI (supported in ckan v2.9)', default=False)
+def sysadmin_rm(instance_id, username, use_paster):
     '''
     Removes System administrator privileges from given user
 
     cco ckan instance sysadmin rm USERNAME
     '''
+    manager.delete_ckan_admin_user(instance_id, username, use_paster)
 
 
 @click.group()
