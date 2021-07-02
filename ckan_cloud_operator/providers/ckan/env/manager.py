@@ -32,7 +32,7 @@ def list_environments():
             prefix = '>' if environment.get('active', False) else '-'
             print(prefix, environment.get('name'))
     else:
-        print('Ckan Cloud Operator is no yet configred. Please run cco add << environment >>')
+        print('Ckan Cloud Operator is no yet configured. Please run cco add << environment >>')
 
 def add_environment(environment, **kwargs):
     cco_config = {}
