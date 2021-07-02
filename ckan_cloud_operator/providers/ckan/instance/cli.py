@@ -163,8 +163,10 @@ def ckan_logs(command):
 
 
 @instance.command('ckan-exec')
+@click.argument('INSTANCE_ID')
 @click.option('--command', help='command to pass down to ckan CLI, without path to config file')
-def ckan_exec(command):
+@click.option('--use-paster', help='Use paster over ckan CLI (supported in ckan v2.9)', default=False)
+def ckan_exec(instance_id, command, use_paster):
     '''
     Executes ckan CLI commands
 
@@ -175,7 +177,7 @@ def ckan_exec(command):
     cco ckan instance ckan-exec --command='jobs list'
     cco ckan instance ckan-exec --command='dataset show dataset-id'
     '''
-    pass
+    manager.run_ckan_commands(instance_id, command)
 
 
 @instance.command('ssh')
@@ -245,35 +247,45 @@ instance.add_command(solr)
 
 
 @solr.command('check')
-def solr_check():
+@click.argument('INSTANCE_ID')
+def solr_check(instance_id):
     '''
     Check the search index
     '''
+    manager.run_solr_commands(instance_id, 'check')
 
 @solr.command('clear')
-def solr_clear():
+@click.argument('INSTANCE_ID')
+def solr_clear(instance_id):
     '''
     Clear the search index
     '''
+    manager.run_solr_commands(instance_id, 'clear')
 
 @solr.command('rebuild')
-def solr_rebuild():
+@click.argument('INSTANCE_ID')
+def solr_rebuild(instance_id):
     '''
     Rebuild search index
     '''
+    manager.run_solr_commands(instance_id, 'rebuild')
 
 @solr.command('rebuild-fast')
-def solr_rebuild_fast():
+@click.argument('INSTANCE_ID')
+def solr_rebuild_fast(instance_id):
     '''
     Reindex with multiprocessing
     '''
+    manager.run_solr_commands(instance_id, 'check')
 
 @solr.command('show')
+@click.argument('INSTANCE_ID')
 @click.option('--dataset', help='Dataset name to show index for')
-def solr_show(dataset):
+def solr_show(instance_id, dataset):
     '''
     show --dataset=dataset-id-or-name
     '''
+    manager.run_solr_commands(instance_id, 'show', dataset_id=dataset)
 
 @click.group()
 def deployment():

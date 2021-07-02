@@ -390,6 +390,52 @@ def delete_ckan_admin_user(instance_id_or_name, name, dry_run=False, use_paster=
                 shell=True
             )
 
+def run_solr_commands(instance_id_or_name, command, dataset_id='', dry_run=False, use_paster=False):
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
+
+    if not dry_run:
+        pod_name = _get_running_pod_name(instance_id)
+        logs.info(f'Running Search Index {command}')
+        if use_paster:
+            answer = logs.subprocess_check_output(
+                f'kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan -c /etc/ckan/production.ini search-index {command}',
+                shell=True
+            )
+            for line in str(answer).replace('\\r', '\\n').split('\\n'):
+                if line:
+                    logs.info(str(line))
+        else:
+            answer = logs.subprocess_check_output(
+                f'kubectl -n {instance_id} exec -i {pod_name} -- ckan --config /etc/ckan/production.ini search-index {command} {dataset_id}',
+                shell=True
+            )
+            for line in str(answer).replace('\\r', '\\n').split('\\n'):
+                if line:
+                    logs.info(str(line))
+
+
+def run_ckan_commands(instance_id_or_name, command, dry_run=False, use_paster=False):
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
+    if not dry_run:
+        pod_name = _get_running_pod_name(instance_id)
+        logs.info(f'Running Search Index {command}')
+        if use_paster:
+            answer = logs.subprocess_check_output(
+                f'kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan -c /etc/ckan/production.ini {command}',
+                shell=True
+            )
+            for line in str(answer).replace('\\r', '\\n').split('\\n'):
+                if line:
+                    logs.info(str(line))
+        else:
+            answer = logs.subprocess_check_output(
+                f'kubectl -n {instance_id} exec -i {pod_name} -- ckan --config /etc/ckan/production.ini {command}',
+                shell=True
+            )
+            for line in str(answer).replace('\\r', '\\n').split('\\n'):
+                if line:
+                    logs.info(str(line))
+
 
 def _get_running_pod_name(instance_id):
     pod_name = None
