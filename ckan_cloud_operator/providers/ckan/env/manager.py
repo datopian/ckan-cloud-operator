@@ -171,7 +171,7 @@ def _mkconfdir():
 def _run_az_command_or_login(command, func, *args):
     if not args[-1]:
         logs.subprocess_check_output(['az', 'login'])
-        print("Logged in succefully")
+        print("Logged in successfully.")
     try:
         logs.subprocess_check_call(command.split(' '))
     except AttributeError as e:
