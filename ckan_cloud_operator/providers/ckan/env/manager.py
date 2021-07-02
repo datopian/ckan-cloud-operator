@@ -104,7 +104,7 @@ def set_environment(environment):
         cco_config = _get_config()
         env_exists = any([environment.lower() == _env.get('name', '').lower() for _env in cco_config.get('environments') or []])
         if not env_exists:
-            logs.info(f'Environment {environment} does not exists please run `cco ckan env add` with the same flags')
+            logs.info(f'Environment {environment} does not exists. Please run `cco ckan env add` with the same flags')
             return
         envs = cco_config.get('environments', [])
 
