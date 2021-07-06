@@ -280,12 +280,12 @@ def solr_rebuild_fast(instance_id):
 
 @solr.command('show')
 @click.argument('INSTANCE_ID')
-@click.option('--dataset', help='Dataset name to show index for')
-def solr_show(instance_id, dataset):
+@click.option('--dataset-id', help='Dataset name to show index for')
+def solr_show(instance_id, dataset_id):
     '''
-    show --dataset=dataset-id-or-name
+    show --dataset-id=dataset-id-or-name
     '''
-    manager.run_solr_commands(instance_id, 'show', dataset_id=dataset)
+    manager.run_solr_commands(instance_id, 'show', dataset_id=dataset_id)
 
 @click.group()
 def deployment():
