@@ -83,7 +83,6 @@ elif [ "${1}" == "install-tools" ]; then
 
 elif [ "${1}" == "script" ]; then
     ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:latest -t ckan-cloud-operator . && echo Failed to build image && exit 1
-    ! docker build --build-arg "CKAN_CLOUD_OPERATOR_IMAGE_TAG=${TAG}" --cache-from viderum/ckan-cloud-operator:jnlp-latest -t ckan-cloud-operator-jnlp -f Dockerfile.jenkins-jnlp . && echo Failed to build jnlp image && exit 1
     echo Great Success! && exit 0
 
 elif [ "${1}" == "test" ]; then
