@@ -336,7 +336,7 @@ def set_storage(instance_id, instance_name, dry_run=False):
         kubectl.apply(resource)
 
 
-def create_ckan_admin_user(instance_id_or_name, name, email=None, password=None, dry_run=False):
+def create_ckan_admin_user(instance_id_or_name, name, email=None, password=None, dry_run=False, use_paster=False):
     if not email:
         default_root_domain = routers_manager.get_default_root_domain()
         email = f'{name}@{instance_id_or_name}.{default_root_domain}'
@@ -349,13 +349,105 @@ def create_ckan_admin_user(instance_id_or_name, name, email=None, password=None,
         'password': password
     }
     if not dry_run:
-        deployment_manager.create_ckan_admin_user(instance_id, instance_type, instance, user)
+        pod_name = _get_running_pod_name(instance_id)
+        name, password, email = [user[k] for k in ['name', 'password', 'email']]
+        logs.info(f'Creating CKAN admin user with {name} ({email}) on pod {pod_name}')
+
+        if use_paster:
+            logs.subprocess_check_call(
+                f'echo y | kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini add {name} password={password} email={email}',
+                shell=True
+            )
+        else:
+            logs.subprocess_check_call(
+                f'echo y | kubectl -n {instance_id} exec -i {pod_name} -- ckan --config /etc/ckan/production.ini sysadmin add {name} password={password} email={email}',
+                shell=True
+            )
+
     return {
         'instance-id': instance_id,
         'instance-type': instance_type,
         **{f'admin-{k}': v for k, v in user.items()},
         **({'dry-run': True} if dry_run else {}),
     }
+
+
+def delete_ckan_admin_user(instance_id_or_name, name, dry_run=False, use_paster=False):
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
+
+    if not dry_run:
+        pod_name = _get_running_pod_name(instance_id)
+        logs.info(f'Removing CKAN admin user {name} from sys-admins')
+
+        if use_paster:
+            logs.subprocess_check_call(
+                f'echo y | kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan sysadmin -c /etc/ckan/production.ini remove {name}',
+                shell=True
+            )
+        else:
+            logs.subprocess_check_call(
+                f'echo y | kubectl -n {instance_id} exec -i {pod_name} -- ckan --config /etc/ckan/production.ini sysadmin remove {name}',
+                shell=True
+            )
+
+def run_solr_commands(instance_id_or_name, command, dataset_id='', dry_run=False, use_paster=False):
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
+
+    if not dry_run:
+        pod_name = _get_running_pod_name(instance_id)
+        logs.info(f'Running Search Index {command}')
+        if use_paster:
+            answer = logs.subprocess_check_output(
+                f'kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan -c /etc/ckan/production.ini search-index {command}',
+                shell=True
+            )
+            for line in str(answer).replace('\\r', '\\n').split('\\n'):
+                if line:
+                    logs.info(str(line))
+        else:
+            answer = logs.subprocess_check_output(
+                f'kubectl -n {instance_id} exec -i {pod_name} -- ckan --config /etc/ckan/production.ini search-index {command} {dataset_id}',
+                shell=True
+            )
+            for line in str(answer).replace('\\r', '\\n').split('\\n'):
+                if line:
+                    logs.info(str(line))
+
+
+def run_ckan_commands(instance_id_or_name, command, dry_run=False, use_paster=False):
+    instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name)
+    if not dry_run:
+        pod_name = _get_running_pod_name(instance_id)
+        logs.info(f'Running Search Index {command}')
+        if use_paster:
+            answer = logs.subprocess_check_output(
+                f'kubectl -n {instance_id} exec -i {pod_name} -- ckan-paster --plugin=ckan -c /etc/ckan/production.ini {command}',
+                shell=True
+            )
+            for line in str(answer).replace('\\r', '\\n').split('\\n'):
+                if line:
+                    logs.info(str(line))
+        else:
+            answer = logs.subprocess_check_output(
+                f'kubectl -n {instance_id} exec -i {pod_name} -- ckan --config /etc/ckan/production.ini {command}',
+                shell=True
+            )
+            for line in str(answer).replace('\\r', '\\n').split('\\n'):
+                if line:
+                    logs.info(str(line))
+
+
+def _get_running_pod_name(instance_id):
+    pod_name = None
+    while not pod_name:
+        try:
+            pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True, required_phase='Running')
+            break
+        except Exception as e:
+            logs.warning('Failed to find running ckan pod', str(e))
+        time.sleep(20)
+    return pod_name
+
 
 
 def _get_instance_id_and_type(instance_id_or_name=None, instance_id=None, required=True):
