@@ -351,7 +351,7 @@ def create_ckan_admin_user(instance_id_or_name, name, email=None, password=None,
     if not dry_run:
         pod_name = _get_running_pod_name(instance_id)
         name, password, email = [user[k] for k in ['name', 'password', 'email']]
-        logs.info(f'Creating CKAN admin user with {name} ({email}) and {password} on pod {pod_name}')
+        logs.info(f'Creating CKAN admin user with {name} ({email}) on pod {pod_name}')
 
         if use_paster:
             logs.subprocess_check_call(
