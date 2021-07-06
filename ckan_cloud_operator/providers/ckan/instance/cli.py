@@ -212,8 +212,8 @@ instance.add_command(sysadmin)
 
 @sysadmin.command('add')
 @click.argument('INSTANCE_ID')
-@click.option('--username', required=True, help='Passowrd for user if user does not exist')
-@click.option('--password', help='Passowrd for user if user does not exist')
+@click.option('--username', required=True, help='User name for user if user does not exist')
+@click.option('--password', help='Password for user if user does not exist')
 @click.option('--email', help='Valid Email address for user if user does not exist')
 @click.option('--use-paster', help='Use paster over ckan CLI (supported in ckan v2.9)', default=False)
 def sysadmin_add(instance_id, username, password, email, use_paster):
