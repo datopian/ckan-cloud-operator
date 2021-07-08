@@ -98,7 +98,15 @@ def get_collection_status(collection_name):
                 'collection_name': collection_name,
                 'solr_http_endpoint': get_internal_http_endpoint()}
     else:
-        res = json.loads(output)
+        def_ver, def_name = '2.8', 'ckan'
+        res = {'schema': {'version': def_ver, 'name': def_name}}
+        try:
+            res = json.loads(output)
+        except json.decoder.JSONDecodeError as e:
+            logs.warning(
+                f'Not able to decode response from SOLR. Using default values for schema version/name - {def_ver}/{def_name}\n SOLR response: \n{output}'
+            )
+
         return {'ready': True,
                 'collection_name': collection_name,
                 'solr_http_endpoint': get_internal_http_endpoint(),

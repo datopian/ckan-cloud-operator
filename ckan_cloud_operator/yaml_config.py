@@ -26,3 +26,16 @@ def datetime_constructor(loader, node):
 
 yaml.add_representer(datetime.datetime, datetime_representer)
 yaml.add_constructor(u'!datetime', datetime_constructor)
+
+
+def yaml_dump(data, file, *args, **kwargs):
+    return yaml.dump(data, file, *args, Dumper=YamlSafeDumper, default_flow_style=False, **kwargs)
+
+
+class YamlSafeDumper(yaml.SafeDumper):
+
+    def ignore_aliases(self, data):
+        return True
+
+    def represent_undefined(self, data):
+        return None

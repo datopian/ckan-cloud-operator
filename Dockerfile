@@ -2,8 +2,8 @@ FROM python:3.7.6-slim
 
 WORKDIR /cco
 
-RUN apt-get update 
-RUN apt-get install -y nano curl unzip sudo bash libpq-dev build-essential 
+RUN apt-get update
+RUN apt-get install -y nano curl unzip sudo bash libpq-dev build-essential
 ENV EDITOR nano
 
 COPY . .
