@@ -443,7 +443,6 @@ def get_container_logs(instance_id, **kubectl_args):
     stream_logs = '-f ' if kubectl_args.pop('follow', None) else ''
     k_args = [f'--{k}={v}' for k,v in kubectl_args.items() if v is not None]
     full_args = stream_logs + ' '.join(k_args)
-    print(f'kubectl -n {instance_id} logs {pod_name} {full_args}')
     _stream_logs(f'kubectl -n {instance_id} logs {pod_name} {full_args}')
 
 
