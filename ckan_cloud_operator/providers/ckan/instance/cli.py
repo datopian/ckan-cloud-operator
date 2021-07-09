@@ -149,18 +149,17 @@ def delete(instance_id_or_name, no_dry_run):
 
 
 @instance.command('logs')
-@click.option('--service', help='Service name. One of `ckan`, `giftless`, `jobs`, `jobs-db`, `redis`. Defaults to `ckan`')
+@click.argument('INSTANCE_ID')
+@click.option('--service', help='Service name. One of `ckan`, `giftless`, `jobs`, `jobs-db`, `redis`. Defaults to `ckan`', default='ckan')
 @click.option('--since', help='Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs.')
 @click.option('--follow', help='Specify if the logs should be streamed.')
 @click.option('--tail', help='Lines of recent log file to display. Defaults to -1 with no selector, showing all log lines otherwise 10, if a selector is provided.')
 @click.option('--container', help='Conainer name if multiple')
-@click.option('--grep', help='Filter logs by the given word (case insensitive)')
-def ckan_logs(command):
+def ckan_logs(instance_id, **kubectl_args):
     '''
     Check CKAN and other service container logs
     '''
-    pass
-
+    manager.get_container_logs(instance_id, **kubectl_args)
 
 @instance.command('ckan-exec')
 @click.argument('INSTANCE_ID')

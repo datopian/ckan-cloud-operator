@@ -437,11 +437,21 @@ def run_ckan_commands(instance_id_or_name, command, dry_run=False, use_paster=Fa
                     logs.info(str(line))
 
 
-def _get_running_pod_name(instance_id):
+def get_container_logs(instance_id, **kubectl_args):
+    service = kubectl_args.pop('service')
+    pod_name = _get_running_pod_name(instance_id, service=service)
+    stream_logs = '-f ' if kubectl_args.pop('follow', None) else ''
+    k_args = [f'--{k}={v}' for k,v in kubectl_args.items() if v is not None]
+    full_args = stream_logs + ' '.join(k_args)
+    print(f'kubectl -n {instance_id} logs {pod_name} {full_args}')
+    _stream_logs(f'kubectl -n {instance_id} logs {pod_name} {full_args}')
+
+
+def _get_running_pod_name(instance_id, service='ckan'):
     pod_name = None
     while not pod_name:
         try:
-            pod_name = kubectl.get_deployment_pod_name('ckan', instance_id, use_first_pod=True, required_phase='Running')
+            pod_name = kubectl.get_deployment_pod_name(service, instance_id, use_first_pod=True, required_phase='Running')
             break
         except Exception as e:
             logs.warning('Failed to find running ckan pod', str(e))
@@ -484,3 +494,9 @@ def _get_instance_id_and_type(instance_id_or_name=None, instance_id=None, requir
 
 def _generate_password(length):
     return binascii.hexlify(os.urandom(length)).decode()
+
+
+def _stream_logs(command):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+    for c in iter(lambda: process.stdout.read(1), b''):
+        sys.stdout.buffer.write(c)
