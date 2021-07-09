@@ -180,13 +180,14 @@ def ckan_exec(instance_id, command, use_paster):
 
 
 @instance.command('ssh')
-@click.option('--service', help='Service name. One of `ckan`, `giftless`, `jobs`, `jobs-db`, `redis`. Defaults to `ckan`')
-@click.option('--command', help='One of `bash`, `sh`. Defaults to `bash`')
-def ckan_ssh(service, command):
+@click.argument('INSTANCE_ID')
+@click.option('--service', help='Service name. One of `ckan`, `giftless`, `jobs`, `jobs-db`, `redis`. Defaults to `ckan`', default='ckan')
+@click.option('--command', help='One of `bash`, `sh`. Defaults to `bash`', default='bash')
+def ckan_ssh(instance_id, service, command):
     '''
     SSH into the running container.
     '''
-    pass
+    manager.ssh_into_container(instance_id, service, command)
 
 
 @instance.command('shell')

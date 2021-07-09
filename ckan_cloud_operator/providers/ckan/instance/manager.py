@@ -447,6 +447,11 @@ def get_container_logs(instance_id, **kubectl_args):
     _stream_logs(f'kubectl -n {instance_id} logs {pod_name} {full_args}')
 
 
+def ssh_into_container(instance_id, service, command):
+    pod_name = _get_running_pod_name(instance_id, service=service)
+    subprocess.run(f'kubectl -n {instance_id} exec -it {pod_name} {command}', shell=True)
+
+
 def _get_running_pod_name(instance_id, service='ckan'):
     pod_name = None
     while not pod_name:
