@@ -1,3 +1,10 @@
+import json
+import requests
+from urllib.parse import urljoin
+
+from ckan_cloud_operator.drivers.helm import driver as helm_driver
+
+
 def initialize(interactive=False):
     from .helm.manager import initialize as ckan_helm_initialize
     ckan_helm_initialize(interactive=interactive)
@@ -31,6 +38,12 @@ def pre_update_hook(instance_id, instance_type, instance, override_spec, skip_ro
     return _get_deployment_provider(instance_type).pre_update_hook(instance_id, instance, override_spec, skip_route,
                                                                    dry_run=dry_run)
 
+
+def get_deployment_version(instance_id):
+    values = helm_driver.get_values(instance_id)
+    values = json.loads(values)
+    site_url = values.get('siteUrl')
+    print('Current deployment version: ', requests.get(urljoin(site_url, 'version')).text)
 
 def create_ckan_admin_user(instance_id, instance_type, instance, user):
     _get_deployment_provider(instance_type).create_ckan_admin_user(instance_id, instance, user)

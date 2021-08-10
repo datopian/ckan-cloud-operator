@@ -85,6 +85,9 @@ def delete(tiller_namespace, release_name):
 def check_status(instance_id):
     subprocess.check_call(f'helm status ckan-cloud-{instance_id} -n {instance_id}', shell=True)
 
+def get_values(instance_id):
+    return subprocess.check_output(f'helm get values ckan-cloud-{instance_id} -n {instance_id} -o json', shell=True)
+
 
 def _check_helm_version():
     return 3 if 'v3.' in str(subprocess.check_output('helm version -c', shell=True)) else 2
