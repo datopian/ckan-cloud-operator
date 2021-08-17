@@ -1,3 +1,11 @@
+import json
+import requests
+from urllib.parse import urljoin
+
+from ckan_cloud_operator import kubectl
+from ckan_cloud_operator.drivers.helm import driver as helm_driver
+
+
 def initialize(interactive=False):
     from .helm.manager import initialize as ckan_helm_initialize
     ckan_helm_initialize(interactive=interactive)
@@ -30,6 +38,34 @@ def get_backend_url(instance_id, instance_type, instance):
 def pre_update_hook(instance_id, instance_type, instance, override_spec, skip_route, dry_run=False):
     return _get_deployment_provider(instance_type).pre_update_hook(instance_id, instance, override_spec, skip_route,
                                                                    dry_run=dry_run)
+
+
+def get_deployment_version(instance_id):
+    values = helm_driver.get_values(instance_id)
+    values = json.loads(values)
+    site_url = values.get('siteUrl')
+    print('Current deployment version: ', requests.get(urljoin(site_url, 'version')).text)
+
+
+def get_image(instance_id, service='ckan'):
+    deployment_info = kubectl.get('deployment', namespace=instance_id)
+    image_name = None
+    for item in deployment_info.get('items', []):
+        if item['metadata'].get('name') == service:
+            containers = item.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [])
+            for container in containers:
+                image_name = container.get('image')
+                print(image_name)
+    if image_name is None:
+        print(f'Not able to find image for service "{service}", please make sure service name spelled correctly')
+
+
+def set_image(instance_id, image_name, service='ckan', container_name=None):
+    cont_name = container_name or service
+    deployment_info = kubectl.call(
+        f'set image deployment/{service} {cont_name}={image_name}',
+        namespace=instance_id
+    )
 
 
 def create_ckan_admin_user(instance_id, instance_type, instance, user):

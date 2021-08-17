@@ -163,6 +163,12 @@ def _write_yaml(data):
     _file.close()
 
 
+def _read_yaml():
+    with open(_get_config_file_name()) as _file:
+        yaml_conf = yaml.load(_file, Loader=yaml.FullLoader)
+    return yaml_conf
+
+
 def _mkconfdir():
     dir = _get_config_dir()
     Path(f'{dir}').mkdir(parents=True, exist_ok=True)
