@@ -85,7 +85,7 @@ def _check_for_200(resp):
     if resp.status_code == 200:
         return True
     if resp.status_code == 401:
-        print("Seems like you are not authorised")
+        print("Seems like you are not authorized")
         print("Please run `cco ckan deployment drone initialize --force-update` and rerun")
         return False
     print(resp.text)
