@@ -14,7 +14,7 @@ class Drone(object):
         self.repo = self.conf.get('repo')
         if force_prompt or not self.conf:
             self.server_url = input('Please enter Drone Server URL: ')
-            self.api_token = input(f'Please enter Drone API Tocken. See {self. server_url}acount: ')
+            self.api_token = input(f'Please enter Drone API Token. See {self. server_url} acount: ')
             self.org = input('Please enter Github organization name: ')
             self.repo = input('Please enter Github repository name: ')
             self.conf['cicd'] = {
