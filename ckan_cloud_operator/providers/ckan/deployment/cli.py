@@ -12,6 +12,11 @@ def deployment():
     """Manage CKAN instance deployments"""
     pass
 
+@click.group()
+def image():
+    """Manage CKAN instance deployments"""
+    pass
+
 @deployment.command()
 @click.option('--branch', default='develop', help='Source Branch for build [default: develop]')
 def logs(branch):
@@ -33,5 +38,24 @@ def version(instance_id):
     """See CKAN instances deployment version"""
     deployment_manager.get_deployment_version(instance_id)
 
+
+@image.command()
+@click.argument('instance-id')
+@click.option('--service', default='ckan', help='Source Branch for build [default: develop]')
+def get(instance_id, service):
+    """Get instances container image"""
+    deployment_manager.get_image(instance_id, service=service)
+
+
+@image.command()
+@click.argument('instance-id')
+@click.argument('image-name')
+@click.option('--service', default='ckan', help='Source Branch for build [default: develop]')
+def set(instance_id, image_name, service):
+    """Set instances container image"""
+    deployment_manager.set_image(instance_id, image_name, service=service)
+
+
 deployment.add_command(helm_cli.helm)
 deployment.add_command(drone_cli.drone)
+deployment.add_command(image)
