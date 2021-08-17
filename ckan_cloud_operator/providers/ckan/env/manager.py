@@ -164,9 +164,8 @@ def _write_yaml(data):
 
 
 def _read_yaml():
-    _file = open(_get_config_file_name(), "r")
-    yaml_conf = yaml.load(_file, Loader=yaml.FullLoader)
-    _file.close()
+    with open(_get_config_file_name()) as _file:
+        yaml_conf = yaml.load(_file, Loader=yaml.FullLoader)
     return yaml_conf
 
 
