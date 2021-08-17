@@ -41,19 +41,20 @@ def version(instance_id):
 
 @image.command()
 @click.argument('instance-id')
-@click.option('--service', default='ckan', help='Source Branch for build [default: develop]')
+@click.option('--service', default='ckan', help='Micro service name [default: ckan]')
 def get(instance_id, service):
-    """Get instances container image"""
+    """Get image name for instances"""
     deployment_manager.get_image(instance_id, service=service)
 
 
 @image.command()
 @click.argument('instance-id')
 @click.argument('image-name')
-@click.option('--service', default='ckan', help='Source Branch for build [default: develop]')
-def set(instance_id, image_name, service):
-    """Set instances container image"""
-    deployment_manager.set_image(instance_id, image_name, service=service)
+@click.option('--service', default='ckan', help='Micro service name [default: ckan]')
+@click.option('--container-name', help='Container name to set image for [default: same as service]')
+def set(instance_id, image_name, service, container_name):
+    """Set image for instance container"""
+    deployment_manager.set_image(instance_id, image_name, service=service, container_name)
 
 
 deployment.add_command(helm_cli.helm)
