@@ -88,5 +88,4 @@ def _check_for_200(resp):
         print("Seems like you are not authorized")
         print("Please run `cco ckan deployment drone initialize --force-update` and rerun")
         return False
-    print(resp.text)
     return False
