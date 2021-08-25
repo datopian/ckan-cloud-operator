@@ -54,7 +54,7 @@ def get(instance_id, service):
 @click.option('--container-name', help='Container name to set image for [default: same as service]')
 def set(instance_id, image_name, service, container_name):
     """Set image for instance container"""
-    deployment_manager.set_image(instance_id, image_name, service=service, container_name)
+    deployment_manager.set_image(instance_id, image_name, service=service, container_name=container_name)
 
 
 deployment.add_command(helm_cli.helm)
