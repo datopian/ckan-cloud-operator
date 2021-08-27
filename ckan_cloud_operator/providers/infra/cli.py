@@ -57,7 +57,7 @@ def infra_solr_restart(format):
 @click.group('db')
 def deployment_db():
     '''
-    Get database connection string
+    Manage Database Instance
     '''
     pass
 
@@ -65,8 +65,18 @@ infra.add_command(deployment_db)
 
 
 @deployment_db.command('get')
-def infra_solr_restart():
+def infra_db_get():
     '''
     Get master connection string for ckan Database
     '''
-    pass
+    manager.print_db_connection_string()
+
+
+@click.argument('INSTANCE_ID')
+@click.option('--db', help='Name of database to connect [default: postgres]', default='postgres')
+@deployment_db.command('ssh')
+def infra_db_ssh(instance_id, db):
+    '''
+    ssh into Database Instance
+    '''
+    manager.ssh_into_db(instance_id, db)

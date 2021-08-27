@@ -1,3 +1,4 @@
+import base64
 import subprocess
 import time
 import sys
@@ -31,6 +32,25 @@ def restart_solr_pods(zookeper_only, solrcloud_only, force=False):
     kubectl.call(f'delete pods {pod_name} {force}', 'ckan-cloud')
 
 
+def print_db_connection_string():
+    connection_string = _get_db_connection_string()
+    print(connection_string)
+
+
+def ssh_into_db(instance_id, db):
+    pod_name = _get_running_pod_name(instance_id)
+    postgress_string = _get_db_connection_string(db)
+    subprocess.run(f'kubectl -n dataexchange-poc exec -it {pod_name} psql {postgress_string}', shell=True)
+
+
+def _get_db_connection_string(db='postgres'):
+    admin_password = _get_secret('admin-password')
+    admin_user = _get_secret('admin-user')
+    azuresql_host = _get_secret('azuresql-host')
+    connection_string = f'postgresql://{admin_user}:{admin_password}@{azuresql_host}/{db}'.replace('@', '%40', 1)
+    return connection_string
+
+
 def _stream_logs(command):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
     for c in iter(lambda: process.stdout.read(1), b''):
@@ -47,3 +67,15 @@ def _get_running_pod_name(instance_id, service='ckan'):
             logs.warning('Failed to find running ckan pod', str(e))
         time.sleep(20)
     return pod_name
+
+
+def _get_secret(key, default=None):
+    __NONE__ = object
+    secret = kubectl.get(f'secret ckan-cloud-provider-db-azuresql-credentials', required=False)
+    if not secret:
+        secret = __NONE__
+    if secret and secret != __NONE__:
+        value = secret.get('data', {}).get(key, None)
+        return base64.b64decode(value).decode() if value else default
+    else:
+        return default

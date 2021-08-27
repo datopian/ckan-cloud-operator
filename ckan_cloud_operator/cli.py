@@ -30,6 +30,7 @@ from ckan_cloud_operator.drivers.rancher import cli as driver_rancher_cli
 from ckan_cloud_operator.drivers.jenkins import cli as driver_jenkins_cli
 from ckan_cloud_operator.drivers.helm import cli as driver_helm_cli
 from ckan_cloud_operator.providers.apps import cli as apps_cli
+from ckan_cloud_operator.providers.infra import cli as infra_cli
 
 
 CLICK_CLI_MAX_CONTENT_WIDTH = 200
@@ -51,6 +52,7 @@ def main(debug):
 
 main.add_command(ckan_cli.ckan)
 main.add_command(cluster_cli.cluster)
+main.add_command(infra_cli.infra)
 
 
 ############################################################################
