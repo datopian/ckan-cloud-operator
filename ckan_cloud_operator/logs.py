@@ -63,11 +63,11 @@ def exit_catastrophic_failure(exitcode=1, quiet=False):
 # subprocess
 
 def log_subprocess_output(stdout, stderr):
-    for line in stderr.decode('utf8').split('\n'):
-        if line:
+    if stderr is not None:
+        for line in filter(None, stderr.decode('utf8').split('\n')):
             warning(line)
-    for line in stdout.decode('utf8').split('\n'):
-        if line:
+    if stdout is not None:
+        for line in filter(None, stdout.decode('utf8').split('\n')):
             info(line)
 
 
