@@ -295,7 +295,6 @@ cco ckan instance logs [[--flags]]
 - `--follow`- Specify if the logs should be streamed.
 - `--tail`- Lines of recent log file to display. Defaults to -1 with no selector, showing all log lines otherwise 10, if a selector is provided.
 - `--container`- Conainer name if multiple
-- `--grep` - Filter logs by the given word (case insensitive)
 
 #### ssh
 
@@ -430,7 +429,6 @@ cco ckan infra solr restart [[--flags]]
 - `--follow`- Specify if the logs should be streamed.
 - `--tail`- Lines of recent log file to display. Defaults to -1 with no selector, showing all log lines otherwise 10, if a selector is provided.
 - `--container`- Conainer name if multiple
-- `--grep` - Filter logs by the given word (case insensitive)
 
 
 #### db
