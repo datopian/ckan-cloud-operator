@@ -10,8 +10,7 @@ def get_solr_pods(format=''):
     kubectl.call(f'get pods', 'ckan-cloud')
 
 def get_container_logs(**kubectl_args):
-    zk = kubectl_args.pop('zookeper_only', None)
-    sc = kubectl_args.pop('solrcloud_only', None)
+    zk = kubectl_args.pop('show_zookeeper', None)
     suf = 'zk' if zk else 'sc'
     service = f'ckan-cloud-provider-solr-solrcloud-{suf}-headless'
     stream_logs = '-f ' if kubectl_args.pop('follow', None) else ''
@@ -20,10 +19,10 @@ def get_container_logs(**kubectl_args):
     _stream_logs(f'kubectl -n ckan-cloud logs service/{service} {full_args}')
 
 
-def restart_solr_pods(zookeper_only, solrcloud_only, force=False):
+def restart_solr_pods(show_zookeeper, solrcloud_only, force=False):
     pod_name = '--all'
     force = '--force --grace-period=0' if force else ''
-    if zookeper_only:
+    if show_zookeeper:
         kubectl.delete_items_by_labels(['pod'], {'app':'provider-solr-solrcloud-zk'}, 'ckan-cloud')
         return
     if solrcloud_only:
@@ -40,7 +39,7 @@ def print_db_connection_string():
 def ssh_into_db(instance_id, db):
     pod_name = _get_running_pod_name(instance_id)
     postgress_string = _get_db_connection_string(db)
-    subprocess.run(f'kubectl -n dataexchange-poc exec -it {pod_name} psql {postgress_string}', shell=True)
+    subprocess.run(f'kubectl -n {instance_id} exec -it {pod_name} psql {postgress_string}', shell=True)
 
 
 def _get_db_connection_string(db='postgres'):

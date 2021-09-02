@@ -21,8 +21,7 @@ infra.add_command(infra_solr)
 
 
 @infra_solr.command('logs')
-@click.option('--zookeper-only', help='Show logs only from zookeper pods', is_flag=True)
-@click.option('--solrcloud-only', help='Show logs only from solrcloud pods', is_flag=True)
+@click.option('--show-zookeeper', help='Show logs only from zookeper pods', is_flag=True)
 @click.option('--since', help='Only return logs newer than a relative duration like 5s, 2m, or 3h. Defaults to all logs.')
 @click.option('--follow', help='Specify if the logs should be streamed.', is_flag=True)
 @click.option('--tail', help='Lines of recent log file to display. Defaults to -1 with no selector, showing all log lines otherwise 10, if a selector is provided.')
