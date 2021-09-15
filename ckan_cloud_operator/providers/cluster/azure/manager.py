@@ -131,21 +131,15 @@ def get_cluster_kubeconfig_spec():
     }
 
 
-def get_project_zone():
-    return _config_get('project-id'), _config_get('cluster-compute-zone')
-
-
 def create_volume(disk_size_gb, labels, use_existing_disk_name=None, zone=0):
-    rg = _config_get('azure-rg')
-
-    location = zone or _config_get('azure-default-location')
+    if zone != 0:
+        logs.warning(f'variable zone for create_volume has been deprecated.')
 
     disk_id = use_existing_disk_name or 'cc' + _generate_password(12)
     if use_existing_disk_name:
         logs.info(f'using existing persistent disk {disk_id}')
     else:
         logs.info(f'creating persistent disk {disk_id} with size {disk_size_gb}GB')
-        _, zone = get_project_zone()
         labels = ','.join([
             '{}={}'.format(k.replace('/', '_'), v.replace('/', '_')) for k, v in labels.items()
         ])
