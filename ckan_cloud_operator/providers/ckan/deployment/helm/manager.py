@@ -141,7 +141,7 @@ def get(instance_id, instance=None):
                 else:
                     item_app = None
             except:
-                logging.exception('Failed to extract item_app from %r', item)
+                logs.exception('Failed to extract item_app from %r', item)
                 item_app = None
             logs.debug(item_kind=item_kind, item_app=item_app)
             if item_app in ["ckan", "jobs-db", "redis", "nginx", "jobs"]:
