@@ -366,7 +366,6 @@ def _check_instance_events(instance_id):
     return missing, errors, ckan_cloud_logs
 
 def _wait_instance_events(instance_id):
-    import logging
     start_time = datetime.datetime.now()
     last_message = 0
     logs.info('Waiting for instance events', start_time=start_time)
