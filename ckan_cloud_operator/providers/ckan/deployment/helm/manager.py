@@ -402,7 +402,7 @@ def _wait_instance_events(instance_id):
                 _log_container_error('CONTAINER LOGS', ckan_pod_name, 'ckan')
                 kubectl.call(f'logs {ckan_pod_name}', namespace=instance_id)
 
-            logs.info('Numbe of Failed Pods: %s' % len(failed_pods))
+            logs.info('Number of Failed Pods: %s' % len(failed_pods))
             for pod_meta in failed_pods:
                 init_containers = pod_meta['status'].get('initContainerStatuses')
                 pod_name = pod_meta['metadata']['name']
