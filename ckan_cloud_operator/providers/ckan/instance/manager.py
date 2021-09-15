@@ -86,11 +86,7 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
         bucket_credentials = instance['spec'].get('ckanStorageBucket', {}).get(get_storage_provider_id())
         use_cloud_storage = bucket_credentials and config_manager.get('use-cloud-native-storage', secret_name=CONFIG_NAME)
 
-        if use_cloud_storage:
-            cluster_provider_id = cluster_manager.get_provider_id()
-
-            if bucket_credentials:
-                literal = []
+        if use_cloud_storage and bucket_credentials:
                 config_manager.set(
                     values=bucket_credentials,
                     secret_name='bucket-credentials',
