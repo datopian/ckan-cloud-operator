@@ -12,7 +12,6 @@ def _get_resource_annotations(suffix=None, with_timestamp=False): return provide
 def _set_provider(): providers_manager.set_provider(PROVIDER_SUBMODULE, PROVIDER_ID)
 def _config_set(key=None, value=None, values=None, namespace=None, is_secret=False, suffix=None): providers_manager.config_set(PROVIDER_SUBMODULE, PROVIDER_ID, key=key, value=value, values=values, namespace=namespace, is_secret=is_secret, suffix=suffix)
 def _config_get(key=None, default=None, required=False, namespace=None, is_secret=False, suffix=None): return providers_manager.config_get(PROVIDER_SUBMODULE, PROVIDER_ID, key=key, default=default, required=required, namespace=namespace, is_secret=is_secret, suffix=suffix)
-def _config_interactive_set(default_values, namespace=None, is_secret=False, suffix=None, from_file=False, interactive=True): providers_manager.config_interactive_set(PROVIDER_SUBMODULE, PROVIDER_ID, default_values, namespace, is_secret, suffix, from_file, interactive)
 
 ################################
 # custom provider code starts here
@@ -81,25 +80,6 @@ def initialize(interactive=False, dry_run=False):
     if cluster_manager.get_provider_id() == 'minikube':
         config_manager.set('container-spec-overrides', '{"resources":{"limits":{"memory":"1Gi"}}}',
             configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
-
-    solr_resources = config_manager.interactive_set(
-        {
-            'sc-cpu': '1',
-            'sc-mem': '1Gi',
-            'zk-cpu': '0.2',
-            'zk-mem': '200Mi',
-            'zn-cpu': '0.01',
-            'zn-mem': '0.01Gi',
-            'sc-cpu-limit': '2.5',
-            'sc-mem-limit': '8Gi',
-            'zk-cpu-limit': '0.5',
-            'zk-mem-limit': '200Mi',
-            'zn-cpu-limit': '0.5',
-            'zn-mem-limit': '0.5Gi',
-        },
-        secret_name='solr-config',
-        interactive=interactive
-    )
 
     zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 

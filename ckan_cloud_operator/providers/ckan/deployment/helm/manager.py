@@ -141,7 +141,7 @@ def get(instance_id, instance=None):
                 else:
                     item_app = None
             except:
-                logging.exception('Failed to extract item_app from %r', item)
+                logs.exception('Failed to extract item_app from %r', item)
                 item_app = None
             logs.debug(item_kind=item_kind, item_app=item_app)
             if item_app in ["ckan", "jobs-db", "redis", "nginx", "jobs"]:
@@ -366,7 +366,6 @@ def _check_instance_events(instance_id):
     return missing, errors, ckan_cloud_logs
 
 def _wait_instance_events(instance_id):
-    import logging
     start_time = datetime.datetime.now()
     last_message = 0
     logs.info('Waiting for instance events', start_time=start_time)
@@ -403,7 +402,7 @@ def _wait_instance_events(instance_id):
                 _log_container_error('CONTAINER LOGS', ckan_pod_name, 'ckan')
                 kubectl.call(f'logs {ckan_pod_name}', namespace=instance_id)
 
-            logs.info('Numbe of Failed Pods: %s' % len(failed_pods))
+            logs.info('Number of Failed Pods: %s' % len(failed_pods))
             for pod_meta in failed_pods:
                 init_containers = pod_meta['status'].get('initContainerStatuses')
                 pod_name = pod_meta['metadata']['name']
