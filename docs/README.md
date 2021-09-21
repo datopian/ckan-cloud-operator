@@ -1,7 +1,5 @@
 CKAN Cloud Operator manages, provisions and configures CKAN Cloud instances and related infrastructure.
 
-[TOC]
-
 # installation
 
 Install it with pip
@@ -63,7 +61,6 @@ Adds an environment
 
 ```
 cco ckan env add poc --cloud-provider cloud-provider-name \
-                --environment environment-name \
                 --resource-group resource-group-name \
                 --cluster-name cluster-name \
                 --subscription subscription-id \
@@ -127,28 +124,6 @@ cco ckan env rm poc
 > POC environment was succesfully removed
 ```
 
-## cco ckan init
-
-Initialize ckan-cloud-operator for working with environment. This command gets all the necessary credentials for working with the given environment. Eg, gets and saves `kubeconfig` file in `~/.kube/config` directory
-
-### Usage
-
-```
-cco ckan init [[--flags]]
-```
-
-#### Flags
-
-Without flags initializes, current working environment added with `cco ckan env add`
-
-- `--environment-name` name of the environment to initialize (one of the result of `cco ckan env list`)
-
-
-```
-cco ckan init --environment-name poc
-> POC environment was succesfully initialized
-```
-
 # Creating And Managing Instances
 
 ## cco ckan instance
@@ -210,7 +185,7 @@ cco ckan instance create helm
 Create or delete system administrator for CKAN instane
 
 ```
-cco ckan instance sysadmin [COMMAND] USERNAME [[--flags]]
+cco ckan instance sysadmin [COMMAND] [INSTANCE_ID] USERNAME [[--flags]]
 ```
 
 ##### Commands
@@ -219,8 +194,8 @@ cco ckan instance sysadmin [COMMAND] USERNAME [[--flags]]
 - `rm` - Removes System administrator privilages from given user
 
 ```
-cco ckan instance sysadmin add USERNAME --pasword pasword --email email@email.com
-cco ckan instance sysadmin rm USERNAME
+cco ckan instance sysadmin add INSTANCE_ID USERNAME --pasword pasword --email email@email.com
+cco ckan instance sysadmin rm INSTANCE_ID USERNAME
 ```
 
 ##### Flags
@@ -233,7 +208,7 @@ cco ckan instance sysadmin rm USERNAME
 Update, clear or check search index for CKAN instance
 
 ```
-cco ckan instance solr [COMMANDS] [[--flags]]
+cco ckan instance solr [COMMANDS] [INSTANCE_ID] [[--flags]]
 ```
 
 ##### Commands
@@ -245,11 +220,11 @@ cco ckan instance solr [COMMANDS] [[--flags]]
 - show - Show index of a dataset
 
 ```
-cco ckan instance solr check
-cco ckan instance solr clear
-cco ckan instance solr rebuild
-cco ckan instance solr rebuild-fast
-cco ckan instance solr show --dataset=dataset-id-or-name
+cco ckan instance solr check INSTANCE_ID
+cco ckan instance solr clear INSTANCE_ID
+cco ckan instance solr rebuild INSTANCE_ID
+cco ckan instance solr rebuild-fast INSTANCE_ID
+cco ckan instance solr show INSTANCE_ID --dataset=dataset-id-or-name
 ```
 
 ##### Flags
@@ -261,7 +236,7 @@ cco ckan instance solr show --dataset=dataset-id-or-name
 Execute ckan CLI (former `paster`) commands.
 
 ```
-cco ckan instance ckan-exec [COMMANDS]
+cco ckan instance ckan-exec [COMMANDS] INSTANCE_ID
 ```
 
 ##### Commands
@@ -270,9 +245,9 @@ See full list of command in [CKAN Docs](https://docs.ckan.org/en/2.9/maintaining
 
 Few examples
 ```
-cco ckan instance ckan-exec --command='view clean --yes'
-cco ckan instance ckan-exec --command='jobs list'
-cco ckan instance ckan-exec --command='dataset show dataset-id'
+cco ckan instance ckan-exec INSTANCE_ID --command='view clean --yes'
+cco ckan instance ckan-exec INSTANCE_ID --command='jobs list'
+cco ckan instance ckan-exec INSTANCE_ID --command='dataset show dataset-id'
 ```
 
 ##### Flags
@@ -284,7 +259,7 @@ cco ckan instance ckan-exec --command='dataset show dataset-id'
 Check CKAN and other service container logs
 
 ```
-cco ckan instance logs [[--flags]]
+cco ckan instance logs INSTANCE_ID [[--flags]]
 ```
 
 
@@ -301,7 +276,7 @@ cco ckan instance logs [[--flags]]
 SSH into the running container.
 
 ```
-cco ckan instance ssh [[--flags]]
+cco ckan instance ssh INSTANCE_ID [[--flags]]
 ```
 
 ##### Flags
@@ -314,7 +289,7 @@ cco ckan instance ssh [[--flags]]
 Run Unix-like operating system commands into the running container
 
 ```
-cco ckan instance shell [[--flags]]
+cco ckan instance shell [INSTANCE_ID] [[--flags]]
 ```
 
 ##### Flags
@@ -323,7 +298,7 @@ cco ckan instance shell [[--flags]]
 - `--command`- Any valid Unix-like operating system commands
 
 ```
-cco ckan instance shell --command='cat /etc/ckan/production.ini'
+cco ckan instance shell INSTANCE_ID --command='cat /etc/ckan/production.ini'
 ```
 
 ## cco ckan deployment
@@ -333,12 +308,12 @@ Create, Deploy and manage CKAN instances on Kubernetes Cluster
 ### Usage
 
 ```
-cco ckan deployment COMMAND [options] [[--flags]]
+cco ckan deployment COMMAND [INSTANCE_ID] [options] [[--flags]]
 
-cco ckan deployment status
-cco ckan deployment logs
-cco ckan deployment version
-cco ckan deployment image [options] [[--flags]]
+cco ckan deployment status INSTANCE_ID
+cco ckan deployment logs INSTANCE_ID
+cco ckan deployment version INSTANCE_ID
+cco ckan deployment image INSTANCE_ID [options] [[--flags]]
 ```
 
 ### Commands
@@ -371,7 +346,6 @@ cco ckan deployment version
 
 Get and set CKAN or Related service images.
 
-
 ```
 cco ckan deployment image [options] [[--flags]]
 ```
@@ -390,14 +364,14 @@ cco ckan deployment image set IMAGE_NAME [[--flags]]
 - `--service`- Service name. One of `ckan`, `giftless`, `jobs`, `jobs-db`, `redis`. Defaults to `ckan`
 
 
-## cco ckan infra
+## cco infra
 
 Manage and debug CKAN related infrastucrure like SOLR Cloud and Postgres Databeses
 
 ### Usage
 
 ```
-cco ckan infra COMMAND [options] [[--flags]]
+cco infra COMMAND [options] [[--flags]]
 
 ```
 
@@ -408,7 +382,7 @@ cco ckan infra COMMAND [options] [[--flags]]
 Check logs of SolrCloud service and restart them.
 
 ```
-cco ckan infra solr [options] [[--flags]]
+cco infra solr [options] [[--flags]]
 ```
 
 ##### Options
@@ -417,8 +391,8 @@ cco ckan infra solr [options] [[--flags]]
 - `restart` - Restart SolrCloud and Zookeeper containers
 
 ```
-cco ckan infra solr logs [[--flags]]
-cco ckan infra solr restart [[--flags]]
+cco infra solr logs [[--flags]]
+cco infra solr restart [[--flags]]
 ```
 
 ##### Flags
@@ -436,7 +410,7 @@ cco ckan infra solr restart [[--flags]]
 Get database connection string
 
 ```
-cco ckan infra db [options] [[--flags]]
+cco infra db [options] [[--flags]]
 ```
 
 ##### Options
@@ -444,5 +418,5 @@ cco ckan infra db [options] [[--flags]]
 - `get` - get master connection string for ckan Database
 
 ```
-cco ckan infra solr db get [[--flags]]
+cco infra db get [[--flags]]
 ```
