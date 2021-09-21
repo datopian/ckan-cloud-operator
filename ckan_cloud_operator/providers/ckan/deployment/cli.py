@@ -4,6 +4,7 @@ from .helm import cli as helm_cli
 from .drone import cli as drone_cli
 from .drone import manager
 from ckan_cloud_operator.providers.ckan.deployment import manager as deployment_manager
+from ckan_cloud_operator.drivers.helm import driver as helm_driver
 
 drone_manager = manager.Drone()
 
