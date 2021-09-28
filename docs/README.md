@@ -8,6 +8,11 @@ Install it with pip
 pip install ckan-cloud-operator
 ```
 
+To install for AWS
+```
+pip install ckan-cloud-operator[aws]
+```
+
 # Complete List of commands
 
 Show complete list of commands
