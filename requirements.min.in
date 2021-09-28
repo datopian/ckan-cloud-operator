@@ -1,5 +1,5 @@
 httpagentparser
-psycopg2
+psycopg2-binary
 pyyaml<5.3,>=5
 kubernetes
 click
