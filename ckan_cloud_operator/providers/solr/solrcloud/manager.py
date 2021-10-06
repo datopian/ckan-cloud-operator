@@ -82,8 +82,8 @@ def initialize(interactive=False, dry_run=False):
             configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
 
     # This is for setting solr's configurations and their defaults
-    # This can modified from interactive,yaml or with prompt answers on cluster initialize
-    solr_resources = config_manager.interactive_set(
+    # This can be modified from interactive,yaml or with prompt answers on cluster initialize
+    config_manager.interactive_set(
         {
             'sc-cpu': '1',
             'sc-mem': '1Gi',

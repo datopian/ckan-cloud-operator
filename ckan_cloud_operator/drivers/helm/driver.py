@@ -38,10 +38,9 @@ def init(tiller_namespace_name):
     }
     kubectl.apply(tiller_service_account)
     kubectl.apply(cluster_role_binding)
-    tiller_cmd = '' if _check_helm_version() == 3 else f' --tiller-namespace {tiller_namespace_name}'
-    if tiller_cmd:
+    if _check_helm_version() == 2:
         subprocess.check_call(
-            f'helm init --upgrade --stable-repo-url https://charts.helm.sh/stable --service-account {tiller_namespace_name}-tiller --history-max 10' + tiller_cmd,
+            f'helm init --upgrade --stable-repo-url https://charts.helm.sh/stable --service-account {tiller_namespace_name}-tiller --history-max 10 --tiller-namespace {tiller_namespace_name}',
             shell=True
         )
 
