@@ -81,7 +81,7 @@ def initialize(interactive=False, dry_run=False):
         config_manager.set('container-spec-overrides', '{"resources":{"limits":{"memory":"1Gi"}}}',
             configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
 
-    # This is for setting the solr configgurations and their defaults
+    # This is for setting solr's configurations and their defaults
     # This can modified from interactive,yaml or with prompt answers on cluster initialize
     solr_resources = config_manager.interactive_set(
         {
