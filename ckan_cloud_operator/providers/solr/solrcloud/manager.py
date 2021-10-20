@@ -376,6 +376,13 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
     mem_lim = config_manager.get('sc-mem-limit', secret_name='solr-config')
     sc_image = config_manager.get('sc-image', secret_name='solr-config')
     sc_init_image = config_manager.get('sc-init-image', secret_name='solr-config')
+    image_pull_secret_name = ''
+    image_pull_secrets = []
+    if config_manager.get('private-registry', secret_name='ckan-docker-registry') == 'y':
+        image_pull_secret_name = config_manager.get('docker-image-pull-secret-name', secret_name='ckan-docker-registry')
+    if image_pull_secret_name:
+        image_pull_secrets = [{'name': image_pull_secret_name}]
+
 
     namespace = cluster_manager.get_operator_namespace_name()
     container_spec_overrides = config_manager.get('container-spec-overrides', configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config',
@@ -403,6 +410,7 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
                         volume_spec,
                         _get_resource_labels(for_deployment=True, suffix='sc')['app']
                     ),
+                    'imagePullSecrets': image_pull_secrets,
                     'initContainers': [
                         {
                             'name': 'init',
