@@ -81,6 +81,30 @@ def initialize(interactive=False, dry_run=False):
         config_manager.set('container-spec-overrides', '{"resources":{"limits":{"memory":"1Gi"}}}',
             configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config')
 
+    # This is for setting solr's configurations and their defaults
+    # This can be modified from interactive,yaml or with prompt answers on cluster initialize
+    config_manager.interactive_set(
+        {
+            'sc-cpu': '1',
+            'sc-mem': '1Gi',
+            'zk-cpu': '0.2',
+            'zk-mem': '200Mi',
+            'zn-cpu': '0.01',
+            'zn-mem': '0.01Gi',
+            'sc-cpu-limit': '2.5',
+            'sc-mem-limit': '8Gi',
+            'sc-image': 'solr:5.5.5',
+            'sc-init-image': 'alpine',
+            'zk-cpu-limit': '0.5',
+            'zk-mem-limit': '200Mi',
+            'zk-image': 'gcr.io/google_samples/k8szk:v3',
+            'zn-cpu-limit': '0.5',
+            'zn-mem-limit': '0.5Gi',
+        },
+        secret_name='solr-config',
+        interactive=interactive
+    )
+
     zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 
     _config_set('zk-host-names', yaml.dump(zk_host_names, default_flow_style=False))
@@ -229,6 +253,8 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
     mem_req = config_manager.get('zk-mem', secret_name='solr-config')
     cpu_lim = config_manager.get('zk-cpu-limit', secret_name='solr-config')
     mem_lim = config_manager.get('zk-mem-limit', secret_name='solr-config')
+    zk_image = config_manager.get('zk-image', secret_name='solr-config')
+
     kubectl.apply(kubectl.get_deployment(
         _get_resource_name(suffix),
         _get_resource_labels(for_deployment=True, suffix='zk'),
@@ -259,7 +285,7 @@ def _apply_zookeeper_deployment(suffix, volume_spec, zookeeper_configmap_name, h
                             'env': [
                                 {'name': 'SOLR_HOST', 'valueFrom': {'fieldRef': {'apiVersion': 'v1', 'fieldPath': 'status.podIP'}}}
                             ],
-                            'image': 'gcr.io/google_samples/k8szk:v3',
+                            'image': zk_image,
                             'livenessProbe': {
                                 'exec': {'command': ['zkOk.sh']},
                                 'failureThreshold': 3, 'initialDelaySeconds': 15, 'periodSeconds': 10,
@@ -348,6 +374,8 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
     mem_req = config_manager.get('sc-mem', secret_name='solr-config')
     cpu_lim = config_manager.get('sc-cpu-limit', secret_name='solr-config')
     mem_lim = config_manager.get('sc-mem-limit', secret_name='solr-config')
+    sc_image = config_manager.get('sc-image', secret_name='solr-config')
+    sc_init_image = config_manager.get('sc-init-image', secret_name='solr-config')
 
     namespace = cluster_manager.get_operator_namespace_name()
     container_spec_overrides = config_manager.get('container-spec-overrides', configmap_name='ckan-cloud-provider-solr-solrcloud-sc-config',
@@ -423,7 +451,7 @@ def _apply_solrcloud_deployment(suffix, volume_spec, configmap_name, log_configm
                                     'successThreshold': 1, 'timeoutSeconds': 5
                                 },
                             }),
-                            'image': 'solr:5.5.5',
+                            'image': sc_image,
                             'ports': [
                                 {'containerPort': 8983, 'name': 'solr', 'protocol': 'TCP'},
                                 {'containerPort': 7983, 'name': 'stop', 'protocol': 'TCP'},
