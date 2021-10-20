@@ -270,6 +270,12 @@ def _create_private_container_registry_secret(instance_id):
                               f'--docker-server={docker_server} '
                               f'--docker-username={docker_username} '
                               f'--docker-email={docker_email}', shell=True)
+        # Register docker secrets in infra namespace for custom SOLR images or other
+        subprocess.call(f'kubectl -n ckan-cloud create secret docker-registry {image_pull_secret_name} '
+                              f'--docker-password={docker_password} '
+                              f'--docker-server={docker_server} '
+                              f'--docker-username={docker_username} '
+                              f'--docker-email={docker_email}', shell=True)
 
 
 def _init_namespace(instance_id, dry_run=False):
