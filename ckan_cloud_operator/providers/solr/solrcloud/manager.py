@@ -3,6 +3,7 @@
 from .constants import PROVIDER_ID
 from ..constants import PROVIDER_SUBMODULE
 from ckan_cloud_operator.providers.cluster import manager as cluster_manager
+from ckan_cloud_operator.providers.ckan.deployment.helm import manager as helm_manager
 
 # define common provider functions based on the constants
 from ckan_cloud_operator.providers import manager as providers_manager
@@ -104,6 +105,26 @@ def initialize(interactive=False, dry_run=False):
         secret_name='solr-config',
         interactive=interactive
     )
+
+    registry_secrets = config_manager.interactive_set(
+        {'private-registry': 'n'},
+        secret_name='ckan-docker-registry',
+        interactive=interactive
+    )
+    if registry_secrets.get('private-registry') == 'y':
+        registry_secrets = config_manager.interactive_set(
+            {
+                'docker-server': None,
+                'docker-username': None,
+                'docker-password': None,
+                'docker-email': None,
+                'docker-image-pull-secret-name': 'container-registry',
+            },
+            secret_name='ckan-docker-registry',
+            interactive=interactive
+        )
+
+    helm_manager._create_private_container_registry_secret('ckan-cloud')
 
     zk_host_names = initialize_zookeeper(interactive, dry_run=dry_run)
 
@@ -347,19 +368,12 @@ def _apply_zoonavigator_deployment(dry_run=False):
                                 {'name': 'API_PORT', 'value': '9000'},
                                 {'name': 'WEB_HTTP_PORT', 'value': '8000'}
                             ],
-                            'image': 'elkozmon/zoonavigator-web:0.5.0',
-                            'name': 'zoonavigator-web',
+                            'image': 'elkozmon/zoonavigator:0.7.1',
+                            'name': 'zoonavigator',
                             'ports': [
                                 {'containerPort': 8000, 'name': '8000tcp02', 'protocol': 'TCP'}
                             ],
                             'resources': {}
-                        }, {
-                            'env': [
-                                {'name': 'API_HTTP_PORT', 'value': '9000'}
-                            ],
-                            'image': 'elkozmon/zoonavigator-api:0.5.0',
-                            'name': 'zoonavigator-api',
-                            'resources': {'requests': {'cpu': cpu_req, 'memory': mem_req}, 'limits': {'memory': mem_lim, 'cpu': cpu_lim}},
                         }
                     ]
                 }
