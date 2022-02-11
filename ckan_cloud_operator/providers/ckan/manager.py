@@ -25,7 +25,7 @@ from .constants import INSTANCE_CRD_SINGULAR, INSTANCE_CRD_PLURAL_SUFFIX, INSTAN
 from .constants import INSTANCE_NAME_CRD_SINGULAR, INSTANCE_NAME_CRD_KIND_SUFFIX, INSTANCE_NAME_CRD_PLURAL_SUFFIX
 
 
-def initialize(interactive=False):
+def initialize(interactive=False, skip=None):
     ckan_db_migration_manager.initialize(interactive=interactive)
     registry_secrets = config_manager.interactive_set(
         {'disable-centralized-datapushers': 'no'},
@@ -62,16 +62,17 @@ def initialize(interactive=False):
     crds_manager.install_crd(INSTANCE_CRD_SINGULAR, INSTANCE_CRD_PLURAL_SUFFIX, INSTANCE_CRD_KIND_SUFFIX)
     crds_manager.install_crd(INSTANCE_NAME_CRD_SINGULAR, INSTANCE_NAME_CRD_PLURAL_SUFFIX, INSTANCE_NAME_CRD_KIND_SUFFIX)
 
-    from ckan_cloud_operator.providers.solr.manager import zk_list_configs, zk_put_configs
-    logs.info('Checking CKAN Solr config in ZooKeeper')
-    if 'ckan_default' in zk_list_configs():
-        logs.info('Found ckan_default Solr config')
-    else:
-        logs.info('No default Solr config found. Putting CKAN 2.8 config for Solr to ZooKeeper as ckan_default...')
-        file_path = os.path.dirname(os.path.abspath(__file__))
-        root_path = Path(file_path).parent.parent
-        configs_dir = os.path.join(root_path, 'data', 'solr')
-        zk_put_configs(configs_dir)
+    if skip != 'solr':
+        from ckan_cloud_operator.providers.solr.manager import zk_list_configs, zk_put_configs
+        logs.info('Checking CKAN Solr config in ZooKeeper')
+        if 'ckan_default' in zk_list_configs():
+            logs.info('Found ckan_default Solr config')
+        else:
+            logs.info('No default Solr config found. Putting CKAN 2.8 config for Solr to ZooKeeper as ckan_default...')
+            file_path = os.path.dirname(os.path.abspath(__file__))
+            root_path = Path(file_path).parent.parent
+            configs_dir = os.path.join(root_path, 'data', 'solr')
+            zk_put_configs(configs_dir)
 
 
     if config_manager.get('disable-centralized-datapushers', configmap_name='global-ckan-config', required=False) != 'yes':

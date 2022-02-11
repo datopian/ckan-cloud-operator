@@ -19,9 +19,10 @@ def cluster():
 @click.option('--interactive', is_flag=True)
 @click.option('--cluster-provider', default='gcloud')
 @click.option('--skip-to')
-def initialize(interactive, cluster_provider, skip_to):
+@click.option('--skip')
+def initialize(interactive, cluster_provider, skip_to, skip):
     """Initialize the currently connected cluster"""
-    manager.initialize(interactive=interactive, default_cluster_provider=cluster_provider, skip_to=skip_to)
+    manager.initialize(interactive=interactive, default_cluster_provider=cluster_provider, skip_to=skip_to, skip=skip)
     logs.exit_great_success()
 
 

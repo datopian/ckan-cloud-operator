@@ -48,7 +48,7 @@ def print_info(debug=False, minimal=False):
             return True
 
 
-def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None, skip_to=None):
+def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None, skip_to=None, skip=None):
     if interactive:
         logs.info('Starting interactive initialization of the operator on the following cluster:')
         print_info(minimal=True)
@@ -80,14 +80,15 @@ def initialize(log_kwargs=None, interactive=False, default_cluster_provider=None
             ('routers', lambda lk: routers_manager.initialize(interactive=interactive)),
             ('solr', lambda lk: solr_manager.initialize(interactive=interactive)),
             ('storage', lambda lk: storage_manager.initialize(interactive=interactive)),
-            ('ckan', lambda lk: ckan_manager.initialize(interactive=interactive)),
+            ('ckan', lambda lk: ckan_manager.initialize(interactive=interactive, skip=skip)),
             ('apps', lambda lk: apps_manager.initialize(interactive=interactive)),
     ):
         if not skip_to or skip_to == component:
-            skip_to = None
-            log_kwargs = {'cluster-init': component}
-            logs.info(f'Initializing', **log_kwargs)
-            func(log_kwargs)
+            if component != skip:
+                skip_to = None
+                log_kwargs = {'cluster-init': component}
+                logs.info(f'Initializing', **log_kwargs)
+                func(log_kwargs)
 
 
 def get_kubeconfig_info():
