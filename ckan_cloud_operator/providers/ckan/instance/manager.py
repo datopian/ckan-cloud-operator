@@ -23,7 +23,7 @@ from ..deployment import manager as deployment_manager
 
 
 def create(instance_type, instance_id=None, instance_name=None, values=None, values_filename=None, exists_ok=False,
-           dry_run=False, update_=False, wait_ready=False, skip_deployment=False, skip_route=False, force=False):
+           dry_run=False, update_=False, wait_ready=False, skip_deployment=False, skip_route=False, force=False, skip_solr=False):
     if not instance_id:
         if instance_name:
             instance_id = '{}-{}'.format(instance_name, _generate_password(6))
@@ -67,13 +67,13 @@ def create(instance_type, instance_id=None, instance_name=None, values=None, val
 
     if update_:
         update(instance_id, wait_ready=wait_ready, skip_deployment=skip_deployment, skip_route=skip_route, force=force,
-               dry_run=dry_run)
+               dry_run=dry_run, skip_solr=skip_solr)
 
     return instance_id
 
 
 def update(instance_id_or_name, override_spec=None, persist_overrides=False, wait_ready=False, skip_deployment=False,
-           skip_route=False, force=False, dry_run=False):
+           skip_route=False, force=False, dry_run=False, skip_solr=False):
     instance_id, instance_type, instance = _get_instance_id_and_type(instance_id_or_name, required=not dry_run)
     if dry_run:
         logs.info('update instance', instance_id=instance_id, instance_id_or_name=instance_id_or_name,
@@ -97,7 +97,7 @@ def update(instance_id_or_name, override_spec=None, persist_overrides=False, wai
             logs.info('Persisting overrides')
             kubectl.apply(instance)
         if not skip_deployment:
-            deployment_manager.update(instance_id, instance_type, instance, force=force)
+            deployment_manager.update(instance_id, instance_type, instance, force=force, skip_solr=skip_solr)
             if wait_ready:
                 wait_instance_ready(instance_id_or_name)
         if not skip_route and pre_update_hook_data.get('sub-domain'):

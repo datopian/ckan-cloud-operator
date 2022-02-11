@@ -11,8 +11,8 @@ def initialize(interactive=False):
     ckan_helm_initialize(interactive=interactive)
 
 
-def update(instance_id, instance_type, instance, force=False, dry_run=False):
-    return _get_deployment_provider(instance_type).update(instance_id, instance, force=force, dry_run=dry_run)
+def update(instance_id, instance_type, instance, force=False, dry_run=False, skip_solr=False):
+    return _get_deployment_provider(instance_type).update(instance_id, instance, force=force, dry_run=dry_run, skip_solr=skip_solr)
 
 
 def delete(instance_id, instance_type, instance):

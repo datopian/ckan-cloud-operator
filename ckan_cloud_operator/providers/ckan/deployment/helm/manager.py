@@ -47,7 +47,7 @@ def initialize(interactive=False):
     helm_driver.init(tiller_namespace_name)
 
 
-def update(instance_id, instance, force=False, dry_run=False):
+def update(instance_id, instance, force=False, dry_run=False, skip_solr=False):
     tiller_namespace_name = _get_resource_name()
     logs.debug('Updating helm-based instance deployment',
                instance_id=instance_id, tiller_namespace_name=tiller_namespace_name)
@@ -59,12 +59,13 @@ def update(instance_id, instance, force=False, dry_run=False):
     )
     ckan_helm_chart_version = instance['spec'].get("ckanHelmChartVersion", "")
     ckan_helm_release_name = f'ckan-cloud-{instance_id}'
-    solr_schema = instance['spec'].get("ckanSolrSchema", "ckan_default")
-    solr_host, solr_port = _init_solr(instance_id, solr_schema, dry_run=dry_run,)
-    logs.debug(ckan_helm_chart_repo=ckan_helm_chart_repo,
-               ckan_helm_chart_version=ckan_helm_chart_version, ckan_helm_release_name=ckan_helm_release_name,
-               solr_host=solr_host, solr_port=solr_port)
-    instance['spec']['centralizedSolrHost'], instance['spec']['centralizedSolrPort'] = solr_host, solr_port
+    if not skip_solr:
+        solr_schema = instance['spec'].get("ckanSolrSchema", "ckan_default")
+        solr_host, solr_port = _init_solr(instance_id, solr_schema, dry_run=dry_run,)
+        logs.debug(ckan_helm_chart_repo=ckan_helm_chart_repo,
+                   ckan_helm_chart_version=ckan_helm_chart_version, ckan_helm_release_name=ckan_helm_release_name,
+                   solr_host=solr_host, solr_port=solr_port)
+        instance['spec']['centralizedSolrHost'], instance['spec']['centralizedSolrPort'] = solr_host, solr_port
     if annotations_manager.get_status(instance, 'helm', 'created'):
         logs.info('Updating existing instance')
         values = instance['spec']
